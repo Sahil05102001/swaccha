@@ -1,5 +1,6 @@
 import { Box, Container } from "@mui/material";
 import { Outlet } from "react-router-dom";
+import Navbar from "@/components/layout/Navbar";
 
 export default function CustomerLayout() {
   return (
@@ -9,7 +10,7 @@ export default function CustomerLayout() {
         bgcolor: "background.default",
       }}
     >
-      {/* Navbar will come here */}
+      <Navbar />
 
       <Container
         maxWidth="xl"
@@ -19,8 +20,6 @@ export default function CustomerLayout() {
       >
         <Outlet />
       </Container>
-
-      {/* Footer will come here */}
     </Box>
   );
 }
