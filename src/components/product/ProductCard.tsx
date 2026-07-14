@@ -9,15 +9,19 @@ import {
 
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 
-import productImage from "@/assets/images/products/floor-cleaner.png";
+import type { Product } from "@/types/product";
 
-export default function ProductCard() {
+interface ProductCardProps {
+  product: Product;
+}
+
+export default function ProductCard({ product }: ProductCardProps) {
   return (
     <Card
       sx={{
         borderRadius: 3,
-        transition: "0.3s",
         overflow: "hidden",
+        transition: "all 0.3s ease",
 
         "&:hover": {
           transform: "translateY(-8px)",
@@ -27,8 +31,8 @@ export default function ProductCard() {
     >
       <CardMedia
         component="img"
-        image={productImage}
-        alt="Swachha Floor Cleaner"
+        image={product.image}
+        alt={product.name}
         sx={{
           height: 280,
           objectFit: "contain",
@@ -38,14 +42,16 @@ export default function ProductCard() {
       />
 
       <CardContent>
-        <Chip
-          label="Best Seller"
-          color="success"
-          size="small"
-          sx={{
-            mb: 2,
-          }}
-        />
+        {product.badge && (
+          <Chip
+            label={product.badge}
+            color="success"
+            size="small"
+            sx={{
+              mb: 2,
+            }}
+          />
+        )}
 
         <Typography
           variant="h6"
@@ -54,7 +60,7 @@ export default function ProductCard() {
             mb: 1,
           }}
         >
-          Swachha Floor Cleaner
+          {product.name}
         </Typography>
 
         <Typography
@@ -64,7 +70,7 @@ export default function ProductCard() {
             mb: 2,
           }}
         >
-          Rose Fresh Fragrance
+          {product.description}
         </Typography>
 
         <Typography
@@ -75,7 +81,7 @@ export default function ProductCard() {
             mb: 3,
           }}
         >
-          ₹199
+          ₹{product.price}
         </Typography>
 
         <Button
