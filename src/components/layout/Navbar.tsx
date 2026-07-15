@@ -10,6 +10,7 @@ import {
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 import SearchIcon from "@mui/icons-material/Search";
+import { Link } from "react-router-dom";
 
 export default function Navbar() {
   return (
@@ -46,9 +47,21 @@ export default function Navbar() {
           />
         </Box>
 
-        <Button color="inherit">Home</Button>
+        <Button
+          component={Link}
+          to="/"
+          color="inherit"
+        >
+          Home
+        </Button>
 
-        <Button color="inherit">Products</Button>
+        <Button
+          component={Link}
+          to="/products"
+          color="inherit"
+        >
+          Products
+        </Button>
 
         <Button color="inherit">About</Button>
 
