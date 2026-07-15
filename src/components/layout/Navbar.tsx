@@ -1,5 +1,6 @@
 import {
   AppBar,
+  Badge,
   Box,
   Button,
   IconButton,
@@ -7,12 +8,24 @@ import {
   Toolbar,
   Typography,
 } from "@mui/material";
+
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 import SearchIcon from "@mui/icons-material/Search";
+
 import { Link } from "react-router-dom";
 
+import { useAppSelector } from "@/app/hooks";
+import { selectCartItems } from "@/features/cart/cartSlice";
+
 export default function Navbar() {
+  const cartItems = useAppSelector(selectCartItems);
+
+  const totalItems = cartItems.reduce(
+    (total, item) => total + item.quantity,
+    0
+  );
+
   return (
     <AppBar
       position="sticky"
@@ -43,7 +56,10 @@ export default function Navbar() {
 
           <InputBase
             placeholder="Search products..."
-            sx={{ ml: 1, flex: 1 }}
+            sx={{
+              ml: 1,
+              flex: 1,
+            }}
           />
         </Box>
 
@@ -63,16 +79,28 @@ export default function Navbar() {
           Products
         </Button>
 
-        <Button color="inherit">About</Button>
+        <Button color="inherit">
+          About
+        </Button>
 
-        <Button color="inherit">Contact</Button>
+        <Button color="inherit">
+          Contact
+        </Button>
 
         <IconButton>
           <FavoriteBorderIcon />
         </IconButton>
 
-        <IconButton>
-          <ShoppingCartOutlinedIcon />
+        <IconButton
+          component={Link}
+          to="/cart"
+        >
+          <Badge
+            badgeContent={totalItems}
+            color="error"
+          >
+            <ShoppingCartOutlinedIcon />
+          </Badge>
         </IconButton>
 
         <Button variant="contained">

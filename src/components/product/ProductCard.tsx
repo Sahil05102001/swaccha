@@ -1,6 +1,7 @@
 import {
   Button,
   Card,
+  CardActionArea,
   CardContent,
   CardMedia,
   Chip,
@@ -9,6 +10,8 @@ import {
 
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 
+import { useNavigate } from "react-router-dom";
+
 import type { Product } from "@/types/product";
 
 interface ProductCardProps {
@@ -16,6 +19,8 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
+  const navigate = useNavigate();
+
   return (
     <Card
       sx={{
@@ -29,61 +34,71 @@ export default function ProductCard({ product }: ProductCardProps) {
         },
       }}
     >
-      <CardMedia
-        component="img"
-        image={product.image}
-        alt={product.name}
-        sx={{
-          height: 280,
-          objectFit: "contain",
-          p: 3,
-          bgcolor: "#fafafa",
-        }}
-      />
+      <CardActionArea
+        onClick={() => navigate(`/products/${product.slug}`)}
+      >
+        <CardMedia
+          component="img"
+          image={product.image}
+          alt={product.name}
+          sx={{
+            height: 280,
+            objectFit: "contain",
+            p: 3,
+            bgcolor: "#fafafa",
+          }}
+        />
 
-      <CardContent>
-        {product.badge && (
-          <Chip
-            label={product.badge}
-            color="success"
-            size="small"
+        <CardContent>
+          {product.badge && (
+            <Chip
+              label={product.badge}
+              color="success"
+              size="small"
+              sx={{
+                mb: 2,
+              }}
+            />
+          )}
+
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 700,
+              mb: 1,
+            }}
+          >
+            {product.name}
+          </Typography>
+
+          <Typography
+            variant="body2"
+            color="text.secondary"
             sx={{
               mb: 2,
             }}
-          />
-        )}
+          >
+            {product.description}
+          </Typography>
 
-        <Typography
-          variant="h6"
-          sx={{
-            fontWeight: 700,
-            mb: 1,
-          }}
-        >
-          {product.name}
-        </Typography>
+          <Typography
+            variant="h5"
+            color="primary"
+            sx={{
+              fontWeight: 700,
+              mb: 3,
+            }}
+          >
+            ₹{product.price}
+          </Typography>
+        </CardContent>
+      </CardActionArea>
 
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{
-            mb: 2,
-          }}
-        >
-          {product.description}
-        </Typography>
-
-        <Typography
-          variant="h5"
-          color="primary"
-          sx={{
-            fontWeight: 700,
-            mb: 3,
-          }}
-        >
-          ₹{product.price}
-        </Typography>
-
+      <CardContent
+        sx={{
+          pt: 0,
+        }}
+      >
         <Button
           variant="contained"
           fullWidth
