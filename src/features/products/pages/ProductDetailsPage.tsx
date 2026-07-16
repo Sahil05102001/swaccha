@@ -44,7 +44,6 @@ export default function ProductDetailsPage() {
     );
   }
 
-  console.log("Current Product:", product);
 
   return (
     <Container

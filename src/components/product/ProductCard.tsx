@@ -1,5 +1,5 @@
 import {
-  Box, 
+  Box,
   Button,
   Card,
   CardActionArea,
@@ -42,28 +42,17 @@ export default function ProductCard({ product }: ProductCardProps) {
         },
       }}
     >
-      <CardActionArea
-        onClick={() => navigate(`/products/${product.slug}`)}
-      >
-        <Box sx={{ position: "relative" }}>
-        <CardMedia
-          component="img"
-          image={product.image}
-          alt={product.name}
-          sx={{
-            height: 280,
-            objectFit: "contain",
-            p: 3,
-            bgcolor: "#fafafa",
-          }}
-        />
-
+      <Box sx={{ position: "relative" }}>
         <IconButton
-          onClick={() => dispatch(addToWishlist(product))}
+          onClick={(e) => {
+            e.stopPropagation();
+            dispatch(addToWishlist(product));
+          }}
           sx={{
             position: "absolute",
             top: 12,
             right: 12,
+            zIndex: 1,
             bgcolor: "white",
             "&:hover": {
               bgcolor: "white",
@@ -72,51 +61,67 @@ export default function ProductCard({ product }: ProductCardProps) {
         >
           <FavoriteBorderIcon color="error" />
         </IconButton>
-          </Box>
-        <CardContent>
-          {product.badge && (
-            <Chip
-              label={product.badge}
-              color="success"
-              size="small"
+
+        <CardActionArea
+          onClick={() => navigate(`/products/${product.slug}`)}
+        >
+          <CardMedia
+            component="img"
+            image={product.image}
+            alt={product.name}
+            sx={{
+              height: 280,
+              objectFit: "contain",
+              p: 3,
+              bgcolor: "#fafafa",
+            }}
+          />
+
+          <CardContent>
+            {product.badge && (
+              <Chip
+                label={product.badge}
+                color="success"
+                size="small"
+                sx={{
+                  mb: 2,
+                }}
+              />
+            )}
+
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                mb: 1,
+              }}
+            >
+              {product.name}
+            </Typography>
+
+            <Typography
+              variant="body2"
+              color="text.secondary"
               sx={{
                 mb: 2,
               }}
-            />
-          )}
+            >
+              {product.description}
+            </Typography>
 
-          <Typography
-            variant="h6"
-            sx={{
-              fontWeight: 700,
-              mb: 1,
-            }}
-          >
-            {product.name}
-          </Typography>
-
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{
-              mb: 2,
-            }}
-          >
-            {product.description}
-          </Typography>
-
-          <Typography
-            variant="h5"
-            color="primary"
-            sx={{
-              fontWeight: 700,
-              mb: 3,
-            }}
-          >
-            ₹{product.price}
-          </Typography>
-        </CardContent>
-      </CardActionArea>
+            <Typography
+              variant="h5"
+              color="primary"
+              sx={{
+                fontWeight: 700,
+                mb: 3,
+              }}
+            >
+              ₹{product.price}
+            </Typography>
+          </CardContent>
+        </CardActionArea>
+      </Box>
 
       <CardContent
         sx={{
