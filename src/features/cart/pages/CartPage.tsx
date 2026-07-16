@@ -5,14 +5,14 @@ import {
   CardContent,
   CardMedia,
   Container,
-  Divider,
-  Stack,
+  Grid,
   Typography,
 } from "@mui/material";
 
 import { Link } from "react-router-dom";
 
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
+
 import {
   decreaseQuantity,
   increaseQuantity,
@@ -20,6 +20,7 @@ import {
   selectCartItems,
 } from "@/features/cart/cartSlice";
 
+import OrderSummary from "../components/OrderSummary";
 
 export default function CartPage() {
   const cartItems = useAppSelector(selectCartItems);
@@ -41,7 +42,9 @@ export default function CartPage() {
       >
         <Typography
           variant="h4"
-          sx={{ mb: 3 }}
+          sx={{
+            mb: 3,
+          }}
         >
           Your cart is empty
         </Typography>
@@ -59,7 +62,7 @@ export default function CartPage() {
 
   return (
     <Container
-      maxWidth="lg"
+      maxWidth="xl"
       sx={{
         py: 6,
       }}
@@ -74,118 +77,119 @@ export default function CartPage() {
         Shopping Cart
       </Typography>
 
-      <Stack spacing={3}>
-        {cartItems.map((item) => (
-          <Card key={item.id}>
-            <CardContent>
-              <Box
-                sx={{
-                  display: "flex",
-                  gap: 3,
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                }}
-              >
-                <CardMedia
-                  component="img"
-                  image={item.image}
+      <Grid container spacing={4}>
+        <Grid size={{ xs: 12, md: 8 }}>
+          {cartItems.map((item) => (
+            <Card
+              key={item.id}
+              sx={{
+                mb: 3,
+              }}
+            >
+              <CardContent>
+                <Box
                   sx={{
-                    width: 120,
-                    height: 120,
-                    objectFit: "contain",
+                    display: "flex",
+                    gap: 3,
+                    alignItems: "center",
+                    flexWrap: "wrap",
                   }}
-                />
-
-                <Box sx={{ flex: 1 }}>
-                  <Typography
-                    variant="h6"
+                >
+                  <CardMedia
+                    component="img"
+                    image={item.image}
                     sx={{
-                      fontWeight: 700,
+                      width: 120,
+                      height: 120,
+                      objectFit: "contain",
                     }}
-                  >
-                    {item.name}
-                  </Typography>
+                  />
 
-                  <Typography color="text.secondary">
-                    {item.description}
-                  </Typography>
-
-                  <Typography
-                    color="primary"
-                    sx={{
-                      mt: 2,
-                      fontWeight: 700,
-                    }}
-                  >
-                    ₹{item.price}
-                  </Typography>
-
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1,
-                      mt: 2,
-                    }}
-                  >
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => dispatch(decreaseQuantity(item.id))}
-                    >
-                      −
-                    </Button>
-
+                  <Box sx={{ flex: 1 }}>
                     <Typography
+                      variant="h6"
                       sx={{
-                        minWidth: 30,
-                        textAlign: "center",
                         fontWeight: 700,
                       }}
                     >
-                      {item.quantity}
+                      {item.name}
                     </Typography>
 
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => dispatch(increaseQuantity(item.id))}
-                    >
-                      +
-                    </Button>
+                    <Typography color="text.secondary">
+                      {item.description}
+                    </Typography>
 
-                    <Button
-                      color="error"
-                      sx={{ ml: 2 }}
-                      onClick={() => dispatch(removeFromCart(item.id))}
+                    <Typography
+                      color="primary"
+                      sx={{
+                        mt: 2,
+                        fontWeight: 700,
+                      }}
                     >
-                      Remove
-                    </Button>
+                      ₹{item.price}
+                    </Typography>
+
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mt: 2,
+                      }}
+                    >
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() =>
+                          dispatch(decreaseQuantity(item.id))
+                        }
+                      >
+                        −
+                      </Button>
+
+                      <Typography
+                        sx={{
+                          minWidth: 30,
+                          textAlign: "center",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {item.quantity}
+                      </Typography>
+
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() =>
+                          dispatch(increaseQuantity(item.id))
+                        }
+                      >
+                        +
+                      </Button>
+
+                      <Button
+                        color="error"
+                        sx={{
+                          ml: 2,
+                        }}
+                        onClick={() =>
+                          dispatch(removeFromCart(item.id))
+                        }
+                      >
+                        Remove
+                      </Button>
+                    </Box>
                   </Box>
                 </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))}
+        </Grid>
 
-        <Divider />
-
-        <Typography
-          variant="h5"
-          sx={{
-            fontWeight: 700,
-          }}
-        >
-          Subtotal: ₹{subtotal}
-        </Typography>
-
-        <Button
-          variant="contained"
-          size="large"
-        >
-          Proceed to Checkout
-        </Button>
-      </Stack>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <OrderSummary subtotal={subtotal} />
+        </Grid>
+      </Grid>
     </Container>
   );
 }
