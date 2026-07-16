@@ -9,7 +9,6 @@ import {
 } from "@mui/material";
 
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
-import FavoriteBorderOutlinedIcon from "@mui/icons-material/FavoriteBorderOutlined";
 
 import { useParams } from "react-router-dom";
 
@@ -18,6 +17,10 @@ import { products } from "@/data/products";
 import { addToCart } from "@/features/cart/cartSlice";
 
 import { useAppDispatch } from "@/app/hooks";
+
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+
+import { addToWishlist } from "@/features/wishlist/wishlistSlice";
 
 export default function ProductDetailsPage() {
   const { slug } = useParams();
@@ -150,10 +153,10 @@ export default function ProductDetailsPage() {
 
             <Button
               variant="outlined"
-              size="large"
-              startIcon={<FavoriteBorderOutlinedIcon />}
+              startIcon={<FavoriteBorderIcon />}
+              onClick={() => dispatch(addToWishlist(product))}
             >
-              Wishlist
+              Add to Wishlist
             </Button>
           </Stack>
         </Box>

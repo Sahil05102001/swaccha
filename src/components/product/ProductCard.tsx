@@ -1,4 +1,5 @@
 import {
+  Box, 
   Button,
   Card,
   CardActionArea,
@@ -14,12 +15,19 @@ import { useNavigate } from "react-router-dom";
 
 import type { Product } from "@/types/product";
 
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+import IconButton from "@mui/material/IconButton";
+
+import { useAppDispatch } from "@/app/hooks";
+import { addToWishlist } from "@/features/wishlist/wishlistSlice";
+
 interface ProductCardProps {
   product: Product;
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
 
   return (
     <Card
@@ -37,6 +45,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       <CardActionArea
         onClick={() => navigate(`/products/${product.slug}`)}
       >
+        <Box sx={{ position: "relative" }}>
         <CardMedia
           component="img"
           image={product.image}
@@ -49,6 +58,21 @@ export default function ProductCard({ product }: ProductCardProps) {
           }}
         />
 
+        <IconButton
+          onClick={() => dispatch(addToWishlist(product))}
+          sx={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            bgcolor: "white",
+            "&:hover": {
+              bgcolor: "white",
+            },
+          }}
+        >
+          <FavoriteBorderIcon color="error" />
+        </IconButton>
+          </Box>
         <CardContent>
           {product.badge && (
             <Chip

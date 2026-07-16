@@ -18,8 +18,11 @@ import { Link } from "react-router-dom";
 import { useAppSelector } from "@/app/hooks";
 import { selectCartItems } from "@/features/cart/cartSlice";
 
+import { selectWishlistItems } from "@/features/wishlist/wishlistSlice";
+
 export default function Navbar() {
   const cartItems = useAppSelector(selectCartItems);
+  const wishlistItems = useAppSelector(selectWishlistItems);
 
   const totalItems = cartItems.reduce(
     (total, item) => total + item.quantity,
@@ -87,8 +90,16 @@ export default function Navbar() {
           Contact
         </Button>
 
-        <IconButton>
-          <FavoriteBorderIcon />
+        <IconButton
+          component={Link}
+          to="/wishlist"
+        >
+          <Badge
+            badgeContent={wishlistItems.length}
+            color="error"
+          >
+            <FavoriteBorderIcon />
+          </Badge>
         </IconButton>
 
         <IconButton
