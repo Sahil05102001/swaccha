@@ -6,21 +6,21 @@ import {
   IconButton,
   InputBase,
   Toolbar,
-  Typography,
 } from "@mui/material";
-
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 import SearchIcon from "@mui/icons-material/Search";
-
 import { Link } from "react-router-dom";
-
 import { useAppSelector } from "@/app/hooks";
 import { selectCartItems } from "@/features/cart/cartSlice";
-
 import { selectWishlistItems } from "@/features/wishlist/wishlistSlice";
+import logo from "@/assets/images/logo/Logo.png";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Navbar() {
+  const [search, setSearch] = useState("");
+  const navigate = useNavigate();
   const cartItems = useAppSelector(selectCartItems);
   const wishlistItems = useAppSelector(selectWishlistItems);
 
@@ -37,13 +37,27 @@ export default function Navbar() {
       sx={{ bgcolor: "white" }}
     >
       <Toolbar sx={{ gap: 2 }}>
-        <Typography
-          variant="h5"
-          color="primary"
-          sx={{ fontWeight: 700 }}
+        <Box
+          component={Link}
+          to="/"
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            textDecoration: "none",
+            mr: 2,
+          }}
         >
-          Swachha
-        </Typography>
+          <Box
+            component="img"
+            src={logo}
+            alt="Swachha Logo"
+            sx={{
+              height: 52,
+              width: "auto",
+              display: "block",
+            }}
+          />
+        </Box>
 
         <Box
           sx={{
@@ -59,6 +73,19 @@ export default function Navbar() {
 
           <InputBase
             placeholder="Search products..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                const value = search.trim();
+
+                if (value) {
+                  navigate(`/products?search=${encodeURIComponent(value)}`);
+                } else {
+                  navigate("/products");
+                }
+              }
+            }}
             sx={{
               ml: 1,
               flex: 1,

@@ -1,25 +1,29 @@
-import { Box, Container } from "@mui/material";
+import { Box } from "@mui/material";
 import { Outlet } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 
 export default function CustomerLayout() {
   return (
     <Box
       sx={{
         minHeight: "100vh",
-        bgcolor: "background.default",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       <Navbar />
 
-      <Container
-        maxWidth="xl"
+      <Box
+        component="main"
         sx={{
-          py: 4,
+          flex: 1,
         }}
       >
         <Outlet />
-      </Container>
+      </Box>
+
+      <Footer />
     </Box>
   );
 }
