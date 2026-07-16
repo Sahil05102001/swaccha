@@ -12,11 +12,18 @@ import {
 
 import { Link } from "react-router-dom";
 
-import { useAppSelector } from "@/app/hooks";
-import { selectCartItems } from "@/features/cart/cartSlice";
+import { useAppDispatch, useAppSelector } from "@/app/hooks";
+import {
+  decreaseQuantity,
+  increaseQuantity,
+  removeFromCart,
+  selectCartItems,
+} from "@/features/cart/cartSlice";
+
 
 export default function CartPage() {
   const cartItems = useAppSelector(selectCartItems);
+  const dispatch = useAppDispatch();
 
   const subtotal = cartItems.reduce(
     (total, item) => total + item.price * item.quantity,
@@ -113,9 +120,48 @@ export default function CartPage() {
                     ₹{item.price}
                   </Typography>
 
-                  <Typography sx={{ mt: 1 }}>
-                    Quantity: {item.quantity}
-                  </Typography>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      mt: 2,
+                    }}
+                  >
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => dispatch(decreaseQuantity(item.id))}
+                    >
+                      −
+                    </Button>
+
+                    <Typography
+                      sx={{
+                        minWidth: 30,
+                        textAlign: "center",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {item.quantity}
+                    </Typography>
+
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => dispatch(increaseQuantity(item.id))}
+                    >
+                      +
+                    </Button>
+
+                    <Button
+                      color="error"
+                      sx={{ ml: 2 }}
+                      onClick={() => dispatch(removeFromCart(item.id))}
+                    >
+                      Remove
+                    </Button>
+                  </Box>
                 </Box>
               </Box>
             </CardContent>
