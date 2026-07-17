@@ -6,28 +6,62 @@ import {
   IconButton,
   InputBase,
   Toolbar,
+  Menu,
+  MenuItem,
+  Divider,
+  ListItemIcon,
 } from "@mui/material";
+
+import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
+import FavoriteBorderOutlinedIcon from "@mui/icons-material/FavoriteBorderOutlined";
+import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
+import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
+
+import { signOut } from "firebase/auth";
+import { auth } from "@/firebase/auth";
+
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 import SearchIcon from "@mui/icons-material/Search";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAppSelector } from "@/app/hooks";
 import { selectCartItems } from "@/features/cart/cartSlice";
 import { selectWishlistItems } from "@/features/wishlist/wishlistSlice";
 import logo from "@/assets/images/logo/Logo.png";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/features/auth/AuthContext";
 
 export default function Navbar() {
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
   const cartItems = useAppSelector(selectCartItems);
   const wishlistItems = useAppSelector(selectWishlistItems);
+  const { user } = useAuth();
 
   const totalItems = cartItems.reduce(
     (total, item) => total + item.quantity,
     0
   );
+
+  const [anchorEl, setAnchorEl] =
+    useState<null | HTMLElement>(null);
+
+  const open = Boolean(anchorEl);
+
+  const handleOpenMenu = (
+    event: React.MouseEvent<HTMLElement>
+  ) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    handleCloseMenu();
+  };
 
   return (
     <AppBar
@@ -141,9 +175,63 @@ export default function Navbar() {
           </Badge>
         </IconButton>
 
-        <Button variant="contained">
-          Login
-        </Button>
+        {user ? (
+          <Button
+            variant="contained"
+            onClick={handleOpenMenu}
+          >
+            {user.displayName ?? "Account"}
+          </Button>
+        ) : (
+          <Button
+            component={Link}
+            to="/login"
+            variant="contained"
+          >
+            Login
+          </Button>
+        )}
+
+        <Menu
+          anchorEl={anchorEl}
+          open={open}
+          onClose={handleCloseMenu}
+        >
+          <MenuItem onClick={handleCloseMenu}>
+            <ListItemIcon>
+              <ShoppingBagOutlinedIcon fontSize="small" />
+            </ListItemIcon>
+            My Orders
+          </MenuItem>
+
+          <MenuItem onClick={handleCloseMenu}>
+            <ListItemIcon>
+              <FavoriteBorderOutlinedIcon fontSize="small" />
+            </ListItemIcon>
+            Wishlist
+          </MenuItem>
+
+          <MenuItem
+            component={Link}
+            to="/profile"
+            onClick={handleCloseMenu}
+          >
+            <ListItemIcon>
+              <AccountCircleOutlinedIcon fontSize="small" />
+            </ListItemIcon>
+
+            Profile
+          </MenuItem>
+
+          <Divider />
+
+          <MenuItem onClick={handleLogout}>
+            <ListItemIcon>
+              <LogoutOutlinedIcon fontSize="small" />
+            </ListItemIcon>
+            Logout
+          </MenuItem>
+        </Menu>
       </Toolbar>
     </AppBar>
   );

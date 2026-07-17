@@ -4,6 +4,7 @@ import {
 } from "firebase/auth";
 
 import { auth } from "@/firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 export async function registerUser(
   fullName: string,
@@ -19,6 +20,20 @@ export async function registerUser(
   await updateProfile(userCredential.user, {
     displayName: fullName,
   });
+
+  return userCredential.user;
+}
+
+export async function loginUser(
+  email: string,
+  password: string
+) {
+  const userCredential =
+    await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
 
   return userCredential.user;
 }
