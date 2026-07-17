@@ -5,6 +5,8 @@ import {
 
 import { auth } from "@/firebase/auth";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { sendEmailVerification } from "firebase/auth";
+import { reload } from "firebase/auth";
 
 export async function registerUser(
   fullName: string,
@@ -36,4 +38,22 @@ export async function loginUser(
     );
 
   return userCredential.user;
+}
+
+export async function sendVerificationEmail() {
+  if (!auth.currentUser) {
+    throw new Error("No authenticated user.");
+  }
+
+  await sendEmailVerification(auth.currentUser);
+}
+
+export async function refreshCurrentUser() {
+  if (!auth.currentUser) {
+    throw new Error("No authenticated user.");
+  }
+
+  await reload(auth.currentUser);
+
+  return auth.currentUser;
 }
