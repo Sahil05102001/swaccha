@@ -7,6 +7,7 @@ import { auth } from "@/firebase/auth";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { sendEmailVerification } from "firebase/auth";
 import { reload } from "firebase/auth";
+import { createUserProfile } from "@/features/profile/services/profileService";
 
 export async function registerUser(
   fullName: string,
@@ -22,6 +23,12 @@ export async function registerUser(
   await updateProfile(userCredential.user, {
     displayName: fullName,
   });
+
+  await createUserProfile(
+    userCredential.user.uid,
+    fullName,
+    email
+  );
 
   return userCredential.user;
 }
@@ -54,6 +61,18 @@ export async function refreshCurrentUser() {
   }
 
   await reload(auth.currentUser);
+
+  return auth.currentUser;
+}
+
+export async function updateDisplayName(displayName: string) {
+  if (!auth.currentUser) {
+    throw new Error("No authenticated user.");
+  }
+
+  await updateProfile(auth.currentUser, {
+    displayName,
+  });
 
   return auth.currentUser;
 }
