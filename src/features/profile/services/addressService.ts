@@ -12,6 +12,7 @@ import { auth } from "@/firebase/auth";
 import { db } from "@/firebase/firestore";
 
 import type { AddressFormData } from "../schemas/addressSchema";
+import type { Address } from "../types/address";
 
 function getAddressCollection() {
   const user = auth.currentUser;
@@ -28,12 +29,12 @@ function getAddressCollection() {
   );
 }
 
-export async function getAddresses() {
+export async function getAddresses(): Promise<Address[]> {
   const snapshot = await getDocs(getAddressCollection());
 
-  return snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
+  return snapshot.docs.map((document) => ({
+    id: document.id,
+    ...(document.data() as Omit<Address, "id">),
   }));
 }
 
