@@ -9,6 +9,7 @@ import {
 
 import { useDeleteAddress } from "../hooks/useAddresses";
 import type { Address } from "../types/address";
+import { useSnackbar } from "../../../contexts/SnackbarContext";
 
 interface DeleteAddressDialogProps {
     open: boolean;
@@ -22,17 +23,18 @@ export default function DeleteAddressDialog({
     onClose,
 }: DeleteAddressDialogProps) {
     const deleteAddressMutation = useDeleteAddress();
+    const { showSnackbar } = useSnackbar();
 
     const handleDelete = () => {
         if (!address) return;
 
         deleteAddressMutation.mutate(address.id, {
             onSuccess: () => {
-                alert("Address deleted successfully.");
+                showSnackbar("Address deleted successfully.", "success");
                 onClose();
             },
             onError: (error: any) => {
-                alert(error.message);
+                showSnackbar(error.message, "error");
             },
         });
     };
@@ -40,7 +42,13 @@ export default function DeleteAddressDialog({
     return (
         <Dialog
             open={open}
-            onClose={onClose}
+            onClose={(_, reason) => {
+                if (deleteAddressMutation.isPending) return;
+
+                if (reason === "backdropClick") return;
+
+                onClose();
+            }}
         >
             <DialogTitle>
                 Delete Address
@@ -54,7 +62,10 @@ export default function DeleteAddressDialog({
             </DialogContent>
 
             <DialogActions>
-                <Button onClick={onClose}>
+                <Button
+                    onClick={onClose}
+                    disabled={deleteAddressMutation.isPending}
+                >
                     Cancel
                 </Button>
 
@@ -64,7 +75,9 @@ export default function DeleteAddressDialog({
                     onClick={handleDelete}
                     disabled={deleteAddressMutation.isPending}
                 >
-                    Delete
+                    {deleteAddressMutation.isPending
+                        ? "Deleting..."
+                        : "Delete"}
                 </Button>
             </DialogActions>
         </Dialog>

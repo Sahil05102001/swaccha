@@ -11,7 +11,7 @@ import {
 } from "../hooks/useAddresses";
 
 import type { Address } from "../types/address";
-
+import { useSnackbar } from "../../../contexts/SnackbarContext";
 
 interface AddressDialogProps {
     open: boolean;
@@ -25,15 +25,26 @@ export default function AddressDialog({
     address,
 }: AddressDialogProps) {
     const isEditing = !!address;
+
     const addAddressMutation = useAddAddress();
     const updateAddressMutation = useUpdateAddress();
 
+    const { showSnackbar } = useSnackbar();
 
+    const isSubmitting =
+        addAddressMutation.isPending ||
+        updateAddressMutation.isPending;
 
     return (
         <Dialog
             open={open}
-            onClose={onClose}
+            onClose={(_, reason) => {
+                if (isSubmitting) return;
+
+                if (reason === "backdropClick") return;
+
+                onClose();
+            }}
             fullWidth
             maxWidth="sm"
         >
@@ -44,6 +55,8 @@ export default function AddressDialog({
             <DialogContent>
                 <AddressForm
                     defaultValues={address ?? undefined}
+                    isSubmitting={isSubmitting}
+                    isEditing={isEditing}
                     onSubmit={(data) => {
                         if (isEditing && address) {
                             updateAddressMutation.mutate(
@@ -53,22 +66,34 @@ export default function AddressDialog({
                                 },
                                 {
                                     onSuccess: () => {
-                                        alert("Address updated successfully.");
+                                        showSnackbar(
+                                            "Address updated successfully.",
+                                            "success"
+                                        );
                                         onClose();
                                     },
                                     onError: (error: any) => {
-                                        alert(error.message);
+                                        showSnackbar(
+                                            error.message,
+                                            "error"
+                                        );
                                     },
                                 }
                             );
                         } else {
                             addAddressMutation.mutate(data, {
                                 onSuccess: () => {
-                                    alert("Address added successfully.");
+                                    showSnackbar(
+                                        "Address added successfully.",
+                                        "success"
+                                    );
                                     onClose();
                                 },
                                 onError: (error: any) => {
-                                    alert(error.message);
+                                    showSnackbar(
+                                        error.message,
+                                        "error"
+                                    );
                                 },
                             });
                         }

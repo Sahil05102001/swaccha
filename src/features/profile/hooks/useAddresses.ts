@@ -21,7 +21,6 @@ export function useAddresses() {
     queryFn: getAddresses,
   });
 }
-
 export function useAddAddress() {
   const queryClient = useQueryClient();
 

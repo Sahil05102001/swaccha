@@ -1,8 +1,8 @@
 import { Box, Button, Stack, Typography } from "@mui/material";
-
 import AddressCard from "./AddressCard";
-
+import AddressCardSkeleton from "./AddressCardSkeleton";
 import type { Address } from "../types/address";
+import EmptyAddressState from "./EmptyAddressState";
 
 interface AddressSectionProps {
     addresses: Address[];
@@ -46,28 +46,28 @@ export default function AddressSection({
                 </Button>
             </Stack>
 
-            {isLoading && (
-                <Typography>
-                    Loading addresses...
-                </Typography>
+            {isLoading ? (
+                <Stack spacing={2}>
+                    <AddressCardSkeleton />
+                    <AddressCardSkeleton />
+                    <AddressCardSkeleton />
+                </Stack>
+            ) : addresses.length === 0 ? (
+                <EmptyAddressState
+                    onAddAddress={onAddAddress}
+                />
+            ) : (
+                <Stack spacing={2}>
+                    {addresses.map((address) => (
+                        <AddressCard
+                            key={address.id}
+                            address={address}
+                            onEdit={onEditAddress}
+                            onDelete={onDeleteAddress}
+                        />
+                    ))}
+                </Stack>
             )}
-
-            {!isLoading && addresses.length === 0 && (
-                <Typography color="text.secondary">
-                    You haven't added any addresses yet.
-                </Typography>
-            )}
-
-            <Stack spacing={2}>
-                {addresses.map((address) => (
-                    <AddressCard
-                        key={address.id}
-                        address={address}
-                        onEdit={onEditAddress}
-                        onDelete={onDeleteAddress}
-                    />
-                ))}
-            </Stack>
         </Box>
     );
 }

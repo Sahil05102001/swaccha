@@ -12,11 +12,15 @@ import type { Address } from "../types/address";
 interface AddressFormProps {
     onSubmit: (data: AddressFormData) => void;
     defaultValues?: Partial<Address>;
+    isSubmitting?: boolean;
+    isEditing?: boolean;
 }
 
 export default function AddressForm({
     onSubmit,
     defaultValues,
+    isSubmitting = false,
+    isEditing = false,
 }: AddressFormProps) {
     const {
         control,
@@ -174,8 +178,15 @@ export default function AddressForm({
                     variant="contained"
                     type="submit"
                     size="large"
+                    disabled={isSubmitting}
                 >
-                    Save Address
+                    {isSubmitting
+                        ? isEditing
+                            ? "Updating..."
+                            : "Saving..."
+                        : isEditing
+                            ? "Update Address"
+                            : "Save Address"}
                 </Button>
             </Stack>
         </form>
