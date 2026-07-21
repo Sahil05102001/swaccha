@@ -9,6 +9,7 @@ import {
 import { auth } from "@/firebase/auth";
 import { db } from "@/firebase/firestore";
 import type { Order } from "../types/order";
+import { doc, getDoc } from "firebase/firestore";
 
 function getOrderCollection() {
   const user = auth.currentUser;
@@ -42,4 +43,21 @@ export async function createOrder(
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+}
+
+export async function getOrderById(
+  orderId: string
+): Promise<Order> {
+  const snapshot = await getDoc(
+    doc(getOrderCollection(), orderId)
+  );
+
+  if (!snapshot.exists()) {
+    throw new Error("Order not found.");
+  }
+
+  return {
+    id: snapshot.id,
+    ...snapshot.data(),
+  } as Order;
 }

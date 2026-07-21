@@ -9,6 +9,7 @@ import type { Order } from "../types/order";
 import {
   createOrder,
   getOrders,
+  getOrderById,
 } from "../services/orderService";
 
 const ORDER_QUERY_KEY = ["orders"];
@@ -36,5 +37,13 @@ export function useCreateOrder() {
         queryKey: ORDER_QUERY_KEY,
       });
     },
+  });
+}
+
+export function useOrder(orderId: string) {
+  return useQuery({
+    queryKey: ["order", orderId],
+    queryFn: () => getOrderById(orderId),
+    enabled: !!orderId,
   });
 }
