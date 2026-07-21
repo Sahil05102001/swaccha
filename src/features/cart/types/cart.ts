@@ -1,5 +1,12 @@
-import type { Product } from "@/types/product";
+import type { Timestamp } from "firebase/firestore";
 
-export interface CartItem extends Product {
+import type { Product } from "@/features/products/types/product";
+
+export interface CartItem {
+  id: string;
+  productId: string;
   quantity: number;
+  product: Product;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }

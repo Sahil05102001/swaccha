@@ -1,165 +1,68 @@
-import {
-  Box,
-  Button,
-  Chip,
-  Container,
-  Divider,
-  Stack,
-  Typography,
-} from "@mui/material";
-
-import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
-
+import { Alert, CircularProgress, Container, Typography } from "@mui/material";
 import { useParams } from "react-router-dom";
-
-import { products } from "@/data/products";
-
-import { addToCart } from "@/features/cart/cartSlice";
-
-import { useAppDispatch } from "@/app/hooks";
-
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
-
-import { addToWishlist } from "@/features/wishlist/wishlistSlice";
+import { useProduct } from "../hooks/useProducts";
+import Grid from "@mui/material/Grid";
+import ProductImage from "../components/ProductImage";
+import ProductInfo from "../components/ProductInfo";
 
 export default function ProductDetailsPage() {
-  const { slug } = useParams();
+  const { id = "" } = useParams();
 
-  const dispatch = useAppDispatch();
+  const {
+    data: product,
+    isLoading,
+    isError,
+    error,
+  } = useProduct(id);
 
-  const product = products.find((p) => p.slug === slug);
-
-  if (!product) {
+  if (isLoading) {
     return (
-      <Container
-        maxWidth="lg"
-        sx={{
-          py: 8,
-        }}
-      >
-        <Typography variant="h4">
-          Product Not Found
-        </Typography>
+      <Container sx={{ py: 6, textAlign: "center" }}>
+        <CircularProgress />
       </Container>
     );
   }
 
+  if (isError) {
+    return (
+      <Container sx={{ py: 6 }}>
+        <Alert severity="error">
+          {error instanceof Error
+            ? error.message
+            : "Something went wrong."}
+        </Alert>
+      </Container>
+    );
+  }
+
+  if (!product) {
+    return (
+      <Container sx={{ py: 6 }}>
+        <Typography>Product not found.</Typography>
+      </Container>
+    );
+  }
 
   return (
-    <Container
-      maxWidth="xl"
-      sx={{
-        py: 6,
-      }}
-    >
-      <Box
+    <Container sx={{ py: 6 }}>
+      <Grid
+        container
+        spacing={5}
         sx={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 6,
-          alignItems: "center",
+          alignItems: "flex-start",
         }}
       >
-        {/* Left Side */}
-
-        <Box
-          sx={{
-            flex: "1 1 420px",
-            display: "flex",
-            justifyContent: "center",
-          }}
-        >
-          <Box
-            component="img"
-            src={product.image}
-            alt={product.name}
-            sx={{
-              width: "100%",
-              maxWidth: 420,
-              borderRadius: 3,
-              bgcolor: "#fafafa",
-              p: 4,
-            }}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <ProductImage
+            image={product.images[0]}
+            name={product.name}
           />
-        </Box>
+        </Grid>
 
-        {/* Right Side */}
-
-        <Box
-          sx={{
-            flex: "1 1 450px",
-          }}
-        >
-          {product.badge && (
-            <Chip
-              label={product.badge}
-              color="success"
-              sx={{
-                mb: 2,
-              }}
-            />
-          )}
-
-          <Typography
-            variant="h3"
-            sx={{
-              fontWeight: 700,
-              mb: 2,
-            }}
-          >
-            {product.name}
-          </Typography>
-
-          <Typography
-            variant="body1"
-            color="text.secondary"
-            sx={{
-              mb: 3,
-            }}
-          >
-            {product.description}
-          </Typography>
-
-          <Typography
-            variant="h4"
-            color="primary"
-            sx={{
-              fontWeight: 700,
-              mb: 4,
-            }}
-          >
-            ₹{product.price}
-          </Typography>
-
-          <Divider
-            sx={{
-              mb: 4,
-            }}
-          />
-
-          <Stack
-            direction="row"
-            spacing={2}
-          >
-            <Button
-              variant="contained"
-              size="large"
-              startIcon={<ShoppingCartOutlinedIcon />}
-              onClick={() => dispatch(addToCart(product))}
-            >
-              Add to Cart
-            </Button>
-
-            <Button
-              variant="outlined"
-              startIcon={<FavoriteBorderIcon />}
-              onClick={() => dispatch(addToWishlist(product))}
-            >
-              Add to Wishlist
-            </Button>
-          </Stack>
-        </Box>
-      </Box>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <ProductInfo product={product} />
+        </Grid>
+      </Grid>
     </Container>
   );
 }

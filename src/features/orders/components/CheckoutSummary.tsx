@@ -1,24 +1,22 @@
-import { Card, CardContent, Divider, Stack, Typography } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import {
+  Card,
+  CardContent,
+  Divider,
+  Stack,
+  Typography,
+} from "@mui/material";
 
-import AppButton from "@/components/ui/AppButton";
-import { ROUTES } from "@/constants/routes";
-
-interface OrderSummaryProps {
+interface CheckoutSummaryProps {
   subtotal: number;
+  shipping: number;
+  total: number;
 }
 
-export default function OrderSummary({
+export default function CheckoutSummary({
   subtotal,
-}: OrderSummaryProps) {
-  const navigate = useNavigate();
-
-  const shipping = subtotal > 0 ? 50 : 0;
-  const total = subtotal + shipping;
-
-  const handleCheckout = () => {
-    navigate(ROUTES.CHECKOUT);
-  };
+  shipping,
+  total,
+}: CheckoutSummaryProps) {
 
   return (
     <Card>
@@ -78,13 +76,6 @@ export default function OrderSummary({
               ₹{total}
             </Typography>
           </Stack>
-
-          <AppButton
-            fullWidth
-            onClick={handleCheckout}
-          >
-            Proceed to Checkout
-          </AppButton>
         </Stack>
       </CardContent>
     </Card>

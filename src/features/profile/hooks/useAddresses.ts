@@ -4,32 +4,39 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
+import type { Address } from "../types/address";
+
 import {
   addAddress,
   deleteAddress,
   getAddresses,
+  setDefaultAddress,
   updateAddress,
 } from "../services/addressService";
 
-import type { AddressFormData } from "../schemas/addressSchema";
-
-const QUERY_KEY = ["addresses"];
+const ADDRESS_QUERY_KEY = ["addresses"];
 
 export function useAddresses() {
   return useQuery({
-    queryKey: QUERY_KEY,
+    queryKey: ADDRESS_QUERY_KEY,
     queryFn: getAddresses,
   });
 }
+
 export function useAddAddress() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: AddressFormData) => addAddress(data),
+    mutationFn: (
+      address: Omit<
+        Address,
+        "id" | "createdAt" | "updatedAt"
+      >
+    ) => addAddress(address),
 
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: QUERY_KEY,
+        queryKey: ADDRESS_QUERY_KEY,
       });
     },
   });
@@ -41,15 +48,15 @@ export function useUpdateAddress() {
   return useMutation({
     mutationFn: ({
       id,
-      data,
+      address,
     }: {
       id: string;
-      data: AddressFormData;
-    }) => updateAddress(id, data),
+      address: Partial<Address>;
+    }) => updateAddress(id, address),
 
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: QUERY_KEY,
+        queryKey: ADDRESS_QUERY_KEY,
       });
     },
   });
@@ -59,11 +66,25 @@ export function useDeleteAddress() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: deleteAddress,
+    mutationFn: (id: string) => deleteAddress(id),
 
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: QUERY_KEY,
+        queryKey: ADDRESS_QUERY_KEY,
+      });
+    },
+  });
+}
+
+export function useSetDefaultAddress() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => setDefaultAddress(id),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ADDRESS_QUERY_KEY,
       });
     },
   });

@@ -1,5 +1,4 @@
 import {
-    Box,
     Button,
     Card,
     CardContent,
@@ -12,17 +11,19 @@ import type { Address } from "../types/address";
 
 interface AddressCardProps {
     address: Address;
+    onDelete?: (id: string) => void;
     onEdit?: (address: Address) => void;
-    onDelete?: (address: Address) => void;
+    onSetDefault?: (id: string) => void;
 }
 
 export default function AddressCard({
     address,
-    onEdit,
     onDelete,
+    onEdit,
+    onSetDefault,
 }: AddressCardProps) {
     return (
-        <Card sx={{ borderRadius: 3 }}>
+        <Card>
             <CardContent>
                 <Stack spacing={2}>
                     <Stack
@@ -32,73 +33,69 @@ export default function AddressCard({
                             alignItems: "center",
                         }}
                     >
-                        <Chip
-                            label={address.label}
-                            color="primary"
-                            size="small"
-                        />
+                        <Typography
+                            sx={{
+                                fontWeight: 700,
+                            }}
+                        >
+                            {address.fullName}
+                        </Typography>
 
                         {address.isDefault && (
                             <Chip
                                 label="Default"
-                                color="success"
+                                color="primary"
                                 size="small"
                             />
                         )}
                     </Stack>
 
-                    <Box>
-                        <Typography
-                            variant="h6"
-                            sx={{ fontWeight: 600 }}
-                        >
-                            {address.fullName}
-                        </Typography>
+                    <Typography>{address.phoneNumber}</Typography>
 
-                        <Typography color="text.secondary">
-                            {address.phone}
-                        </Typography>
-                    </Box>
-
-                    <Typography>
+                    <Typography color="text.secondary">
                         {address.addressLine1}
                     </Typography>
 
                     {address.addressLine2 && (
-                        <Typography>
+                        <Typography color="text.secondary">
                             {address.addressLine2}
                         </Typography>
                     )}
 
-                    {address.landmark && (
-                        <Typography>
-                            Landmark: {address.landmark}
-                        </Typography>
-                    )}
-
-                    <Typography>
+                    <Typography color="text.secondary">
                         {address.city}, {address.state}
                     </Typography>
 
-                    <Typography>
-                        {address.pincode}
+                    <Typography color="text.secondary">
+                        {address.postalCode}, {address.country}
                     </Typography>
 
-                    <Typography>
-                        {address.country}
-                    </Typography>
-
-                    <Stack direction="row" spacing={2}>
+                    <Stack
+                        direction="row"
+                        spacing={2}
+                    >
+                        {!address.isDefault && (
+                            <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() => onSetDefault?.(address.id)}
+                            >
+                                Set as Default
+                            </Button>
+                        )}
                         <Button
                             variant="outlined"
+                            size="small"
                             onClick={() => onEdit?.(address)}
                         >
                             Edit
                         </Button>
 
                         <Button
+                            variant="outlined"
                             color="error"
-                            onClick={() => onDelete?.(address)}
+                            size="small"
+                            onClick={() => onDelete?.(address.id)}
                         >
                             Delete
                         </Button>

@@ -12,11 +12,12 @@ import WishlistPage from "@/features/wishlist/pages/WishlistPage";
 import LoginPage from "@/features/auth/pages/LoginPage";
 import RegisterPage from "@/features/auth/pages/RegisterPage";
 import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage";
-
 import ProtectedRoute from "@/features/auth/components/ProtectedRoute";
 
-import NotFoundPage from "@/features/customer/pages/NotFoundPage";
 import ProfilePage from "@/features/profile/pages/ProfilePage";
+import CheckoutPage from "@/features/orders/pages/CheckoutPage";
+
+import NotFoundPage from "@/features/customer/pages/NotFoundPage";
 
 export const router = createBrowserRouter([
   {
@@ -32,7 +33,7 @@ export const router = createBrowserRouter([
         element: <ProductsPage />,
       },
       {
-        path: "products/:slug",
+        path: "products/:id",
         element: <ProductDetailsPage />,
       },
       {
@@ -56,29 +57,18 @@ export const router = createBrowserRouter([
         element: <ForgotPasswordPage />,
       },
 
-      // ===========================
       // Protected Routes
-      // ===========================
       {
         element: <ProtectedRoute />,
         children: [
-          // Add protected pages here as you build them.
-          // Example:
-          //
           {
             path: "profile",
             element: <ProfilePage />,
           },
-          //
-          // {
-          //   path: "orders",
-          //   element: <OrdersPage />,
-          // },
-          //
-          // {
-          //   path: "checkout",
-          //   element: <CheckoutPage />,
-          // },
+          {
+            path: "checkout",
+            element: <CheckoutPage />,
+          },
         ],
       },
     ],
