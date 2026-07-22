@@ -1,17 +1,19 @@
 import { useState } from "react";
 
 import {
+  Box,
   FormControlLabel,
   Grid,
   MenuItem,
   Switch,
   TextField,
-  Box,
 } from "@mui/material";
 
 import ImageUploadField from "./ImageUploadField";
 
 import { uploadProductImage } from "../services/storageService";
+
+import { useActiveCategories } from "@/features/admin/categories/hooks/useActiveCategories";
 
 import type { ProductFormData } from "../types/product";
 
@@ -32,6 +34,11 @@ export default function ProductForm({
 
   const [progress, setProgress] =
     useState(0);
+
+  const {
+    data: categories = [],
+    isLoading: categoriesLoading,
+  } = useActiveCategories();
 
   const handleSelectFile = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -93,6 +100,7 @@ export default function ProductForm({
           select
           label="Category"
           value={formData.category}
+          disabled={categoriesLoading}
           onChange={(e) =>
             onChange(
               "category",
@@ -104,13 +112,14 @@ export default function ProductForm({
             Select Category
           </MenuItem>
 
-          <MenuItem value="Cleaner">
-            Cleaner
-          </MenuItem>
-
-          <MenuItem value="Tools">
-            Tools
-          </MenuItem>
+          {categories.map((category) => (
+            <MenuItem
+              key={category.id}
+              value={category.name}
+            >
+              {category.name}
+            </MenuItem>
+          ))}
         </TextField>
       </Grid>
 
