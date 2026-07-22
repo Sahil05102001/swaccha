@@ -1,84 +1,113 @@
 import {
-    Alert,
-    Snackbar,
+  Alert,
+  Snackbar,
 } from "@mui/material";
 import {
-    createContext,
-    useContext,
-    useState,
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
 } from "react";
 
-type SnackbarSeverity =
-    | "success"
-    | "error"
-    | "warning"
-    | "info";
+type Severity =
+  | "success"
+  | "error"
+  | "warning"
+  | "info";
 
-interface SnackbarContextType {
-    showSnackbar: (
-        message: string,
-        severity?: SnackbarSeverity
-    ) => void;
+interface SnackbarState {
+  open: boolean;
+  message: string;
+  severity: Severity;
+}
+
+interface SnackbarContextValue {
+  showSnackbar: (
+    message: string,
+    severity?: Severity
+  ) => void;
 }
 
 const SnackbarContext =
-    createContext<SnackbarContextType | undefined>(undefined);
+  createContext<SnackbarContextValue | null>(null);
 
 export function SnackbarProvider({
-    children,
+  children,
 }: {
-    children: React.ReactNode;
+  children: React.ReactNode;
 }) {
-    const [open, setOpen] = useState(false);
+  const [snackbar, setSnackbar] =
+    useState<SnackbarState>({
+      open: false,
+      message: "",
+      severity: "success",
+    });
 
-    const [message, setMessage] = useState("");
-
-    const [severity, setSeverity] =
-        useState<SnackbarSeverity>("success");
-
-    const showSnackbar = (
-        message: string,
-        severity: SnackbarSeverity = "success"
+  const showSnackbar = useCallback(
+    (
+      message: string,
+      severity: Severity = "success"
     ) => {
-        setMessage(message);
-        setSeverity(severity);
-        setOpen(true);
-    };
+      setSnackbar({
+        open: true,
+        message,
+        severity,
+      });
+    },
+    []
+  );
 
-    return (
-        <SnackbarContext.Provider value={{ showSnackbar }}>
-            {children}
+  const handleClose = () => {
+    setSnackbar((prev) => ({
+      ...prev,
+      open: false,
+    }));
+  };
 
-            <Snackbar
-                open={open}
-                autoHideDuration={3000}
-                onClose={() => setOpen(false)}
-                anchorOrigin={{
-                    vertical: "bottom",
-                    horizontal: "center",
-                }}
-            >
-                <Alert
-                    severity={severity}
-                    onClose={() => setOpen(false)}
-                    variant="filled"
-                    sx={{ width: "100%" }}
-                >
-                    {message}
-                </Alert>
-            </Snackbar>
-        </SnackbarContext.Provider>
-    );
+  const value = useMemo(
+    () => ({
+      showSnackbar,
+    }),
+    [showSnackbar]
+  );
+
+  return (
+    <SnackbarContext.Provider value={value}>
+      {children}
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={handleClose}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "right",
+        }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={handleClose}
+          variant="filled"
+          sx={{
+            width: "100%",
+          }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </SnackbarContext.Provider>
+  );
 }
 
 export function useSnackbar() {
-    const context = useContext(SnackbarContext);
+  const context = useContext(SnackbarContext);
 
-    if (!context) {
-        throw new Error(
-            "useSnackbar must be used within SnackbarProvider."
-        );
-    }
+  if (!context) {
+    throw new Error(
+      "useSnackbar must be used within SnackbarProvider"
+    );
+  }
 
-    return context;
+  return context;
 }

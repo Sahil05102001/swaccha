@@ -14,6 +14,10 @@ import CheckoutPage from "@/features/orders/pages/CheckoutPage";
 import OrderSuccessPage from "@/features/orders/pages/OrderSuccessPage";
 import OrdersPage from "@/features/orders/pages/OrdersPage";
 import OrderDetailsPage from "@/features/orders/pages/OrderDetailsPage";
+import AdminDashboardPage from "@/features/admin/pages/AdminDashboardPage";
+import AdminLayout from "@/features/admin/layouts/AdminLayout";
+import AdminProductsPage from "@/features/admin/products/pages/AdminProductsPage";
+import CategoriesPage from "@/features/admin/categories/pages/CategoriesPage";
 import NotFoundPage from "@/features/customer/pages/NotFoundPage";
 
 export const router = createBrowserRouter([
@@ -54,7 +58,6 @@ export const router = createBrowserRouter([
         element: <ForgotPasswordPage />,
       },
 
-      // Protected Routes
       {
         element: <ProtectedRoute />,
         children: [
@@ -82,6 +85,27 @@ export const router = createBrowserRouter([
       },
     ],
   },
+
+  // ✅ Admin is a completely separate application layout
+  {
+  path: "admin",
+  element: <AdminLayout />,
+  children: [
+    {
+      index: true,
+      element: <AdminDashboardPage />,
+    },
+    {
+      path: "products",
+      element: <AdminProductsPage />,
+    },
+    {
+      path: "categories",
+      element: <CategoriesPage />,
+    },
+  ],
+},
+
   {
     path: "*",
     element: <NotFoundPage />,

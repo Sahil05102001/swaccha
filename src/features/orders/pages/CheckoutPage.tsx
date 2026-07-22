@@ -1,4 +1,4 @@
-import { Grid, Stack, Typography } from "@mui/material";
+import { Grid, Stack } from "@mui/material";
 import AddressSection from "../components/AddressSection";
 import PaymentSection from "../components/PaymentSection";
 import CheckoutSummary from "../components/CheckoutSummary";
@@ -11,9 +11,13 @@ import { useCreateOrder } from "../hooks/useOrders";
 import { useClearCart } from "@/features/cart/hooks/useCart";
 import { useNavigate } from "react-router-dom";
 import { auth } from "@/firebase/auth";
+import { useSnackbar } from "@/contexts/SnackbarContext";
+import PageHeader from "@/components/common/PageHeader";
+import PageContainer from "@/components/common/PageContainer";
 
 export default function CheckoutPage() {
   const { data: cartItems = [] } = useCart();
+  const { showSnackbar } = useSnackbar();
 
   const subtotal = cartItems.reduce(
     (total, item) => total + item.product.price * item.quantity,
@@ -64,12 +68,12 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async () => {
     if (cartItems.length === 0) {
-      alert("Your cart is empty.");
+      showSnackbar("Your cart is empty.", "warning");
       return;
     }
 
     if (!selectedAddressId) {
-      alert("Please select a delivery address.");
+      showSnackbar("Please select a delivery address.", "warning");
       return;
     }
 
@@ -78,7 +82,7 @@ export default function CheckoutPage() {
     );
 
     if (!selectedAddress) {
-      alert("Selected address not found.");
+      showSnackbar("Selected address not found.", "error");
       return;
     }
 
@@ -117,28 +121,15 @@ export default function CheckoutPage() {
       navigate("/orders/success");
     } catch (error) {
       console.error(error);
-      alert("Failed to place your order.");
+      showSnackbar("Failed to place your order.", "error");
     }
   };
   return (
-    <Stack
-      spacing={4}
-      sx={{
-        py: 4,
-        px: {
-          xs: 2,
-          md: 4,
-        },
-      }}
-    >
-      <Typography
-        variant="h4"
-        sx={{
-          fontWeight: 700,
-        }}
-      >
-        Checkout
-      </Typography>
+    <PageContainer>
+      <PageHeader
+        title="Checkout"
+        subtitle="Review your order and complete your purchase."
+      />
 
       <Grid container spacing={4}>
         <Grid size={{ xs: 12, md: 8 }}>
@@ -173,6 +164,6 @@ export default function CheckoutPage() {
           </Stack>
         </Grid>
       </Grid>
-    </Stack>
+    </PageContainer>
   );
 }
