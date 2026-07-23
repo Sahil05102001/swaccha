@@ -1,55 +1,81 @@
 import {
   addDoc,
   collection,
+  doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
   serverTimestamp,
+  where,
 } from "firebase/firestore";
+
 import { auth } from "@/firebase/auth";
 import { db } from "@/firebase/firestore";
-import type { Order } from "../types/order";
-import { doc, getDoc } from "firebase/firestore";
 
-function getOrderCollection() {
+import type { Order } from "../types/order";
+
+const ordersCollection = collection(db, "orders");
+
+export async function getOrders(): Promise<Order[]> {
   const user = auth.currentUser;
 
   if (!user) {
     throw new Error("User is not authenticated.");
   }
 
-  return collection(db, "users", user.uid, "orders");
-}
-
-export async function getOrders(): Promise<Order[]> {
   const q = query(
-    getOrderCollection(),
+    ordersCollection,
+    where("userId", "==", user.uid),
     orderBy("createdAt", "desc")
   );
 
   const snapshot = await getDocs(q);
 
-  return snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as Order[];
+  return snapshot.docs.map((document) => ({
+    id: document.id,
+    ...(document.data() as Omit<Order, "id">),
+  }));
+}
+
+export async function getAllOrders(): Promise<Order[]> {
+  const q = query(
+    ordersCollection,
+    orderBy("createdAt", "desc")
+  );
+
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((document) => ({
+    id: document.id,
+    ...(document.data() as Omit<Order, "id">),
+  }));
 }
 
 export async function createOrder(
   order: Omit<Order, "id" | "createdAt" | "updatedAt">
 ) {
-  await addDoc(getOrderCollection(), {
+  const orderData = {
     ...order,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  };
+
+  // Remove undefined fields because Firestore doesn't allow them.
+  const cleanedOrderData = Object.fromEntries(
+    Object.entries(orderData).filter(
+      ([, value]) => value !== undefined
+    )
+  );
+
+  await addDoc(ordersCollection, cleanedOrderData);
 }
 
 export async function getOrderById(
   orderId: string
 ): Promise<Order> {
   const snapshot = await getDoc(
-    doc(getOrderCollection(), orderId)
+    doc(db, "orders", orderId)
   );
 
   if (!snapshot.exists()) {
@@ -58,6 +84,6 @@ export async function getOrderById(
 
   return {
     id: snapshot.id,
-    ...snapshot.data(),
-  } as Order;
+    ...(snapshot.data() as Omit<Order, "id">),
+  };
 }

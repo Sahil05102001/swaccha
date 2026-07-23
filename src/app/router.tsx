@@ -1,23 +1,31 @@
 import { createBrowserRouter } from "react-router-dom";
+
 import CustomerLayout from "@/layouts/CustomerLayout";
+
 import HomePage from "@/features/home/pages/HomePage";
 import ProductsPage from "@/features/products/pages/ProductsPage";
 import ProductDetailsPage from "@/features/products/pages/ProductDetailsPage";
 import CartPage from "@/features/cart/pages/CartPage";
 import WishlistPage from "@/features/wishlist/pages/WishlistPage";
+
 import LoginPage from "@/features/auth/pages/LoginPage";
 import RegisterPage from "@/features/auth/pages/RegisterPage";
 import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage";
 import ProtectedRoute from "@/features/auth/components/ProtectedRoute";
+
 import ProfilePage from "@/features/profile/pages/ProfilePage";
+
 import CheckoutPage from "@/features/orders/pages/CheckoutPage";
 import OrderSuccessPage from "@/features/orders/pages/OrderSuccessPage";
 import OrdersPage from "@/features/orders/pages/OrdersPage";
 import OrderDetailsPage from "@/features/orders/pages/OrderDetailsPage";
-import AdminDashboardPage from "@/features/admin/pages/AdminDashboardPage";
+
 import AdminLayout from "@/features/admin/layouts/AdminLayout";
+import AdminDashboardPage from "@/features/admin/pages/AdminDashboardPage";
 import AdminProductsPage from "@/features/admin/products/pages/AdminProductsPage";
 import CategoriesPage from "@/features/admin/categories/pages/CategoriesPage";
+import AdminOrdersPage from "@/features/admin/orders/pages/OrdersPage";
+
 import NotFoundPage from "@/features/customer/pages/NotFoundPage";
 
 export const router = createBrowserRouter([
@@ -86,25 +94,28 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ✅ Admin is a completely separate application layout
   {
-  path: "admin",
-  element: <AdminLayout />,
-  children: [
-    {
-      index: true,
-      element: <AdminDashboardPage />,
-    },
-    {
-      path: "products",
-      element: <AdminProductsPage />,
-    },
-    {
-      path: "categories",
-      element: <CategoriesPage />,
-    },
-  ],
-},
+    path: "admin",
+    element: <AdminLayout />,
+    children: [
+      {
+        index: true,
+        element: <AdminDashboardPage />,
+      },
+      {
+        path: "products",
+        element: <AdminProductsPage />,
+      },
+      {
+        path: "categories",
+        element: <CategoriesPage />,
+      },
+      {
+        path: "orders",
+        element: <AdminOrdersPage />,
+      },
+    ],
+  },
 
   {
     path: "*",

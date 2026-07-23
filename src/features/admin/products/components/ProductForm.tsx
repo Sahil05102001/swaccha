@@ -3,6 +3,7 @@ import { useState } from "react";
 import {
   Box,
   FormControlLabel,
+  FormHelperText,
   Grid,
   MenuItem,
   Switch,
@@ -21,13 +22,17 @@ interface ProductFormProps {
   formData: ProductFormData;
   onChange: (
     field: keyof ProductFormData,
-    value: string | number | boolean
+    value: string | number | boolean | string[]
   ) => void;
+  errors?: Partial<
+    Record<keyof ProductFormData, string>
+  >;
 }
 
 export default function ProductForm({
   formData,
   onChange,
+  errors = {},
 }: ProductFormProps) {
   const [uploading, setUploading] =
     useState(false);
@@ -57,7 +62,7 @@ export default function ProductForm({
           setProgress
         );
 
-      onChange("imageUrl", imageUrl);
+      onChange("images", [imageUrl]);
     } catch (error) {
       console.error(error);
     } finally {
@@ -70,8 +75,11 @@ export default function ProductForm({
       <Grid size={{ xs: 12 }}>
         <TextField
           fullWidth
+          required
           label="Product Name"
           value={formData.name}
+          error={!!errors.name}
+          helperText={errors.name}
           onChange={(e) =>
             onChange("name", e.target.value)
           }
@@ -81,10 +89,13 @@ export default function ProductForm({
       <Grid size={{ xs: 12 }}>
         <TextField
           fullWidth
+          required
           multiline
           minRows={4}
           label="Description"
           value={formData.description}
+          error={!!errors.description}
+          helperText={errors.description}
           onChange={(e) =>
             onChange(
               "description",
@@ -97,10 +108,13 @@ export default function ProductForm({
       <Grid size={{ xs: 12, md: 6 }}>
         <TextField
           fullWidth
+          required
           select
           label="Category"
           value={formData.category}
           disabled={categoriesLoading}
+          error={!!errors.category}
+          helperText={errors.category}
           onChange={(e) =>
             onChange(
               "category",
@@ -126,9 +140,12 @@ export default function ProductForm({
       <Grid size={{ xs: 12, md: 3 }}>
         <TextField
           fullWidth
+          required
           type="number"
           label="Price"
           value={formData.price}
+          error={!!errors.price}
+          helperText={errors.price}
           onChange={(e) =>
             onChange(
               "price",
@@ -141,9 +158,12 @@ export default function ProductForm({
       <Grid size={{ xs: 12, md: 3 }}>
         <TextField
           fullWidth
+          required
           type="number"
           label="Stock"
           value={formData.stock}
+          error={!!errors.stock}
+          helperText={errors.stock}
           onChange={(e) =>
             onChange(
               "stock",
@@ -159,13 +179,19 @@ export default function ProductForm({
           progress={progress}
           onSelectFile={handleSelectFile}
         />
+
+        {errors.images && (
+          <FormHelperText error>
+            {errors.images}
+          </FormHelperText>
+        )}
       </Grid>
 
-      {formData.imageUrl && (
+      {formData.images.length > 0 && (
         <Grid size={{ xs: 12 }}>
           <Box
             component="img"
-            src={formData.imageUrl}
+            src={formData.images[0]}
             alt="Product"
             sx={{
               width: 160,

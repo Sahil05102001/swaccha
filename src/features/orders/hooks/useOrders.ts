@@ -8,16 +8,25 @@ import type { Order } from "../types/order";
 
 import {
   createOrder,
-  getOrders,
+  getAllOrders,
   getOrderById,
+  getOrders,
 } from "../services/orderService";
 
 const ORDER_QUERY_KEY = ["orders"];
+const ADMIN_ORDER_QUERY_KEY = ["admin-orders"];
 
 export function useOrders() {
   return useQuery({
     queryKey: ORDER_QUERY_KEY,
     queryFn: getOrders,
+  });
+}
+
+export function useAdminOrders() {
+  return useQuery({
+    queryKey: ADMIN_ORDER_QUERY_KEY,
+    queryFn: getAllOrders,
   });
 }
 
@@ -35,6 +44,10 @@ export function useCreateOrder() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ORDER_QUERY_KEY,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ADMIN_ORDER_QUERY_KEY,
       });
     },
   });

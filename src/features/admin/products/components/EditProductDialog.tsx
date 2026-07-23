@@ -18,6 +18,7 @@ import type {
 } from "../types/product";
 
 import { useUpdateProduct } from "../hooks/useUpdateProduct";
+import { productSchema } from "../validations/productSchema";
 
 interface EditProductDialogProps {
   open: boolean;
@@ -31,9 +32,13 @@ const initialFormData: ProductFormData = {
   category: "",
   price: 0,
   stock: 0,
-  imageUrl: "",
+  images: [],
   isActive: true,
 };
+
+type ProductErrors = Partial<
+  Record<keyof ProductFormData, string>
+>;
 
 export default function EditProductDialog({
   open,
@@ -42,6 +47,9 @@ export default function EditProductDialog({
 }: EditProductDialogProps) {
   const [formData, setFormData] =
     useState<ProductFormData>(initialFormData);
+
+  const [errors, setErrors] =
+    useState<ProductErrors>({});
 
   const [successOpen, setSuccessOpen] =
     useState(false);
@@ -59,33 +67,68 @@ export default function EditProductDialog({
         category: product.category,
         price: product.price,
         stock: product.stock,
-        imageUrl: product.images[0] ?? "",
+        images: product.images,
         isActive: product.isActive,
       });
+
+      setErrors({});
     } else {
       setFormData(initialFormData);
+      setErrors({});
     }
   }, [product]);
 
   const handleChange = (
     field: keyof ProductFormData,
-    value: string | number | boolean
+    value:
+      | string
+      | number
+      | boolean
+      | string[]
   ) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
+
+    if (errors[field]) {
+      setErrors((prev) => ({
+        ...prev,
+        [field]: undefined,
+      }));
+    }
   };
 
   const handleClose = () => {
     setFormData(initialFormData);
+    setErrors({});
     onClose();
   };
 
   const handleSave = async () => {
     if (!product) return;
 
+    const result = productSchema.safeParse(formData);
+
+    if (!result.success) {
+      const fieldErrors: ProductErrors = {};
+
+      result.error.issues.forEach((issue) => {
+        const field =
+          issue.path[0] as keyof ProductFormData;
+
+        if (!fieldErrors[field]) {
+          fieldErrors[field] = issue.message;
+        }
+      });
+
+      setErrors(fieldErrors);
+      return;
+    }
+
     try {
+      setErrors({});
+
       await updateProductMutation.mutateAsync({
         id: product.id,
         product: formData,
@@ -115,6 +158,7 @@ export default function EditProductDialog({
           <ProductForm
             formData={formData}
             onChange={handleChange}
+            errors={errors}
           />
         </DialogContent>
 

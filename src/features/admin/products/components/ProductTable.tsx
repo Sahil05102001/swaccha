@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   Avatar,
@@ -13,6 +13,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from "@mui/material";
 
@@ -32,6 +33,9 @@ export default function ProductTable() {
     isLoading,
   } = useProducts();
 
+  const [search, setSearch] =
+    useState("");
+
   const [selectedProduct, setSelectedProduct] =
     useState<Product | null>(null);
 
@@ -40,6 +44,21 @@ export default function ProductTable() {
 
   const [deleteOpen, setDeleteOpen] =
     useState(false);
+
+  const filteredProducts = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+
+    if (!keyword) return products;
+
+    return products.filter((product) =>
+      product.name
+        .toLowerCase()
+        .includes(keyword) ||
+      product.category
+        .toLowerCase()
+        .includes(keyword)
+    );
+  }, [products, search]);
 
   const handleEdit = (product: Product) => {
     setSelectedProduct(product);
@@ -77,6 +96,17 @@ export default function ProductTable() {
 
   return (
     <>
+      <TextField
+        fullWidth
+        label="Search products"
+        placeholder="Search by name or category..."
+        value={search}
+        onChange={(e) =>
+          setSearch(e.target.value)
+        }
+        sx={{ mb: 2 }}
+      />
+
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -84,8 +114,12 @@ export default function ProductTable() {
               <TableCell>Image</TableCell>
               <TableCell>Name</TableCell>
               <TableCell>Category</TableCell>
-              <TableCell align="right">Price</TableCell>
-              <TableCell align="right">Stock</TableCell>
+              <TableCell align="right">
+                Price
+              </TableCell>
+              <TableCell align="right">
+                Stock
+              </TableCell>
               <TableCell>Status</TableCell>
               <TableCell align="center">
                 Actions
@@ -94,7 +128,8 @@ export default function ProductTable() {
           </TableHead>
 
           <TableBody>
-            {products.length === 0 ? (
+            {filteredProducts.length ===
+              0 ? (
               <TableRow>
                 <TableCell
                   colSpan={7}
@@ -106,74 +141,82 @@ export default function ProductTable() {
                 </TableCell>
               </TableRow>
             ) : (
-              products.map((product) => (
-                <TableRow
-                  hover
-                  key={product.id}
-                >
-                  <TableCell>
-                    <Avatar
-                      src={product.images?.[0] || ""}
-                      variant="rounded"
-                    >
-                      {product.name.charAt(0)}
-                    </Avatar>
-                  </TableCell>
+              filteredProducts.map(
+                (product) => (
+                  <TableRow
+                    hover
+                    key={product.id}
+                  >
+                    <TableCell>
+                      <Avatar
+                        src={product.images?.[0] || ""}
+                        variant="rounded"
+                      >
+                        {product.name.charAt(
+                          0
+                        )}
+                      </Avatar>
+                    </TableCell>
 
-                  <TableCell>
-                    {product.name}
-                  </TableCell>
+                    <TableCell>
+                      {product.name}
+                    </TableCell>
 
-                  <TableCell>
-                    {product.category}
-                  </TableCell>
+                    <TableCell>
+                      {product.category}
+                    </TableCell>
 
-                  <TableCell align="right">
-                    ₹{product.price}
-                  </TableCell>
+                    <TableCell align="right">
+                      ₹{product.price}
+                    </TableCell>
 
-                  <TableCell align="right">
-                    {product.stock}
-                  </TableCell>
+                    <TableCell align="right">
+                      {product.stock}
+                    </TableCell>
 
-                  <TableCell>
-                    <Chip
-                      label={
-                        product.isActive
-                          ? "Active"
-                          : "Inactive"
-                      }
-                      color={
-                        product.isActive
-                          ? "success"
-                          : "default"
-                      }
-                      size="small"
-                    />
-                  </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={
+                          product.isActive
+                            ? "Active"
+                            : "Inactive"
+                        }
+                        color={
+                          product.isActive
+                            ? "success"
+                            : "default"
+                        }
+                        size="small"
+                      />
+                    </TableCell>
 
-                  <TableCell align="center">
-                    <IconButton
-                      size="small"
-                      onClick={() =>
-                        handleEdit(product)
-                      }
-                    >
-                      <EditIcon />
-                    </IconButton>
+                    <TableCell align="center">
+                      <IconButton
+                        size="small"
+                        onClick={() =>
+                          handleEdit(
+                            product
+                          )
+                        }
+                      >
+                        <EditIcon />
+                      </IconButton>
 
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() =>
-                        handleDelete(product)
-                      }
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() =>
+                          handleDelete(
+                            product
+                          )
+                        }
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                )
+              )
             )}
           </TableBody>
         </Table>
@@ -187,7 +230,9 @@ export default function ProductTable() {
 
       <DeleteProductDialog
         open={deleteOpen}
-        productId={selectedProduct?.id ?? null}
+        productId={
+          selectedProduct?.id ?? null
+        }
         productName={
           selectedProduct?.name ?? ""
         }

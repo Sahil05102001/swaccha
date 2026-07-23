@@ -10,13 +10,20 @@ import {
 
 import { db } from "@/firebase/firestore";
 
-import type { Product } from "../types/product";
-import type { ProductFormData } from "../types/product";
+import type {
+  Product,
+  ProductFormData,
+} from "../types/product";
 
-const productsCollection = collection(db, "products");
+const productsCollection = collection(
+  db,
+  "products"
+);
 
 export async function getProducts(): Promise<Product[]> {
-  const snapshot = await getDocs(productsCollection);
+  const snapshot = await getDocs(
+    productsCollection
+  );
 
   return snapshot.docs.map((document) => ({
     id: document.id,
@@ -33,9 +40,7 @@ export async function createProduct(
     category: product.category,
     price: product.price,
     stock: product.stock,
-    images: product.imageUrl
-      ? [product.imageUrl]
-      : [],
+    images: product.images,
     isActive: product.isActive,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -52,9 +57,7 @@ export async function updateProduct(
     category: product.category,
     price: product.price,
     stock: product.stock,
-    images: product.imageUrl
-      ? [product.imageUrl]
-      : [],
+    images: product.images,
     isActive: product.isActive,
     updatedAt: serverTimestamp(),
   });

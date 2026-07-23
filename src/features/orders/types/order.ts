@@ -1,7 +1,9 @@
+import type { Timestamp } from "firebase/firestore";
+
 export type OrderStatus =
   | "pending"
   | "confirmed"
-  | "processing"
+  | "packed"
   | "shipped"
   | "delivered"
   | "cancelled";
@@ -38,7 +40,13 @@ export interface ShippingAddress {
 export interface Order {
   id: string;
 
+  orderNumber: string;
+
   userId: string;
+
+  customerName: string;
+
+  customerEmail: string;
 
   items: OrderItem[];
 
@@ -48,6 +56,8 @@ export interface Order {
 
   paymentStatus: PaymentStatus;
 
+  paymentId?: string;
+
   orderStatus: OrderStatus;
 
   subtotal: number;
@@ -56,7 +66,11 @@ export interface Order {
 
   totalAmount: number;
 
-  createdAt?: unknown;
+  trackingNumber?: string;
 
-  updatedAt?: unknown;
+  notes?: string;
+
+  createdAt: Timestamp;
+
+  updatedAt: Timestamp;
 }

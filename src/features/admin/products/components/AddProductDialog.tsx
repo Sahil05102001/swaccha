@@ -15,6 +15,7 @@ import ProductForm from "./ProductForm";
 import type { ProductFormData } from "../types/product";
 
 import { useAddProduct } from "../hooks/useAddProduct";
+import { productSchema } from "../validations/productSchema";
 
 interface AddProductDialogProps {
   open: boolean;
@@ -27,9 +28,13 @@ const initialFormData: ProductFormData = {
   category: "",
   price: 0,
   stock: 0,
-  imageUrl: "",
+  images: [],
   isActive: true,
 };
+
+type ProductErrors = Partial<
+  Record<keyof ProductFormData, string>
+>;
 
 export default function AddProductDialog({
   open,
@@ -37,6 +42,9 @@ export default function AddProductDialog({
 }: AddProductDialogProps) {
   const [formData, setFormData] =
     useState<ProductFormData>(initialFormData);
+
+  const [errors, setErrors] =
+    useState<ProductErrors>({});
 
   const [successOpen, setSuccessOpen] =
     useState(false);
@@ -48,21 +56,53 @@ export default function AddProductDialog({
 
   const handleChange = (
     field: keyof ProductFormData,
-    value: string | number | boolean
+    value:
+      | string
+      | number
+      | boolean
+      | string[]
   ) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
+
+    if (errors[field]) {
+      setErrors((prev) => ({
+        ...prev,
+        [field]: undefined,
+      }));
+    }
   };
 
   const handleClose = () => {
     setFormData(initialFormData);
+    setErrors({});
     onClose();
   };
 
   const handleSave = async () => {
+    const result = productSchema.safeParse(formData);
+
+    if (!result.success) {
+      const fieldErrors: ProductErrors = {};
+
+      result.error.issues.forEach((issue) => {
+        const field =
+          issue.path[0] as keyof ProductFormData;
+
+        if (!fieldErrors[field]) {
+          fieldErrors[field] = issue.message;
+        }
+      });
+
+      setErrors(fieldErrors);
+      return;
+    }
+
     try {
+      setErrors({});
+
       await addProductMutation.mutateAsync(formData);
 
       setSuccessOpen(true);
@@ -70,7 +110,6 @@ export default function AddProductDialog({
       handleClose();
     } catch (error) {
       console.error(error);
-
       setErrorOpen(true);
     }
   };
@@ -89,6 +128,7 @@ export default function AddProductDialog({
           <ProductForm
             formData={formData}
             onChange={handleChange}
+            errors={errors}
           />
         </DialogContent>
 
