@@ -19,6 +19,9 @@ interface UpdateAdminOrderInput {
   orderStatus?: OrderStatus;
   paymentStatus?: PaymentStatus;
   trackingNumber?: string;
+  deliveryPersonName?: string;
+  deliveryPersonPhone?: string;
+  estimatedDelivery?: Date;
   notes?: string;
 }
 
@@ -42,6 +45,21 @@ export async function updateAdminOrder(
 
   if (updates.trackingNumber !== undefined) {
     dataToUpdate.trackingNumber = updates.trackingNumber;
+  }
+
+  if (updates.deliveryPersonName !== undefined) {
+    dataToUpdate.deliveryPersonName =
+      updates.deliveryPersonName;
+  }
+
+  if (updates.deliveryPersonPhone !== undefined) {
+    dataToUpdate.deliveryPersonPhone =
+      updates.deliveryPersonPhone;
+  }
+
+  if (updates.estimatedDelivery !== undefined) {
+    dataToUpdate.estimatedDelivery =
+      updates.estimatedDelivery;
   }
 
   if (updates.notes !== undefined) {

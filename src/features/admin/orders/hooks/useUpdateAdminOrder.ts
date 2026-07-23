@@ -14,6 +14,9 @@ interface UpdateAdminOrderInput {
   orderStatus?: OrderStatus;
   paymentStatus?: PaymentStatus;
   trackingNumber?: string;
+  deliveryPersonName?: string;
+  deliveryPersonPhone?: string;
+  estimatedDelivery?: Date;
   notes?: string;
 }
 
@@ -27,6 +30,9 @@ export function useUpdateAdminOrder() {
         orderStatus: input.orderStatus,
         paymentStatus: input.paymentStatus,
         trackingNumber: input.trackingNumber,
+        deliveryPersonName: input.deliveryPersonName,
+        deliveryPersonPhone: input.deliveryPersonPhone,
+        estimatedDelivery: input.estimatedDelivery,
         notes: input.notes,
       }),
 

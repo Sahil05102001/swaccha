@@ -17,7 +17,7 @@ export default function OrderStatusChip({
       case "confirmed":
         return "info";
 
-      case "processing":
+      case "packed":
         return "secondary";
 
       case "shipped":
@@ -34,9 +34,22 @@ export default function OrderStatusChip({
     }
   };
 
+  const getLabel = () => {
+    switch (status) {
+      case "packed":
+        return "Packed";
+
+      default:
+        return (
+          status.charAt(0).toUpperCase() +
+          status.slice(1)
+        );
+    }
+  };
+
   return (
     <Chip
-      label={status.charAt(0).toUpperCase() + status.slice(1)}
+      label={getLabel()}
       color={getChipColor()}
       size="small"
     />

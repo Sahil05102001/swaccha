@@ -66,9 +66,19 @@ export interface Order {
 
   totalAmount: number;
 
+  // ---------- Admin Fields ----------
+
   trackingNumber?: string;
 
+  deliveryPersonName?: string;
+
+  deliveryPersonPhone?: string;
+
+  estimatedDelivery?: Timestamp;
+
   notes?: string;
+
+  // ---------- Timestamps ----------
 
   createdAt: Timestamp;
 
