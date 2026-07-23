@@ -1,14 +1,14 @@
-import {
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useSnackbar } from "@/contexts/SnackbarContext";
 
+import { updateAdminOrder } from "../services/adminOrderService";
 import { ADMIN_ORDERS_QUERY_KEY } from "./useAdminOrders";
-import { updateAdminPaymentStatus } from "../services/adminOrderService";
 
-import type { PaymentStatus } from "@/features/orders/types/order";
+interface UpdatePaymentStatusInput {
+  orderId: string;
+  paymentStatus: "pending" | "paid" | "failed";
+}
 
 export function useUpdatePaymentStatus() {
   const queryClient = useQueryClient();
@@ -18,24 +18,20 @@ export function useUpdatePaymentStatus() {
     mutationFn: ({
       orderId,
       paymentStatus,
-    }: {
-      orderId: string;
-      paymentStatus: PaymentStatus;
-    }) =>
-      updateAdminPaymentStatus(
-        orderId,
-        paymentStatus
-      ),
+    }: UpdatePaymentStatusInput) =>
+      updateAdminOrder(orderId, {
+        paymentStatus,
+      }),
 
-    onSuccess: async () => {
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ADMIN_ORDERS_QUERY_KEY,
+      });
+
       showSnackbar(
         "Payment status updated successfully.",
         "success"
       );
-
-      await queryClient.invalidateQueries({
-        queryKey: ADMIN_ORDERS_QUERY_KEY,
-      });
     },
 
     onError: () => {

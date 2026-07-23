@@ -1,7 +1,4 @@
-import { useEffect, useState } from "react";
-
 import {
-  Button,
   FormControl,
   InputLabel,
   MenuItem,
@@ -15,25 +12,16 @@ import type { OrderStatus } from "@/features/orders/types/order";
 import { ORDER_STATUS_OPTIONS } from "../constants/orderStatusOptions";
 
 interface UpdateOrderStatusProps {
-  currentStatus: OrderStatus;
-  loading?: boolean;
-  onSave: (status: OrderStatus) => void;
+  value: OrderStatus;
+  onChange: (status: OrderStatus) => void;
+  disabled?: boolean;
 }
 
 export default function UpdateOrderStatus({
-  currentStatus,
-  loading = false,
-  onSave,
+  value,
+  onChange,
+  disabled = false,
 }: UpdateOrderStatusProps) {
-  const [status, setStatus] =
-    useState<OrderStatus>(currentStatus);
-
-  useEffect(() => {
-    setStatus(currentStatus);
-  }, [currentStatus]);
-
-  const hasChanged = status !== currentStatus;
-
   return (
     <Stack spacing={2}>
       <Typography
@@ -42,20 +30,25 @@ export default function UpdateOrderStatus({
           fontWeight: 600,
         }}
       >
-        Update Order Status
+        Order Status
       </Typography>
 
-      <FormControl fullWidth>
+      <FormControl
+        fullWidth
+        disabled={disabled}
+      >
         <InputLabel id="order-status-label">
           Order Status
         </InputLabel>
 
         <Select<OrderStatus>
           labelId="order-status-label"
-          value={status}
+          value={value}
           label="Order Status"
           onChange={(event) =>
-            setStatus(event.target.value as OrderStatus)
+            onChange(
+              event.target.value as OrderStatus
+            )
           }
         >
           {ORDER_STATUS_OPTIONS.map((option) => (
@@ -69,14 +62,6 @@ export default function UpdateOrderStatus({
           ))}
         </Select>
       </FormControl>
-
-      <Button
-        variant="contained"
-        onClick={() => onSave(status)}
-        disabled={!hasChanged || loading}
-      >
-        {loading ? "Saving..." : "Save Changes"}
-      </Button>
     </Stack>
   );
 }

@@ -1,10 +1,19 @@
-import { Divider, Stack, Typography } from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
 
-import type { Order } from "@/features/orders/types/order";
+import {
+  Button,
+  Divider,
+  Stack,
+  Typography,
+} from "@mui/material";
 
-import { useUpdateOrderStatus } from "../hooks/useUpdateOrderStatus";
-import { useUpdatePaymentStatus } from "../hooks/useUpdatePaymentStatus";
+import type {
+  Order,
+  OrderStatus,
+  PaymentStatus,
+} from "@/features/orders/types/order";
 
+import { useUpdateAdminOrder } from "../hooks/useUpdateAdminOrder";
 import UpdateOrderStatus from "./UpdateOrderStatus";
 import UpdatePaymentStatus from "./UpdatePaymentStatus";
 
@@ -15,11 +24,39 @@ interface OrderActionsProps {
 export default function OrderActions({
   order,
 }: OrderActionsProps) {
-  const updateOrderStatusMutation =
-    useUpdateOrderStatus();
+  const [orderStatus, setOrderStatus] =
+    useState<OrderStatus>(order.orderStatus);
 
-  const updatePaymentStatusMutation =
-    useUpdatePaymentStatus();
+  const [paymentStatus, setPaymentStatus] =
+    useState<PaymentStatus>(order.paymentStatus);
+
+  const { mutate, isPending } =
+    useUpdateAdminOrder();
+
+  useEffect(() => {
+    setOrderStatus(order.orderStatus);
+    setPaymentStatus(order.paymentStatus);
+  }, [order]);
+
+  const hasChanges = useMemo(() => {
+    return (
+      orderStatus !== order.orderStatus ||
+      paymentStatus !== order.paymentStatus
+    );
+  }, [
+    order.orderStatus,
+    order.paymentStatus,
+    orderStatus,
+    paymentStatus,
+  ]);
+
+  const handleSave = () => {
+    mutate({
+      orderId: order.id,
+      orderStatus,
+      paymentStatus,
+    });
+  };
 
   return (
     <Stack spacing={4}>
@@ -33,32 +70,28 @@ export default function OrderActions({
       </Typography>
 
       <UpdateOrderStatus
-        currentStatus={order.orderStatus}
-        loading={
-          updateOrderStatusMutation.isPending
-        }
-        onSave={(status) =>
-          updateOrderStatusMutation.mutate({
-            orderId: order.id,
-            orderStatus: status,
-          })
-        }
+        value={orderStatus}
+        onChange={setOrderStatus}
+        disabled={isPending}
       />
 
       <Divider />
 
       <UpdatePaymentStatus
-        currentStatus={order.paymentStatus}
-        loading={
-          updatePaymentStatusMutation.isPending
-        }
-        onSave={(status) =>
-          updatePaymentStatusMutation.mutate({
-            orderId: order.id,
-            paymentStatus: status,
-          })
-        }
+        value={paymentStatus}
+        onChange={setPaymentStatus}
+        disabled={isPending}
       />
+
+      <Button
+        variant="contained"
+        onClick={handleSave}
+        disabled={!hasChanges || isPending}
+      >
+        {isPending
+          ? "Saving..."
+          : "Save Changes"}
+      </Button>
     </Stack>
   );
 }

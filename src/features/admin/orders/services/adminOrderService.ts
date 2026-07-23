@@ -15,26 +15,38 @@ export async function getAdminOrders() {
   return getAllOrders();
 }
 
-export async function updateAdminOrderStatus(
-  orderId: string,
-  orderStatus: OrderStatus
-) {
-  const orderRef = doc(db, "orders", orderId);
-
-  await updateDoc(orderRef, {
-    orderStatus,
-    updatedAt: serverTimestamp(),
-  });
+interface UpdateAdminOrderInput {
+  orderStatus?: OrderStatus;
+  paymentStatus?: PaymentStatus;
+  trackingNumber?: string;
+  notes?: string;
 }
 
-export async function updateAdminPaymentStatus(
+export async function updateAdminOrder(
   orderId: string,
-  paymentStatus: PaymentStatus
+  updates: UpdateAdminOrderInput
 ) {
   const orderRef = doc(db, "orders", orderId);
 
-  await updateDoc(orderRef, {
-    paymentStatus,
+  const dataToUpdate: Record<string, unknown> = {
     updatedAt: serverTimestamp(),
-  });
+  };
+
+  if (updates.orderStatus !== undefined) {
+    dataToUpdate.orderStatus = updates.orderStatus;
+  }
+
+  if (updates.paymentStatus !== undefined) {
+    dataToUpdate.paymentStatus = updates.paymentStatus;
+  }
+
+  if (updates.trackingNumber !== undefined) {
+    dataToUpdate.trackingNumber = updates.trackingNumber;
+  }
+
+  if (updates.notes !== undefined) {
+    dataToUpdate.notes = updates.notes;
+  }
+
+  await updateDoc(orderRef, dataToUpdate);
 }

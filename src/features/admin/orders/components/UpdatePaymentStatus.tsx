@@ -1,7 +1,4 @@
-import { useEffect, useState } from "react";
-
 import {
-  Button,
   FormControl,
   InputLabel,
   MenuItem,
@@ -15,25 +12,16 @@ import type { PaymentStatus } from "@/features/orders/types/order";
 import { PAYMENT_STATUS_OPTIONS } from "../constants/paymentStatusOptions";
 
 interface UpdatePaymentStatusProps {
-  currentStatus: PaymentStatus;
-  loading?: boolean;
-  onSave: (status: PaymentStatus) => void;
+  value: PaymentStatus;
+  onChange: (status: PaymentStatus) => void;
+  disabled?: boolean;
 }
 
 export default function UpdatePaymentStatus({
-  currentStatus,
-  loading = false,
-  onSave,
+  value,
+  onChange,
+  disabled = false,
 }: UpdatePaymentStatusProps) {
-  const [status, setStatus] =
-    useState<PaymentStatus>(currentStatus);
-
-  useEffect(() => {
-    setStatus(currentStatus);
-  }, [currentStatus]);
-
-  const hasChanged = status !== currentStatus;
-
   return (
     <Stack spacing={2}>
       <Typography
@@ -42,20 +30,23 @@ export default function UpdatePaymentStatus({
           fontWeight: 600,
         }}
       >
-        Update Payment Status
+        Payment Status
       </Typography>
 
-      <FormControl fullWidth>
+      <FormControl
+        fullWidth
+        disabled={disabled}
+      >
         <InputLabel id="payment-status-label">
           Payment Status
         </InputLabel>
 
         <Select<PaymentStatus>
           labelId="payment-status-label"
-          value={status}
+          value={value}
           label="Payment Status"
           onChange={(event) =>
-            setStatus(
+            onChange(
               event.target.value as PaymentStatus
             )
           }
@@ -71,14 +62,6 @@ export default function UpdatePaymentStatus({
           ))}
         </Select>
       </FormControl>
-
-      <Button
-        variant="contained"
-        onClick={() => onSave(status)}
-        disabled={!hasChanged || loading}
-      >
-        {loading ? "Saving..." : "Save Changes"}
-      </Button>
     </Stack>
   );
 }

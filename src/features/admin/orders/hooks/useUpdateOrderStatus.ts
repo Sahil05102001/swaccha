@@ -1,11 +1,16 @@
-import {
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useSnackbar } from "@/contexts/SnackbarContext";
 
-import { updateAdminOrderStatus } from "../services/adminOrderService";
+import { updateAdminOrder } from "../services/adminOrderService";
+import { ADMIN_ORDERS_QUERY_KEY } from "./useAdminOrders";
+
+import type { OrderStatus } from "@/features/orders/types/order";
+
+interface UpdateOrderStatusInput {
+  orderId: string;
+  orderStatus: OrderStatus;
+}
 
 export function useUpdateOrderStatus() {
   const queryClient = useQueryClient();
@@ -15,24 +20,20 @@ export function useUpdateOrderStatus() {
     mutationFn: ({
       orderId,
       orderStatus,
-    }: {
-      orderId: string;
-      orderStatus: string;
-    }) =>
-      updateAdminOrderStatus(
-        orderId,
-        orderStatus
-      ),
+    }: UpdateOrderStatusInput) =>
+      updateAdminOrder(orderId, {
+        orderStatus,
+      }),
 
-    onSuccess: async () => {
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ADMIN_ORDERS_QUERY_KEY,
+      });
+
       showSnackbar(
         "Order status updated successfully.",
         "success"
       );
-
-      await queryClient.invalidateQueries({
-        queryKey: ["admin-orders"],
-      });
     },
 
     onError: () => {
