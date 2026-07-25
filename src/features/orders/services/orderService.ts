@@ -1,12 +1,14 @@
 import {
-  addDoc,
   collection,
   doc,
   getDoc,
   getDocs,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
+  Timestamp,
+  updateDoc,
   where,
 } from "firebase/firestore";
 
@@ -16,6 +18,7 @@ import { db } from "@/firebase/firestore";
 import type { Order } from "../types/order";
 
 const ordersCollection = collection(db, "orders");
+const productsCollection = collection(db, "products");
 
 export async function getOrders(): Promise<Order[]> {
   const user = auth.currentUser;
@@ -52,23 +55,74 @@ export async function getAllOrders(): Promise<Order[]> {
   }));
 }
 
+export async function getOrdersByUserId(
+  userId: string
+): Promise<Order[]> {
+  const q = query(
+    ordersCollection,
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc")
+  );
+
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((document) => ({
+    id: document.id,
+    ...(document.data() as Omit<Order, "id">),
+  }));
+}
+
 export async function createOrder(
   order: Omit<Order, "id" | "createdAt" | "updatedAt">
 ) {
-  const orderData = {
-    ...order,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
+  await runTransaction(db, async (transaction) => {
+    for (const item of order.items) {
+      const productRef = doc(
+        productsCollection,
+        item.productId
+      );
 
-  // Remove undefined fields because Firestore doesn't allow them.
-  const cleanedOrderData = Object.fromEntries(
-    Object.entries(orderData).filter(
-      ([, value]) => value !== undefined
-    )
-  );
+      const productSnapshot =
+        await transaction.get(productRef);
 
-  await addDoc(ordersCollection, cleanedOrderData);
+      if (!productSnapshot.exists()) {
+        throw new Error(
+          `${item.name} no longer exists.`
+        );
+      }
+
+      const product = productSnapshot.data() as {
+        stock: number;
+      };
+
+      if (product.stock < item.quantity) {
+        throw new Error(
+          `Only ${product.stock} ${item.name} available in stock.`
+        );
+      }
+
+      transaction.update(productRef, {
+        stock: product.stock - item.quantity,
+        updatedAt: Timestamp.now(),
+      });
+    }
+
+    const orderRef = doc(ordersCollection);
+
+    const orderData = {
+      ...order,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    const cleanedOrderData = Object.fromEntries(
+      Object.entries(orderData).filter(
+        ([, value]) => value !== undefined
+      )
+    );
+
+    transaction.set(orderRef, cleanedOrderData);
+  });
 }
 
 export async function getOrderById(
@@ -86,4 +140,24 @@ export async function getOrderById(
     id: snapshot.id,
     ...(snapshot.data() as Omit<Order, "id">),
   };
+}
+
+export async function updateOrderStatus(
+  orderId: string,
+  orderStatus: Order["orderStatus"]
+): Promise<void> {
+  await updateDoc(doc(db, "orders", orderId), {
+    orderStatus,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function updatePaymentStatus(
+  orderId: string,
+  paymentStatus: Order["paymentStatus"]
+): Promise<void> {
+  await updateDoc(doc(db, "orders", orderId), {
+    paymentStatus,
+    updatedAt: serverTimestamp(),
+  });
 }

@@ -1,13 +1,14 @@
 import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    getDocs,
-    query,
-    serverTimestamp,
-    updateDoc,
-    where,
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
 } from "firebase/firestore";
 
 import { auth } from "@/firebase/auth";
@@ -16,71 +17,101 @@ import { db } from "@/firebase/firestore";
 import type { CartItem } from "../types/cart";
 
 function getCartCollection() {
-    const user = auth.currentUser;
+  const user = auth.currentUser;
 
-    if (!user) {
-        throw new Error("User is not authenticated.");
-    }
+  if (!user) {
+    throw new Error("User is not authenticated.");
+  }
 
-    return collection(db, "users", user.uid, "cart");
+  return collection(db, "users", user.uid, "cart");
 }
 
 export async function getCartItems(): Promise<CartItem[]> {
-    const snapshot = await getDocs(getCartCollection());
+  const snapshot = await getDocs(getCartCollection());
 
-    return snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-    })) as CartItem[];
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as CartItem[];
 }
 
 export async function addCartItem(
-    item: Omit<CartItem, "id" | "createdAt" | "updatedAt">
+  item: Omit<CartItem, "id" | "createdAt" | "updatedAt">
 ) {
-    const cartCollection = getCartCollection();
+  const productRef = doc(db, "products", item.productId);
+  const productSnapshot = await getDoc(productRef);
 
-    const existingItemQuery = query(
-        cartCollection,
-        where("productId", "==", item.productId)
-    );
+  if (!productSnapshot.exists()) {
+    throw new Error("Product not found.");
+  }
 
-    const snapshot = await getDocs(existingItemQuery);
+  const productData = productSnapshot.data() as {
+    stock: number;
+  };
 
-    if (!snapshot.empty) {
-        const existingDoc = snapshot.docs[0];
+  if (productData.stock <= 0) {
+    throw new Error("This product is out of stock.");
+  }
 
-        const existingData = existingDoc.data() as CartItem;
+  const cartCollection = getCartCollection();
 
-        await updateDoc(existingDoc.ref, {
-            quantity: existingData.quantity + item.quantity,
-            updatedAt: serverTimestamp(),
-        });
+  const existingItemQuery = query(
+    cartCollection,
+    where("productId", "==", item.productId)
+  );
 
-        return;
+  const snapshot = await getDocs(existingItemQuery);
+
+  if (!snapshot.empty) {
+    const existingDoc = snapshot.docs[0];
+    const existingData = existingDoc.data() as CartItem;
+
+    const newQuantity =
+      existingData.quantity + item.quantity;
+
+    if (newQuantity > productData.stock) {
+      throw new Error(
+        `Only ${productData.stock} item${
+          productData.stock > 1 ? "s" : ""
+        } available in stock.`
+      );
     }
 
-    await addDoc(cartCollection, {
-        ...item,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+    await updateDoc(existingDoc.ref, {
+      quantity: newQuantity,
+      updatedAt: serverTimestamp(),
     });
+
+    return;
+  }
+
+  if (item.quantity > productData.stock) {
+    throw new Error(
+      `Only ${productData.stock} item${
+        productData.stock > 1 ? "s" : ""
+      } available in stock.`
+    );
+  }
+
+  await addDoc(cartCollection, {
+    ...item,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function updateCartItem(
-    id: string,
-    quantity: number
+  id: string,
+  quantity: number
 ) {
-    await updateDoc(
-        doc(getCartCollection(), id),
-        {
-            quantity,
-            updatedAt: serverTimestamp(),
-        }
-    );
+  await updateDoc(doc(getCartCollection(), id), {
+    quantity,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function deleteCartItem(id: string) {
-    await deleteDoc(doc(getCartCollection(), id));
+  await deleteDoc(doc(getCartCollection(), id));
 }
 
 export async function clearCart() {

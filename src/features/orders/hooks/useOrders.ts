@@ -11,6 +11,8 @@ import {
   getAllOrders,
   getOrderById,
   getOrders,
+  updateOrderStatus,
+  updatePaymentStatus,
 } from "../services/orderService";
 
 const ORDER_QUERY_KEY = ["orders"];
@@ -58,5 +60,64 @@ export function useOrder(orderId: string) {
     queryKey: ["order", orderId],
     queryFn: () => getOrderById(orderId),
     enabled: !!orderId,
+  });
+}
+
+export function useUpdateOrderStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      orderId,
+      orderStatus,
+    }: {
+      orderId: string;
+      orderStatus: Order["orderStatus"];
+    }) => updateOrderStatus(orderId, orderStatus),
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["order", variables.orderId],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ORDER_QUERY_KEY,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ADMIN_ORDER_QUERY_KEY,
+      });
+    },
+  });
+}
+
+export function useUpdatePaymentStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      orderId,
+      paymentStatus,
+    }: {
+      orderId: string;
+      paymentStatus: Order["paymentStatus"];
+    }) => updatePaymentStatus(
+      orderId,
+      paymentStatus
+    ),
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["order", variables.orderId],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ORDER_QUERY_KEY,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ADMIN_ORDER_QUERY_KEY,
+      });
+    },
   });
 }

@@ -22,7 +22,6 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 import CategoryIcon from "@mui/icons-material/Category";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import WarehouseIcon from "@mui/icons-material/Warehouse";
 import PeopleIcon from "@mui/icons-material/People";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 
@@ -52,14 +51,9 @@ const menuItems = [
     path: "/admin/orders",
   },
   {
-    text: "Inventory",
-    icon: <WarehouseIcon />,
-    path: "/admin/inventory",
-  },
-  {
-    text: "Users",
+    text: "Customers",
     icon: <PeopleIcon />,
-    path: "/admin/users",
+    path: "/admin/customers",
   },
   {
     text: "Analytics",
@@ -96,9 +90,14 @@ export default function AdminLayout() {
         {menuItems.map((item) => (
           <ListItemButton
             key={item.text}
-            selected={location.pathname === item.path}
+            selected={
+              item.path === "/admin"
+                ? location.pathname === "/admin"
+                : location.pathname.startsWith(item.path)
+            }
             onClick={() => {
               navigate(item.path);
+
               if (isMobile) {
                 setMobileOpen(false);
               }
@@ -153,7 +152,6 @@ export default function AdminLayout() {
         </Toolbar>
       </AppBar>
 
-      {/* Mobile Drawer */}
       <Drawer
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
@@ -171,7 +169,6 @@ export default function AdminLayout() {
         {drawer}
       </Drawer>
 
-      {/* Desktop Drawer */}
       <Drawer
         variant="permanent"
         sx={{

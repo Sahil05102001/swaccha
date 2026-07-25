@@ -213,7 +213,9 @@ export default function CheckoutPage() {
         console.error(error);
 
         showSnackbar(
-          "Failed to place your order.",
+          error instanceof Error
+            ? error.message
+            : "Failed to place your order.",
           "error"
         );
       }

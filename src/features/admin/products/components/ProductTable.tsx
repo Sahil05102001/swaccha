@@ -120,6 +120,9 @@ export default function ProductTable() {
               <TableCell align="right">
                 Stock
               </TableCell>
+              <TableCell>
+                Inventory
+              </TableCell>
               <TableCell>Status</TableCell>
               <TableCell align="center">
                 Actions
@@ -129,10 +132,10 @@ export default function ProductTable() {
 
           <TableBody>
             {filteredProducts.length ===
-              0 ? (
+            0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={8}
                   align="center"
                 >
                   <Typography color="text.secondary">
@@ -172,6 +175,30 @@ export default function ProductTable() {
 
                     <TableCell align="right">
                       {product.stock}
+                    </TableCell>
+
+                    <TableCell>
+                      {product.stock ===
+                      0 ? (
+                        <Chip
+                          label="Out of Stock"
+                          color="error"
+                          size="small"
+                        />
+                      ) : product.stock <=
+                        5 ? (
+                        <Chip
+                          label="Low Stock"
+                          color="warning"
+                          size="small"
+                        />
+                      ) : (
+                        <Chip
+                          label="In Stock"
+                          color="success"
+                          size="small"
+                        />
+                      )}
                     </TableCell>
 
                     <TableCell>

@@ -5,15 +5,23 @@ import {
     Stack,
     Typography,
 } from "@mui/material";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
+
 import PageHeader from "@/components/common/PageHeader";
 import SectionCard from "@/components/common/SectionCard";
-import OrderStatusChip from "../components/OrderStatusChip";
-import { useOrder } from "../hooks/useOrders";
 import PageContainer from "@/components/common/PageContainer";
+
+import OrderStatusChip from "../components/OrderStatusChip";
+import AdminOrderControls from "../components/AdminOrderControls";
+
+import { useOrder } from "../hooks/useOrders";
 
 export default function OrderDetailsPage() {
     const { id = "" } = useParams();
+    const location = useLocation();
+
+    const isAdminView =
+        location.pathname.startsWith("/admin");
 
     const {
         data: order,
@@ -58,6 +66,21 @@ export default function OrderDetailsPage() {
 
                     <Typography>
                         <strong>Order ID:</strong> #{order.id}
+                    </Typography>
+
+                    <Typography>
+                        <strong>Order Number:</strong>{" "}
+                        {order.orderNumber}
+                    </Typography>
+
+                    <Typography>
+                        <strong>Customer:</strong>{" "}
+                        {order.customerName}
+                    </Typography>
+
+                    <Typography>
+                        <strong>Email:</strong>{" "}
+                        {order.customerEmail}
                     </Typography>
 
                     <Typography>
@@ -113,12 +136,16 @@ export default function OrderDetailsPage() {
 
             <SectionCard
                 title="Ordered Items"
-                subtitle={`${order.items.length} item${order.items.length > 1 ? "s" : ""
-                    }`}
+                subtitle={`${order.items.length} item${
+                    order.items.length > 1 ? "s" : ""
+                }`}
             >
                 <Stack spacing={2}>
                     {order.items.map((item, index) => (
-                        <Stack key={item.productId} spacing={1}>
+                        <Stack
+                            key={item.productId}
+                            spacing={1}
+                        >
                             <Typography
                                 sx={{
                                     fontWeight: 600,
@@ -128,10 +155,12 @@ export default function OrderDetailsPage() {
                             </Typography>
 
                             <Typography color="text.secondary">
-                                ₹{item.price} × {item.quantity}
+                                ₹{item.price} ×{" "}
+                                {item.quantity}
                             </Typography>
 
-                            {index !== order.items.length - 1 && (
+                            {index !==
+                                order.items.length - 1 && (
                                 <Divider />
                             )}
                         </Stack>
@@ -144,10 +173,13 @@ export default function OrderDetailsPage() {
                     <Stack
                         direction="row"
                         sx={{
-                            justifyContent: "space-between",
+                            justifyContent:
+                                "space-between",
                         }}
                     >
-                        <Typography>Subtotal</Typography>
+                        <Typography>
+                            Subtotal
+                        </Typography>
 
                         <Typography>
                             ₹{order.subtotal}
@@ -157,13 +189,17 @@ export default function OrderDetailsPage() {
                     <Stack
                         direction="row"
                         sx={{
-                            justifyContent: "space-between",
+                            justifyContent:
+                                "space-between",
                         }}
                     >
-                        <Typography>Shipping</Typography>
+                        <Typography>
+                            Shipping
+                        </Typography>
 
                         <Typography>
-                            ₹{order.shippingCharge}
+                            ₹
+                            {order.shippingCharge}
                         </Typography>
                     </Stack>
 
@@ -172,7 +208,8 @@ export default function OrderDetailsPage() {
                     <Stack
                         direction="row"
                         sx={{
-                            justifyContent: "space-between",
+                            justifyContent:
+                                "space-between",
                         }}
                     >
                         <Typography
@@ -190,11 +227,16 @@ export default function OrderDetailsPage() {
                                 fontWeight: 700,
                             }}
                         >
-                            ₹{order.totalAmount}
+                            ₹
+                            {order.totalAmount}
                         </Typography>
                     </Stack>
                 </Stack>
             </SectionCard>
+
+            {isAdminView && (
+                <AdminOrderControls order={order} />
+            )}
         </PageContainer>
     );
 }

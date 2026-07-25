@@ -16,6 +16,10 @@ export default function ProductInfo({
     const addToCart = useAddToCart();
 
     const handleAddToCart = () => {
+        if (product.stock <= 0) {
+            return;
+        }
+
         addToCart.mutate(
             {
                 productId: product.id,
@@ -32,6 +36,7 @@ export default function ProductInfo({
             }
         );
     };
+
     return (
         <Stack spacing={3}>
             <ProductHeader product={product} />
@@ -50,6 +55,12 @@ export default function ProductInfo({
 
             <ProductActions
                 onAddToCart={handleAddToCart}
+                disabled={product.stock <= 0}
+                buttonText={
+                    product.stock > 0
+                        ? "Add to Cart"
+                        : "Out of Stock"
+                }
             />
         </Stack>
     );

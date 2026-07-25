@@ -12,6 +12,7 @@ import LoginPage from "@/features/auth/pages/LoginPage";
 import RegisterPage from "@/features/auth/pages/RegisterPage";
 import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage";
 import ProtectedRoute from "@/features/auth/components/ProtectedRoute";
+import AdminProtectedRoute from "@/features/auth/components/AdminProtectedRoute";
 
 import ProfilePage from "@/features/profile/pages/ProfilePage";
 
@@ -25,6 +26,8 @@ import AdminDashboardPage from "@/features/admin/pages/AdminDashboardPage";
 import AdminProductsPage from "@/features/admin/products/pages/AdminProductsPage";
 import CategoriesPage from "@/features/admin/categories/pages/CategoriesPage";
 import AdminOrdersPage from "@/features/admin/orders/pages/OrdersPage";
+import AdminCustomersPage from "@/features/admin/customers/pages/AdminCustomersPage";
+import CustomerDetailsPage from "@/features/admin/customers/pages/CustomerDetailsPage";
 
 import NotFoundPage from "@/features/customer/pages/NotFoundPage";
 
@@ -95,24 +98,41 @@ export const router = createBrowserRouter([
   },
 
   {
-    path: "admin",
-    element: <AdminLayout />,
+    element: <AdminProtectedRoute />,
     children: [
       {
-        index: true,
-        element: <AdminDashboardPage />,
-      },
-      {
-        path: "products",
-        element: <AdminProductsPage />,
-      },
-      {
-        path: "categories",
-        element: <CategoriesPage />,
-      },
-      {
-        path: "orders",
-        element: <AdminOrdersPage />,
+        path: "admin",
+        element: <AdminLayout />,
+        children: [
+          {
+            index: true,
+            element: <AdminDashboardPage />,
+          },
+          {
+            path: "products",
+            element: <AdminProductsPage />,
+          },
+          {
+            path: "categories",
+            element: <CategoriesPage />,
+          },
+          {
+            path: "orders",
+            element: <AdminOrdersPage />,
+          },
+          {
+            path: "orders/:id",
+            element: <OrderDetailsPage />,
+          },
+          {
+            path: "customers",
+            element: <AdminCustomersPage />,
+          },
+          {
+            path: "customers/:uid",
+            element: <CustomerDetailsPage />,
+          },
+        ],
       },
     ],
   },
