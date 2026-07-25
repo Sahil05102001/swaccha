@@ -161,3 +161,25 @@ export async function updatePaymentStatus(
     updatedAt: serverTimestamp(),
   });
 }
+
+export async function updateOrderShippingDetails(
+  orderId: string,
+  data: {
+    trackingNumber?: string;
+    deliveryPersonName?: string;
+    deliveryPersonPhone?: string;
+    estimatedDelivery?: Timestamp;
+    notes?: string;
+  }
+): Promise<void> {
+  const cleanedData = Object.fromEntries(
+    Object.entries(data).filter(
+      ([, value]) => value !== undefined
+    )
+  );
+
+  await updateDoc(doc(db, "orders", orderId), {
+    ...cleanedData,
+    updatedAt: serverTimestamp(),
+  });
+}

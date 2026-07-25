@@ -11,6 +11,7 @@ import {
   getAllOrders,
   getOrderById,
   getOrders,
+  updateOrderShippingDetails,
   updateOrderStatus,
   updatePaymentStatus,
 } from "../services/orderService";
@@ -101,10 +102,49 @@ export function useUpdatePaymentStatus() {
     }: {
       orderId: string;
       paymentStatus: Order["paymentStatus"];
-    }) => updatePaymentStatus(
+    }) =>
+      updatePaymentStatus(
+        orderId,
+        paymentStatus
+      ),
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["order", variables.orderId],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ORDER_QUERY_KEY,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ADMIN_ORDER_QUERY_KEY,
+      });
+    },
+  });
+}
+
+export function useUpdateOrderShippingDetails() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
       orderId,
-      paymentStatus
-    ),
+      data,
+    }: {
+      orderId: string;
+      data: {
+        trackingNumber?: string;
+        deliveryPersonName?: string;
+        deliveryPersonPhone?: string;
+        estimatedDelivery?: Order["estimatedDelivery"];
+        notes?: string;
+      };
+    }) =>
+      updateOrderShippingDetails(
+        orderId,
+        data
+      ),
 
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({

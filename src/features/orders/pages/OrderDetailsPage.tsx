@@ -7,13 +7,13 @@ import {
 } from "@mui/material";
 import { useLocation, useParams } from "react-router-dom";
 
+import PageContainer from "@/components/common/PageContainer";
 import PageHeader from "@/components/common/PageHeader";
 import SectionCard from "@/components/common/SectionCard";
-import PageContainer from "@/components/common/PageContainer";
 
-import OrderStatusChip from "../components/OrderStatusChip";
 import AdminOrderControls from "../components/AdminOrderControls";
-
+import OrderStatusChip from "../components/OrderStatusChip";
+import ShippingManagementCard from "../components/ShippingManagementCard";
 import { useOrder } from "../hooks/useOrders";
 
 export default function OrderDetailsPage() {
@@ -235,7 +235,10 @@ export default function OrderDetailsPage() {
             </SectionCard>
 
             {isAdminView && (
-                <AdminOrderControls order={order} />
+                <>
+                    <AdminOrderControls order={order} />
+                    <ShippingManagementCard order={order} />
+                </>
             )}
         </PageContainer>
     );
