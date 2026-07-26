@@ -11,6 +11,8 @@ import DashboardOrderStats from "../components/DashboardOrderStats";
 import DashboardOverview from "../components/DashboardOverview";
 import LowStockProducts from "../components/LowStockProducts";
 import RecentOrdersTable from "../components/RecentOrdersTable";
+import SalesByCategoryCard from "../components/SalesByCategoryCard";
+import TopSellingProductsCard from "../components/TopSellingProductsCard";
 
 import { useDashboardStats } from "../hooks/useDashboardStats";
 
@@ -70,6 +72,14 @@ export default function AdminDashboardPage() {
                 </Grid>
 
                 <Grid size={{ xs: 12, lg: 4 }}>
+                    <TopSellingProductsCard />
+                </Grid>
+
+                <Grid size={{ xs: 12, lg: 6 }}>
+                    <SalesByCategoryCard />
+                </Grid>
+
+                <Grid size={{ xs: 12, lg: 6 }}>
                     <LowStockProducts />
                 </Grid>
             </Grid>
