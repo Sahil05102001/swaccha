@@ -6,8 +6,9 @@ import {
 import PageContainer from "@/components/common/PageContainer";
 import PageHeader from "@/components/common/PageHeader";
 
-import DashboardOverview from "../components/DashboardOverview";
+import DashboardCharts from "../components/DashboardCharts";
 import DashboardOrderStats from "../components/DashboardOrderStats";
+import DashboardOverview from "../components/DashboardOverview";
 import LowStockProducts from "../components/LowStockProducts";
 import RecentOrdersTable from "../components/RecentOrdersTable";
 
@@ -57,6 +58,8 @@ export default function AdminDashboardPage() {
             <DashboardOverview stats={stats} />
 
             <DashboardOrderStats stats={stats} />
+
+            <DashboardCharts />
 
             <Grid
                 container
