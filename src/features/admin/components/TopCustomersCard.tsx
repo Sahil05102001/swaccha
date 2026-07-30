@@ -1,5 +1,6 @@
 import {
     Alert,
+    Box,
     Card,
     CardContent,
     CircularProgress,
@@ -64,7 +65,7 @@ export default function TopCustomersCard() {
                 ) : (
                     <List disablePadding>
                         {data.map((customer, index) => (
-                            <div key={customer.userId}>
+                            <Box key={customer.userId}>
                                 <ListItem
                                     disableGutters
                                     sx={{
@@ -74,8 +75,13 @@ export default function TopCustomersCard() {
                                 >
                                     <ListItemText
                                         primary={`${index + 1}. ${customer.customerName}`}
+                                        slotProps={{
+                                            secondary: {
+                                                component: "div",
+                                            },
+                                        }}
                                         secondary={
-                                            <>
+                                            <Box>
                                                 <Typography
                                                     variant="body2"
                                                     color="text.secondary"
@@ -105,18 +111,16 @@ export default function TopCustomersCard() {
                                                 >
                                                     Last Order:{" "}
                                                     {customer.lastOrderDate
-                                                        ? customer.lastOrderDate.toLocaleDateString(
-                                                              "en-IN"
-                                                          )
+                                                        ? customer.lastOrderDate.toLocaleDateString("en-IN")
                                                         : "-"}
                                                 </Typography>
-                                            </>
+                                            </Box>
                                         }
                                     />
                                 </ListItem>
 
                                 {index < data.length - 1 && <Divider />}
-                            </div>
+                            </Box>
                         ))}
                     </List>
                 )}

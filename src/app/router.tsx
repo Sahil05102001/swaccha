@@ -29,6 +29,9 @@ import AdminOrdersPage from "@/features/admin/orders/pages/OrdersPage";
 import AdminCustomersPage from "@/features/admin/customers/pages/AdminCustomersPage";
 import CustomerDetailsPage from "@/features/admin/customers/pages/CustomerDetailsPage";
 
+import { SalesReportPage } from "@/features/reports";
+import { InventoryReportPage } from "@/features/inventoryReports";
+
 import NotFoundPage from "@/features/customer/pages/NotFoundPage";
 
 export const router = createBrowserRouter([
@@ -131,6 +134,16 @@ export const router = createBrowserRouter([
           {
             path: "customers/:uid",
             element: <CustomerDetailsPage />,
+          },
+
+          // Reports
+          {
+            path: "reports/sales",
+            element: <SalesReportPage />,
+          },
+          {
+            path: "reports/inventory",
+            element: <InventoryReportPage />,
           },
         ],
       },

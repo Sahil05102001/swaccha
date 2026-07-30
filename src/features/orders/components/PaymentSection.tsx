@@ -46,14 +46,13 @@ export default function PaymentSection({
           <FormControlLabel
             value="razorpay"
             control={<Radio />}
-            label="Razorpay (Coming Soon)"
-            disabled
+            label="Razorpay (Cards, UPI, Net Banking, Wallets)"
           />
 
           <FormControlLabel
             value="upi"
             control={<Radio />}
-            label="UPI (Coming Soon)"
+            label="Standalone UPI (Coming Soon)"
             disabled
           />
         </RadioGroup>

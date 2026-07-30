@@ -23,7 +23,7 @@ import Inventory2Icon from "@mui/icons-material/Inventory2";
 import CategoryIcon from "@mui/icons-material/Category";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import PeopleIcon from "@mui/icons-material/People";
-import AnalyticsIcon from "@mui/icons-material/Analytics";
+import AssessmentIcon from "@mui/icons-material/Assessment";
 
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
@@ -56,9 +56,14 @@ const menuItems = [
     path: "/admin/customers",
   },
   {
-    text: "Analytics",
-    icon: <AnalyticsIcon />,
-    path: "/admin/analytics",
+    text: "Sales Report",
+    icon: <AssessmentIcon />,
+    path: "/admin/reports/sales",
+  },
+  {
+    text: "Inventory Report",
+    icon: <AssessmentIcon />,
+    path: "/admin/reports/inventory",
   },
 ];
 
@@ -113,7 +118,11 @@ export default function AdminLayout() {
   );
 
   return (
-    <Box sx={{ display: "flex" }}>
+    <Box
+      sx={{
+        display: "flex",
+      }}
+    >
       <CssBaseline />
 
       <AppBar
