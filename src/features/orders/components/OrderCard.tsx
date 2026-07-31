@@ -6,11 +6,13 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import { useNavigate } from "react-router-dom";
 
 import OrderStatusChip from "./OrderStatusChip";
 
 import type { Order } from "../types/order";
+import { generateInvoice } from "../utils/generateInvoice";
 
 interface OrderCardProps {
   order: Order;
@@ -20,6 +22,29 @@ export default function OrderCard({
   order,
 }: OrderCardProps) {
   const navigate = useNavigate();
+
+  const handleDownloadInvoice = () => {
+    generateInvoice({
+      orderId: order.orderNumber,
+      customerName: order.customerName,
+      customerEmail: order.customerEmail,
+      customerPhone: order.shippingAddress.phoneNumber,
+      paymentMethod: order.paymentMethod.toUpperCase(),
+      paymentStatus: order.paymentStatus,
+      orderDate: order.createdAt
+        .toDate()
+        .toLocaleString(),
+      items: order.items.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      subtotal: order.subtotal,
+      shippingCharge: order.shippingCharge,
+      discount: 0,
+      total: order.totalAmount,
+    });
+  };
 
   return (
     <Card>
@@ -34,8 +59,11 @@ export default function OrderCard({
           >
             <OrderStatusChip status={order.orderStatus} />
 
-            <Typography variant="body2" color="text.secondary">
-              #{order.id.slice(0, 8).toUpperCase()}
+            <Typography
+              variant="body2"
+              color="text.secondary"
+            >
+              #{order.orderNumber}
             </Typography>
           </Stack>
 
@@ -55,14 +83,32 @@ export default function OrderCard({
             {order.totalAmount.toFixed(2)}
           </Typography>
 
-          <Button
-            variant="outlined"
-            onClick={() =>
-              navigate(`/orders/${order.id}`)
-            }
+          <Stack
+            direction={{
+              xs: "column",
+              sm: "row",
+            }}
+            spacing={2}
           >
-            View Details
-          </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={() =>
+                navigate(`/orders/${order.id}`)
+              }
+            >
+              View Details
+            </Button>
+
+            <Button
+              fullWidth
+              variant="contained"
+              startIcon={<DownloadOutlinedIcon />}
+              onClick={handleDownloadInvoice}
+            >
+              Download Invoice
+            </Button>
+          </Stack>
         </Stack>
       </CardContent>
     </Card>

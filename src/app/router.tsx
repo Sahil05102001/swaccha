@@ -23,6 +23,7 @@ import OrderDetailsPage from "@/features/orders/pages/OrderDetailsPage";
 
 import AdminLayout from "@/features/admin/layouts/AdminLayout";
 import AdminDashboardPage from "@/features/admin/pages/AdminDashboardPage";
+import AdminSettingsPage from "@/features/admin/pages/AdminSettingsPage";
 import AdminProductsPage from "@/features/admin/products/pages/AdminProductsPage";
 import CategoriesPage from "@/features/admin/categories/pages/CategoriesPage";
 import AdminOrdersPage from "@/features/admin/orders/pages/OrdersPage";
@@ -134,6 +135,10 @@ export const router = createBrowserRouter([
           {
             path: "customers/:uid",
             element: <CustomerDetailsPage />,
+          },
+          {
+            path: "settings",
+            element: <AdminSettingsPage />,
           },
 
           // Reports
