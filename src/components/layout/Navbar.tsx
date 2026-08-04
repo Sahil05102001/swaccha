@@ -143,12 +143,28 @@ export default function Navbar() {
           Products
         </Button>
 
-        <Button color="inherit">
+        <Button
+          component={Link}
+          to="/about"
+          color="inherit"
+        >
           About
         </Button>
 
-        <Button color="inherit">
+        <Button
+          component={Link}
+          to="/contact"
+          color="inherit"
+        >
           Contact
+        </Button>
+
+        <Button
+          component={Link}
+          to="/faq"
+          color="inherit"
+        >
+          FAQ
         </Button>
 
         <IconButton
@@ -197,14 +213,22 @@ export default function Navbar() {
           open={open}
           onClose={handleCloseMenu}
         >
-          <MenuItem onClick={handleCloseMenu}>
+          <MenuItem
+            component={Link}
+            to="/orders"
+            onClick={handleCloseMenu}
+          >
             <ListItemIcon>
               <ShoppingBagOutlinedIcon fontSize="small" />
             </ListItemIcon>
             My Orders
           </MenuItem>
 
-          <MenuItem onClick={handleCloseMenu}>
+          <MenuItem
+            component={Link}
+            to="/wishlist"
+            onClick={handleCloseMenu}
+          >
             <ListItemIcon>
               <FavoriteBorderOutlinedIcon fontSize="small" />
             </ListItemIcon>

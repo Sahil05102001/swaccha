@@ -30,6 +30,11 @@ import AdminOrdersPage from "@/features/admin/orders/pages/OrdersPage";
 import AdminCustomersPage from "@/features/admin/customers/pages/AdminCustomersPage";
 import CustomerDetailsPage from "@/features/admin/customers/pages/CustomerDetailsPage";
 
+import AboutAdminPage from "@/features/cms/about/admin/pages/AboutAdminPage";
+import AboutPage from "@/features/cms/about/pages/AboutPage";
+import ContactPage from "@/features/cms/contact/pages/ContactPage";
+import ContactAdminPage from "@/features/cms/contact/admin/pages/ContactAdminPage";
+
 import { SalesReportPage } from "@/features/reports";
 import { InventoryReportPage } from "@/features/inventoryReports";
 
@@ -59,6 +64,14 @@ export const router = createBrowserRouter([
       {
         path: "wishlist",
         element: <WishlistPage />,
+      },
+      {
+        path: "about",
+        element: <AboutPage />,
+      },
+      {
+        path: "contact",
+        element: <ContactPage />,
       },
       {
         path: "login",
@@ -139,6 +152,16 @@ export const router = createBrowserRouter([
           {
             path: "settings",
             element: <AdminSettingsPage />,
+          },
+
+          // CMS
+          {
+            path: "cms/about",
+            element: <AboutAdminPage />,
+          },
+          {
+            path: "cms/contact",
+            element: <ContactAdminPage />,
           },
 
           // Reports
