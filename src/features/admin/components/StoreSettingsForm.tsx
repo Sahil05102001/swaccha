@@ -241,6 +241,36 @@ export default function StoreSettingsForm({
           />
         </Grid>
 
+        <Grid size={{ xs: 12 }}>
+          <TextField
+            fullWidth
+            label="Top Announcement Text"
+            value={values.announcementTopText}
+            onChange={(event) =>
+              handleChange(
+                "announcementTopText",
+                event.target.value,
+              )
+            }
+            helperText="Displayed above the homepage Hero banner."
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12 }}>
+          <TextField
+            fullWidth
+            label="Bottom Announcement Text"
+            value={values.announcementBottomText}
+            onChange={(event) =>
+              handleChange(
+                "announcementBottomText",
+                event.target.value,
+              )
+            }
+            helperText="Displayed below the homepage Hero banner."
+          />
+        </Grid>
+
         <Grid size={{ xs: 12, md: 6 }}>
           <TextField
             fullWidth

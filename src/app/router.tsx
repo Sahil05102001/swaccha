@@ -34,11 +34,23 @@ import AboutAdminPage from "@/features/cms/about/admin/pages/AboutAdminPage";
 import AboutPage from "@/features/cms/about/pages/AboutPage";
 import ContactPage from "@/features/cms/contact/pages/ContactPage";
 import ContactAdminPage from "@/features/cms/contact/admin/pages/ContactAdminPage";
+import FaqAdminPage from "@/features/cms/faq/admin/pages/FaqAdminPage";
+import FaqPage from "@/features/cms/faq/pages/FaqPage";
+import PolicyPage from "@/features/cms/policy/pages/PolicyPage";
+import PolicyAdminPage from "@/features/cms/policy/pages/PolicyAdminPage";
 
 import { SalesReportPage } from "@/features/reports";
 import { InventoryReportPage } from "@/features/inventoryReports";
 
 import NotFoundPage from "@/features/customer/pages/NotFoundPage";
+import AdminCategoryCirclesPage from "@/features/admin/categoryCircles/pages/AdminCategoryCirclesPage";
+import AdminBestSellersPage from "@/features/admin/bestsellers/pages/AdminBestSellersPage";
+import AdminAdBannerPage from "@/features/admin/adBanner/pages/AdminAdBannerPage";
+import AdminVideosPage from "@/features/admin/videos/pages/AdminVideosPage";
+import AdminBrandStatementPage from "@/features/admin/brandStatement/pages/AdminBrandStatementPage";
+import AdminFeaturedProductsPage from "@/features/admin/featuredProducts/pages/AdminFeaturedProductsPage";
+import OfferZonePage from "@/features/admin/offerzone/components/OfferZonePage";
+
 
 export const router = createBrowserRouter([
   {
@@ -84,6 +96,34 @@ export const router = createBrowserRouter([
       {
         path: "forgot-password",
         element: <ForgotPasswordPage />,
+      },
+      {
+        path: "faq",
+        element: <FaqPage />,
+      },
+      {
+        path: "privacy-policy",
+        element: (
+          <PolicyPage documentId="privacy" />
+        ),
+      },
+      {
+        path: "terms-and-conditions",
+        element: (
+          <PolicyPage documentId="terms" />
+        ),
+      },
+      {
+        path: "shipping-policy",
+        element: (
+          <PolicyPage documentId="shipping" />
+        ),
+      },
+      {
+        path: "cancellation-refund-policy",
+        element: (
+          <PolicyPage documentId="cancellation" />
+        ),
       },
 
       {
@@ -134,6 +174,30 @@ export const router = createBrowserRouter([
             element: <CategoriesPage />,
           },
           {
+            path: "best-sellers",
+            element: <AdminBestSellersPage />,
+          },
+          {
+            path: "ad-banner",
+            element: <AdminAdBannerPage />,
+          },
+          {
+            path: "videos",
+            element: <AdminVideosPage />,
+          },
+          {
+            path: "category-circles",
+            element: <AdminCategoryCirclesPage />,
+          },
+          {
+            path: "featured-products",
+            element: <AdminFeaturedProductsPage />,
+          },
+          {
+            path: "offer-zone",
+            element: <OfferZonePage/>,
+          },
+          {
             path: "orders",
             element: <AdminOrdersPage />,
           },
@@ -163,6 +227,10 @@ export const router = createBrowserRouter([
             path: "cms/contact",
             element: <ContactAdminPage />,
           },
+          {
+            path: "cms/faq",
+            element: <FaqAdminPage />,
+          },
 
           // Reports
           {
@@ -172,6 +240,46 @@ export const router = createBrowserRouter([
           {
             path: "reports/inventory",
             element: <InventoryReportPage />,
+          },
+          {
+            path: "cms/privacy",
+            element: (
+              <PolicyAdminPage
+                documentId="privacy"
+                title="Privacy Policy"
+              />
+            ),
+          },
+          {
+            path: "cms/terms",
+            element: (
+              <PolicyAdminPage
+                documentId="terms"
+                title="Terms & Conditions"
+              />
+            ),
+          },
+          {
+            path: "cms/shipping",
+            element: (
+              <PolicyAdminPage
+                documentId="shipping"
+                title="Shipping Policy"
+              />
+            ),
+          },
+          {
+            path: "cms/cancellation",
+            element: (
+              <PolicyAdminPage
+                documentId="cancellation"
+                title="Cancellation & Refund Policy"
+              />
+            ),
+          },
+          {
+            path: "cms/brand-statement",
+            element: <AdminBrandStatementPage />,
           },
         ],
       },

@@ -70,8 +70,8 @@ export function generateInvoice(invoice: InvoiceData): void {
     body: invoice.items.map((item) => [
       item.name,
       item.quantity,
-      `₹${item.price.toFixed(2)}`,
-      `₹${(item.price * item.quantity).toFixed(2)}`,
+      `Rs.${item.price.toFixed(2)}`,
+      `Rs.${(item.price * item.quantity).toFixed(2)}`,
     ]),
   });
 
@@ -85,13 +85,13 @@ export function generateInvoice(invoice: InvoiceData): void {
   doc.setFontSize(11);
 
   doc.text(
-    `Subtotal: ₹${invoice.subtotal.toFixed(2)}`,
+    `Subtotal: Rs.${invoice.subtotal.toFixed(2)}`,
     140,
     finalY + 12,
   );
 
   doc.text(
-    `Shipping: ₹${(invoice.shippingCharge ?? 0).toFixed(
+    `Shipping: Rs.${(invoice.shippingCharge ?? 0).toFixed(
       2,
     )}`,
     140,
@@ -99,7 +99,7 @@ export function generateInvoice(invoice: InvoiceData): void {
   );
 
   doc.text(
-    `Discount: ₹${(invoice.discount ?? 0).toFixed(2)}`,
+    `Discount: Rs.${(invoice.discount ?? 0).toFixed(2)}`,
     140,
     finalY + 28,
   );
@@ -107,7 +107,7 @@ export function generateInvoice(invoice: InvoiceData): void {
   doc.setFontSize(13);
 
   doc.text(
-    `Grand Total: ₹${invoice.total.toFixed(2)}`,
+    `Grand Total: Rs.${invoice.total.toFixed(2)}`,
     140,
     finalY + 40,
   );

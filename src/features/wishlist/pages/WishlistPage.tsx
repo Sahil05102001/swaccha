@@ -80,7 +80,7 @@ export default function WishlistPage() {
               >
                 <CardMedia
                   component="img"
-                  image={item.image}
+                  image={item.images[0]}
                   sx={{
                     width: 120,
                     height: 120,

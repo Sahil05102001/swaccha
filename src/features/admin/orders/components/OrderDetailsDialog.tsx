@@ -8,6 +8,8 @@ import {
   Stack,
 } from "@mui/material";
 
+import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
+
 import type { Order } from "@/features/orders/types/order";
 
 import CustomerInformation from "./CustomerInformation";
@@ -16,6 +18,8 @@ import OrderedItemsTable from "./OrderedItemsTable";
 import OrderInformation from "./OrderInformation";
 import OrderSummaryCard from "./OrderSummaryCard";
 import ShippingInformation from "./ShippingInformation";
+
+import { generateInvoice } from "@/features/orders/utils/generateInvoice";
 
 interface OrderDetailsDialogProps {
   open: boolean;
@@ -31,6 +35,31 @@ export default function OrderDetailsDialog({
   if (!order) {
     return null;
   }
+
+  const handleDownloadInvoice = () => {
+    generateInvoice({
+      orderId: order.orderNumber,
+      customerName: order.customerName,
+      customerEmail: order.customerEmail,
+      customerPhone:
+        order.shippingAddress.phoneNumber,
+      paymentMethod:
+        order.paymentMethod.toUpperCase(),
+      paymentStatus: order.paymentStatus,
+      orderDate: order.createdAt
+        .toDate()
+        .toLocaleString(),
+      items: order.items.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      subtotal: order.subtotal,
+      shippingCharge: order.shippingCharge,
+      discount: 0,
+      total: order.totalAmount,
+    });
+  };
 
   return (
     <Dialog
@@ -74,6 +103,16 @@ export default function OrderDetailsDialog({
       <Divider />
 
       <DialogActions>
+        <Button
+          variant="outlined"
+          startIcon={
+            <DownloadOutlinedIcon />
+          }
+          onClick={handleDownloadInvoice}
+        >
+          Download Invoice
+        </Button>
+
         <Button onClick={onClose}>
           Close
         </Button>

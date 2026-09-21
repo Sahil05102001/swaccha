@@ -1,4 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import {
   addProduct,
@@ -6,7 +10,9 @@ import {
   getProduct,
   getProducts,
   updateProduct,
+  updateProductFeatured,
 } from "../services/productService";
+
 import type { ProductFormData } from "../schemas/productSchema";
 
 export function useProducts() {
@@ -48,6 +54,26 @@ export function useUpdateProduct() {
       id: string;
       product: ProductFormData;
     }) => updateProduct(id, product),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["products"],
+      });
+    },
+  });
+}
+
+export function useUpdateProductFeatured() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      isFeatured,
+    }: {
+      id: string;
+      isFeatured: boolean;
+    }) => updateProductFeatured(id, isFeatured),
 
     onSuccess: () => {
       queryClient.invalidateQueries({

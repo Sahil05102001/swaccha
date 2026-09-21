@@ -14,10 +14,15 @@ import { db } from "@/firebase/firestore";
 import type { ProductFormData } from "../schemas/productSchema";
 import type { Product } from "../types/product";
 
-const productsCollection = collection(db, "products");
+const productsCollection = collection(
+  db,
+  "products"
+);
 
 export async function getProducts(): Promise<Product[]> {
-  const snapshot = await getDocs(productsCollection);
+  const snapshot = await getDocs(
+    productsCollection
+  );
 
   return snapshot.docs.map((document) => ({
     id: document.id,
@@ -25,8 +30,12 @@ export async function getProducts(): Promise<Product[]> {
   }));
 }
 
-export async function getProduct(id: string): Promise<Product> {
-  const snapshot = await getDoc(doc(db, "products", id));
+export async function getProduct(
+  id: string
+): Promise<Product> {
+  const snapshot = await getDoc(
+    doc(db, "products", id)
+  );
 
   if (!snapshot.exists()) {
     throw new Error("Product not found.");
@@ -61,6 +70,23 @@ export async function updateProduct(
   );
 }
 
-export async function deleteProduct(id: string) {
-  await deleteDoc(doc(db, "products", id));
+export async function deleteProduct(
+  id: string
+) {
+  await deleteDoc(
+    doc(db, "products", id)
+  );
+}
+
+export async function updateProductFeatured(
+  id: string,
+  isFeatured: boolean
+) {
+  await updateDoc(
+    doc(db, "products", id),
+    {
+      isFeatured,
+      updatedAt: serverTimestamp(),
+    }
+  );
 }

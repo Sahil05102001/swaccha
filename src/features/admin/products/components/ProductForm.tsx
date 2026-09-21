@@ -121,6 +121,19 @@ export default function ProductForm({
               e.target.value
             )
           }
+          slotProps={{
+            select: {
+              MenuProps: {
+                slotProps: {
+                  paper: {
+                    sx: {
+                      maxHeight: 320,
+                    },
+                  },
+                },
+              },
+            },
+          }}
         >
           <MenuItem value="">
             Select Category
@@ -192,7 +205,7 @@ export default function ProductForm({
           <Box
             component="img"
             src={formData.images[0]}
-            alt="Product"
+            alt="Category"
             sx={{
               width: 160,
               height: 160,

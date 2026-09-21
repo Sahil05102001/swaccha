@@ -8,10 +8,15 @@ export function useAddCategory() {
   return useMutation({
     mutationFn: createCategory,
 
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["categories"],
-      });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["categories"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["active-categories"],
+        }),
+      ]);
     },
   });
 }

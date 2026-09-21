@@ -26,6 +26,9 @@ import {
   useUpdatePaymentStatus,
 } from "../hooks/useOrders";
 
+import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
+import { generateInvoice } from "../utils/generateInvoice";
+
 interface Props {
   order: Order;
 }
@@ -76,6 +79,31 @@ export default function AdminOrderControls({
     orderMutation.isPending ||
     paymentMutation.isPending;
 
+  const handleDownloadInvoice = () => {
+    generateInvoice({
+      orderId: order.orderNumber,
+      customerName: order.customerName,
+      customerEmail: order.customerEmail,
+      customerPhone:
+        order.shippingAddress.phoneNumber,
+      paymentMethod:
+        order.paymentMethod.toUpperCase(),
+      paymentStatus: order.paymentStatus,
+      orderDate: order.createdAt
+        .toDate()
+        .toLocaleString(),
+      items: order.items.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      subtotal: order.subtotal,
+      shippingCharge: order.shippingCharge,
+      discount: 0,
+      total: order.totalAmount,
+    });
+  };
+
   async function handleSave() {
     try {
       if (orderStatus !== order.orderStatus) {
@@ -123,6 +151,13 @@ export default function AdminOrderControls({
           <Divider sx={{ mb: 3 }} />
 
           <Stack spacing={3}>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadOutlinedIcon />}
+              onClick={handleDownloadInvoice}
+            >
+              Download Invoice
+            </Button>
             <FormControl fullWidth>
               <InputLabel>
                 Order Status

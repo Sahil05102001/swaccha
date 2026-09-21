@@ -24,9 +24,9 @@ import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import { Link, useNavigate } from "react-router-dom";
-import { useAppSelector } from "@/app/hooks";
-import { selectCartItems } from "@/features/cart/cartSlice";
+import { useCart } from "@/features/cart/hooks/useCart";
 import { selectWishlistItems } from "@/features/wishlist/wishlistSlice";
+import { useAppSelector } from "@/app/hooks";
 import logo from "@/assets/images/logo/Logo.png";
 import { useState } from "react";
 import { useAuth } from "@/features/auth/AuthContext";
@@ -34,7 +34,7 @@ import { useAuth } from "@/features/auth/AuthContext";
 export default function Navbar() {
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
-  const cartItems = useAppSelector(selectCartItems);
+ const { data: cartItems = [] } = useCart();
   const wishlistItems = useAppSelector(selectWishlistItems);
   const { user } = useAuth();
 

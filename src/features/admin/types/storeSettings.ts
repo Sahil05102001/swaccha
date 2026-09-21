@@ -43,6 +43,9 @@ export interface StoreSettings {
 
   supportPhone: string;
 
+  announcementTopText: string;
+  announcementBottomText: string;
+
   createdAt: Date;
 
   updatedAt: Date;
@@ -91,4 +94,11 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   createdAt: new Date(),
 
   updatedAt: new Date(),
+
+  announcementTopText:
+    "🔥 BUY 1 GET 1 FREE • FREE SHIPPING ON ORDERS ABOVE ₹999 • USE CODE: SWACHHA10",
+
+  announcementBottomText:
+    "✨ NEW ARRIVALS • BULK ORDERS AVAILABLE • QUALITY CLEANING PRODUCTS • SHOP NOW",
+
 };
