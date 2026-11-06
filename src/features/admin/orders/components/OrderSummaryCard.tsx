@@ -82,6 +82,13 @@ export default function OrderSummaryCard({
             value={`₹${order.shippingCharge.toLocaleString("en-IN")}`}
           />
 
+          {!!order.discount && (
+            <SummaryRow
+              label={`Discount${order.couponCode ? ` (${order.couponCode})` : ""}`}
+              value={`-₹${order.discount.toLocaleString("en-IN")}`}
+            />
+          )}
+
           <Divider />
 
           <SummaryRow

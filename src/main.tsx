@@ -3,12 +3,14 @@ import ReactDOM from "react-dom/client";
 
 import "jspdf";
 
-import "@/assets/fonts/NotoSans-Regular-normal";
-
 import App from "./App";
 import Providers from "./app/providers";
 
 import "./styles/global.css";
+
+if (import.meta.env.DEV) {
+  import("eruda").then((eruda) => eruda.default.init());
+}
 
 ReactDOM.createRoot(
   document.getElementById("root")!,

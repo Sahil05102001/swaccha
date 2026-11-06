@@ -159,6 +159,7 @@ export default function EditProductDialog({
             formData={formData}
             onChange={handleChange}
             errors={errors}
+            stockLocked
           />
         </DialogContent>
 

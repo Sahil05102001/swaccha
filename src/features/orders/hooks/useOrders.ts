@@ -7,7 +7,6 @@ import {
 import type { Order } from "../types/order";
 
 import {
-  createOrder,
   getAllOrders,
   getOrderById,
   getOrders,
@@ -30,29 +29,6 @@ export function useAdminOrders() {
   return useQuery({
     queryKey: ADMIN_ORDER_QUERY_KEY,
     queryFn: getAllOrders,
-  });
-}
-
-export function useCreateOrder() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (
-      order: Omit<
-        Order,
-        "id" | "createdAt" | "updatedAt"
-      >
-    ) => createOrder(order),
-
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ORDER_QUERY_KEY,
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: ADMIN_ORDER_QUERY_KEY,
-      });
-    },
   });
 }
 
@@ -102,11 +78,7 @@ export function useUpdatePaymentStatus() {
     }: {
       orderId: string;
       paymentStatus: Order["paymentStatus"];
-    }) =>
-      updatePaymentStatus(
-        orderId,
-        paymentStatus
-      ),
+    }) => updatePaymentStatus(orderId, paymentStatus),
 
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
@@ -140,11 +112,7 @@ export function useUpdateOrderShippingDetails() {
         estimatedDelivery?: Order["estimatedDelivery"];
         notes?: string;
       };
-    }) =>
-      updateOrderShippingDetails(
-        orderId,
-        data
-      ),
+    }) => updateOrderShippingDetails(orderId, data),
 
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({

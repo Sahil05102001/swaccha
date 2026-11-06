@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import { createBrowserRouter } from "react-router-dom";
 
 import CustomerLayout from "@/layouts/CustomerLayout";
@@ -20,135 +21,156 @@ import CheckoutPage from "@/features/orders/pages/CheckoutPage";
 import OrderSuccessPage from "@/features/orders/pages/OrderSuccessPage";
 import OrdersPage from "@/features/orders/pages/OrdersPage";
 import OrderDetailsPage from "@/features/orders/pages/OrderDetailsPage";
+import CustomerOfferZonePage from "@/features/offerzone/pages/CustomerOfferZonePage";
 
-import AdminLayout from "@/features/admin/layouts/AdminLayout";
-import AdminDashboardPage from "@/features/admin/pages/AdminDashboardPage";
-import AdminSettingsPage from "@/features/admin/pages/AdminSettingsPage";
-import AdminProductsPage from "@/features/admin/products/pages/AdminProductsPage";
-import CategoriesPage from "@/features/admin/categories/pages/CategoriesPage";
-import AdminOrdersPage from "@/features/admin/orders/pages/OrdersPage";
-import AdminCustomersPage from "@/features/admin/customers/pages/AdminCustomersPage";
-import CustomerDetailsPage from "@/features/admin/customers/pages/CustomerDetailsPage";
-
-import AboutAdminPage from "@/features/cms/about/admin/pages/AboutAdminPage";
 import AboutPage from "@/features/cms/about/pages/AboutPage";
 import ContactPage from "@/features/cms/contact/pages/ContactPage";
-import ContactAdminPage from "@/features/cms/contact/admin/pages/ContactAdminPage";
-import FaqAdminPage from "@/features/cms/faq/admin/pages/FaqAdminPage";
+import PhysicalShopPage from "@/features/store/pages/PhysicalShopPage";
+import BulkOrderPage from "@/features/bulkOrder/pages/BulkOrderPage";
 import FaqPage from "@/features/cms/faq/pages/FaqPage";
 import PolicyPage from "@/features/cms/policy/pages/PolicyPage";
-import PolicyAdminPage from "@/features/cms/policy/pages/PolicyAdminPage";
-
-import { SalesReportPage } from "@/features/reports";
-import { InventoryReportPage } from "@/features/inventoryReports";
 
 import NotFoundPage from "@/features/customer/pages/NotFoundPage";
-import AdminCategoryCirclesPage from "@/features/admin/categoryCircles/pages/AdminCategoryCirclesPage";
-import AdminBestSellersPage from "@/features/admin/bestsellers/pages/AdminBestSellersPage";
-import AdminAdBannerPage from "@/features/admin/adBanner/pages/AdminAdBannerPage";
-import AdminVideosPage from "@/features/admin/videos/pages/AdminVideosPage";
-import AdminBrandStatementPage from "@/features/admin/brandStatement/pages/AdminBrandStatementPage";
-import AdminFeaturedProductsPage from "@/features/admin/featuredProducts/pages/AdminFeaturedProductsPage";
-import OfferZonePage from "@/features/admin/offerzone/components/OfferZonePage";
 
+// Admin: the layout stays in the main bundle (it is the shell); every page
+// below is downloaded only when the admin opens it.
+import AdminLayout from "@/features/admin/layouts/AdminLayout";
+
+const AdminDashboardPage = lazy(
+  () => import("@/features/admin/pages/AdminDashboardPage"),
+);
+const AdminSettingsPage = lazy(
+  () => import("@/features/admin/pages/AdminSettingsPage"),
+);
+const AdminProductsPage = lazy(
+  () => import("@/features/admin/products/pages/AdminProductsPage"),
+);
+const CategoriesPage = lazy(
+  () => import("@/features/admin/categories/pages/CategoriesPage"),
+);
+const AdminOrdersPage = lazy(
+  () => import("@/features/admin/orders/pages/OrdersPage"),
+);
+const AdminCustomersPage = lazy(
+  () => import("@/features/admin/customers/pages/AdminCustomersPage"),
+);
+const CustomerDetailsPage = lazy(
+  () => import("@/features/admin/customers/pages/CustomerDetailsPage"),
+);
+const AboutAdminPage = lazy(
+  () => import("@/features/cms/about/admin/pages/AboutAdminPage"),
+);
+const ContactAdminPage = lazy(
+  () => import("@/features/cms/contact/admin/pages/ContactAdminPage"),
+);
+const FaqAdminPage = lazy(
+  () => import("@/features/cms/faq/admin/pages/FaqAdminPage"),
+);
+const PolicyAdminPage = lazy(
+  () => import("@/features/cms/policy/pages/PolicyAdminPage"),
+);
+const SalesReportPage = lazy(() =>
+  import("@/features/reports").then((m) => ({ default: m.SalesReportPage })),
+);
+const InventoryReportPage = lazy(() =>
+  import("@/features/inventoryReports").then((m) => ({
+    default: m.InventoryReportPage,
+  })),
+);
+const AdminCategoryCirclesPage = lazy(
+  () =>
+    import("@/features/admin/categoryCircles/pages/AdminCategoryCirclesPage"),
+);
+const AdminBestSellersPage = lazy(
+  () => import("@/features/admin/bestsellers/pages/AdminBestSellersPage"),
+);
+const AdminAdBannerPage = lazy(
+  () => import("@/features/admin/adBanner/pages/AdminAdBannerPage"),
+);
+const AdminVideosPage = lazy(
+  () => import("@/features/admin/videos/pages/AdminVideosPage"),
+);
+const AdminBrandStatementPage = lazy(
+  () => import("@/features/admin/brandStatement/pages/AdminBrandStatementPage"),
+);
+const AdminFeaturedProductsPage = lazy(
+  () =>
+    import("@/features/admin/featuredProducts/pages/AdminFeaturedProductsPage"),
+);
+const OfferZonePage = lazy(
+  () => import("@/features/admin/offerzone/components/OfferZonePage"),
+);
+const HeroBannersPage = lazy(
+  () => import("@/features/admin/hero/pages/HeroBannersPage"),
+);
+const AdminB2BEnquiriesPage = lazy(
+  () => import("@/features/admin/pages/AdminB2BEnquiriesPage"),
+);
+const AdminReviewsPage = lazy(
+  () => import("@/features/admin/reviews/pages/AdminReviewsPage"),
+);
+const AdminCouponsPage = lazy(
+  () => import("@/features/admin/coupons/pages/AdminCouponsPage"),
+);
+const AdminShippingPage = lazy(
+  () => import("@/features/admin/shipping/pages/AdminShippingPage"),
+);
+const AdminStockHistoryPage = lazy(
+  () => import("@/features/admin/stock/pages/AdminStockHistoryPage"),
+);
 
 export const router = createBrowserRouter([
   {
     path: "/",
     element: <CustomerLayout />,
     children: [
-      {
-        index: true,
-        element: <HomePage />,
-      },
-      {
-        path: "products",
-        element: <ProductsPage />,
-      },
-      {
-        path: "products/:id",
-        element: <ProductDetailsPage />,
-      },
-      {
-        path: "cart",
-        element: <CartPage />,
-      },
-      {
-        path: "wishlist",
-        element: <WishlistPage />,
-      },
-      {
-        path: "about",
-        element: <AboutPage />,
-      },
-      {
-        path: "contact",
-        element: <ContactPage />,
-      },
-      {
-        path: "login",
-        element: <LoginPage />,
-      },
-      {
-        path: "register",
-        element: <RegisterPage />,
-      },
-      {
-        path: "forgot-password",
-        element: <ForgotPasswordPage />,
-      },
-      {
-        path: "faq",
-        element: <FaqPage />,
-      },
+      { index: true, element: <HomePage /> },
+      { path: "products", element: <ProductsPage /> },
+      { path: "products/:id", element: <ProductDetailsPage /> },
+      { path: "cart", element: <CartPage /> },
+      { path: "wishlist", element: <WishlistPage /> },
+      { path: "about", element: <AboutPage /> },
+      { path: "contact", element: <ContactPage /> },
+      { path: "our-store", element: <PhysicalShopPage /> },
+      { path: "bulk-order", element: <BulkOrderPage /> },
+      { path: "offer-zone", element: <CustomerOfferZonePage /> },
+      { path: "login", element: <LoginPage /> },
+      { path: "register", element: <RegisterPage /> },
+      { path: "forgot-password", element: <ForgotPasswordPage /> },
+      { path: "faq", element: <FaqPage /> },
       {
         path: "privacy-policy",
-        element: (
-          <PolicyPage documentId="privacy" />
-        ),
+        element: <PolicyPage documentId="privacy" />,
       },
       {
         path: "terms-and-conditions",
-        element: (
-          <PolicyPage documentId="terms" />
-        ),
+        element: <PolicyPage documentId="terms" />,
       },
       {
         path: "shipping-policy",
-        element: (
-          <PolicyPage documentId="shipping" />
-        ),
+        element: <PolicyPage documentId="shipping" />,
       },
       {
         path: "cancellation-refund-policy",
-        element: (
-          <PolicyPage documentId="cancellation" />
-        ),
+        element: <PolicyPage documentId="cancellation" />,
+      },
+      {
+        path: "offer-terms-and-conditions",
+        element: <PolicyPage documentId="offer-terms" />,
+      },
+      {
+        path: "replacement-policy",
+        element: <PolicyPage documentId="replacement" />,
       },
 
       {
         element: <ProtectedRoute />,
         children: [
-          {
-            path: "profile",
-            element: <ProfilePage />,
-          },
-          {
-            path: "checkout",
-            element: <CheckoutPage />,
-          },
-          {
-            path: "orders/success",
-            element: <OrderSuccessPage />,
-          },
-          {
-            path: "orders",
-            element: <OrdersPage />,
-          },
-          {
-            path: "orders/:id",
-            element: <OrderDetailsPage />,
-          },
+          { path: "profile", element: <ProfilePage /> },
+          { path: "checkout", element: <CheckoutPage /> },
+          { path: "orders/success", element: <OrderSuccessPage /> },
+          { path: "orders", element: <OrdersPage /> },
+          { path: "orders/:id", element: <OrderDetailsPage /> },
         ],
       },
     ],
@@ -161,93 +183,38 @@ export const router = createBrowserRouter([
         path: "admin",
         element: <AdminLayout />,
         children: [
-          {
-            index: true,
-            element: <AdminDashboardPage />,
-          },
-          {
-            path: "products",
-            element: <AdminProductsPage />,
-          },
-          {
-            path: "categories",
-            element: <CategoriesPage />,
-          },
-          {
-            path: "best-sellers",
-            element: <AdminBestSellersPage />,
-          },
-          {
-            path: "ad-banner",
-            element: <AdminAdBannerPage />,
-          },
-          {
-            path: "videos",
-            element: <AdminVideosPage />,
-          },
-          {
-            path: "category-circles",
-            element: <AdminCategoryCirclesPage />,
-          },
-          {
-            path: "featured-products",
-            element: <AdminFeaturedProductsPage />,
-          },
-          {
-            path: "offer-zone",
-            element: <OfferZonePage/>,
-          },
-          {
-            path: "orders",
-            element: <AdminOrdersPage />,
-          },
-          {
-            path: "orders/:id",
-            element: <OrderDetailsPage />,
-          },
-          {
-            path: "customers",
-            element: <AdminCustomersPage />,
-          },
-          {
-            path: "customers/:uid",
-            element: <CustomerDetailsPage />,
-          },
-          {
-            path: "settings",
-            element: <AdminSettingsPage />,
-          },
+          { index: true, element: <AdminDashboardPage /> },
+          { path: "products", element: <AdminProductsPage /> },
+          { path: "categories", element: <CategoriesPage /> },
+          { path: "hero-banners", element: <HeroBannersPage /> },
+          { path: "best-sellers", element: <AdminBestSellersPage /> },
+          { path: "ad-banner", element: <AdminAdBannerPage /> },
+          { path: "videos", element: <AdminVideosPage /> },
+          { path: "category-circles", element: <AdminCategoryCirclesPage /> },
+          { path: "featured-products", element: <AdminFeaturedProductsPage /> },
+          { path: "offer-zone", element: <OfferZonePage /> },
+          { path: "orders", element: <AdminOrdersPage /> },
+          { path: "orders/:id", element: <OrderDetailsPage /> },
+          { path: "customers", element: <AdminCustomersPage /> },
+          { path: "customers/:uid", element: <CustomerDetailsPage /> },
+          { path: "reviews", element: <AdminReviewsPage /> },
+          { path: "coupons", element: <AdminCouponsPage /> },
+          { path: "shipping", element: <AdminShippingPage /> },
+          { path: "stock-history", element: <AdminStockHistoryPage /> },
+          { path: "settings", element: <AdminSettingsPage /> },
 
           // CMS
-          {
-            path: "cms/about",
-            element: <AboutAdminPage />,
-          },
-          {
-            path: "cms/contact",
-            element: <ContactAdminPage />,
-          },
-          {
-            path: "cms/faq",
-            element: <FaqAdminPage />,
-          },
+          { path: "cms/about", element: <AboutAdminPage /> },
+          { path: "cms/contact", element: <ContactAdminPage /> },
+          { path: "cms/faq", element: <FaqAdminPage /> },
 
           // Reports
-          {
-            path: "reports/sales",
-            element: <SalesReportPage />,
-          },
-          {
-            path: "reports/inventory",
-            element: <InventoryReportPage />,
-          },
+          { path: "reports/sales", element: <SalesReportPage /> },
+          { path: "reports/inventory", element: <InventoryReportPage /> },
           {
             path: "cms/privacy",
             element: (
-              <PolicyAdminPage
-                documentId="privacy"
-                title="Privacy Policy"
-              />
+              <PolicyAdminPage documentId="privacy" title="Privacy Policy" />
             ),
           },
           {
@@ -262,10 +229,7 @@ export const router = createBrowserRouter([
           {
             path: "cms/shipping",
             element: (
-              <PolicyAdminPage
-                documentId="shipping"
-                title="Shipping Policy"
-              />
+              <PolicyAdminPage documentId="shipping" title="Shipping Policy" />
             ),
           },
           {
@@ -278,16 +242,29 @@ export const router = createBrowserRouter([
             ),
           },
           {
-            path: "cms/brand-statement",
-            element: <AdminBrandStatementPage />,
+            path: "cms/offer-terms",
+            element: (
+              <PolicyAdminPage
+                documentId="offer-terms"
+                title="Offer Terms & Conditions"
+              />
+            ),
           },
+          {
+            path: "cms/replacement",
+            element: (
+              <PolicyAdminPage
+                documentId="replacement"
+                title="Replacement Policy"
+              />
+            ),
+          },
+          { path: "cms/brand-statement", element: <AdminBrandStatementPage /> },
+          { path: "b2b-enquiries", element: <AdminB2BEnquiriesPage /> },
         ],
       },
     ],
   },
 
-  {
-    path: "*",
-    element: <NotFoundPage />,
-  },
+  { path: "*", element: <NotFoundPage /> },
 ]);

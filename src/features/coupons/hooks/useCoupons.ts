@@ -1,71 +1,57 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
-  createCoupon,
-  deleteCoupon,
-  getCoupons,
-  updateCoupon,
+  deleteAdminCoupon,
+  getAdminCoupons,
+  getAvailableCoupons,
+  saveAdminCoupon,
 } from "../services/couponService";
 
-export function useCoupons() {
-  const queryClient =
-    useQueryClient();
+const AVAILABLE_KEY = ["coupons", "available"] as const;
+const ADMIN_KEY = ["admin-coupons"] as const;
 
-  const coupons = useQuery({
-    queryKey: ["coupons"],
-    queryFn: getCoupons,
+export function useAvailableCoupons(enabled = true) {
+  return useQuery({
+    queryKey: AVAILABLE_KEY,
+    queryFn: getAvailableCoupons,
+    enabled,
+    staleTime: 5 * 60_000,
+    retry: false,
   });
+}
 
-  const refresh = () =>
-    queryClient.invalidateQueries({
-      queryKey: ["coupons"],
-    });
+export function useAdminCoupons() {
+  return useQuery({
+    queryKey: ADMIN_KEY,
+    queryFn: getAdminCoupons,
+    retry: false,
+  });
+}
 
-  const create =
-    useMutation({
-      mutationFn: createCoupon,
-      onSuccess: refresh,
-    });
+function useRefresh() {
+  const queryClient = useQueryClient();
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ADMIN_KEY }),
+      queryClient.invalidateQueries({ queryKey: AVAILABLE_KEY }),
+    ]);
+}
 
-  const update =
-    useMutation({
-      mutationFn: ({
-        id,
-        data,
-      }: {
-        id: string;
-        data: Parameters<
-          typeof updateCoupon
-        >[1];
-      }) =>
-        updateCoupon(id, data),
+export function useSaveCoupon() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: (v: {
+      coupon: Record<string, unknown> & { code: string };
+      isNew: boolean;
+    }) => saveAdminCoupon(v.coupon, v.isNew),
+    onSuccess: refresh,
+  });
+}
 
-      onSuccess: refresh,
-    });
-
-  const remove =
-    useMutation({
-      mutationFn: deleteCoupon,
-      onSuccess: refresh,
-    });
-
-  return {
-    coupons: coupons.data ?? [],
-
-    isLoading:
-      coupons.isLoading,
-
-    createCoupon:
-      create.mutateAsync,
-
-    updateCoupon:
-      update.mutateAsync,
-
-    deleteCoupon:
-      remove.mutateAsync,
-  };
+export function useDeleteCoupon() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: deleteAdminCoupon,
+    onSuccess: refresh,
+  });
 }

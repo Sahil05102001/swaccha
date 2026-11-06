@@ -5,6 +5,8 @@ export interface CategoryCircle {
 
   imageUrl?: string;
 
+  imagePublicId?: string;
+
   icon: string;
 
   href: string;
@@ -23,6 +25,8 @@ export interface CategoryCircleFormData {
 
   imageUrl?: string;
 
+  imagePublicId?: string;
+
   icon: string;
 
   href: string;
@@ -35,6 +39,7 @@ export interface CategoryCircleFormData {
 export const DEFAULT_CATEGORY_CIRCLE: CategoryCircleFormData = {
   label: "",
   imageUrl: "",
+  imagePublicId: "",
   icon: "Category",
   href: "/products",
   sortOrder: 1,

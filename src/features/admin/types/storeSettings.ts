@@ -5,6 +5,8 @@ export type CurrencyCode =
   | "GBP";
 
 export interface StoreSettings {
+  whoWeSupplyActive: boolean;
+
   id: string;
 
   storeName: string;
@@ -52,6 +54,8 @@ export interface StoreSettings {
 }
 
 export const DEFAULT_STORE_SETTINGS: StoreSettings = {
+  whoWeSupplyActive: true,
+  
   id: "store",
 
   storeName: "Swachha",

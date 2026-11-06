@@ -16,8 +16,9 @@ export interface Product {
   images: string[];
   isActive: boolean;
   isFeatured: boolean;
-
-  ratingAverage?: number;
+  
+  // Maintained by the review system. Average = ratingSum / ratingCount.
+  ratingSum?: number;
   ratingCount?: number;
 
   createdAt?: Timestamp;

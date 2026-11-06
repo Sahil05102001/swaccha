@@ -7,8 +7,8 @@ import {
   getDocs,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
-  updateDoc,
 } from "firebase/firestore";
 
 import { db } from "@/firebase/firestore";
@@ -19,16 +19,19 @@ import type {
 } from "../types/video";
 
 const COLLECTION_NAME = "homepageVideos";
+const MAX_VIDEOS = 5;
 
 const videosRef = collection(
   db,
-  COLLECTION_NAME
+  COLLECTION_NAME,
 );
 
-export async function getVideos(): Promise<VideoCard[]> {
+export async function getVideos(): Promise<
+  VideoCard[]
+> {
   const q = query(
     videosRef,
-    orderBy("displayOrder", "asc")
+    orderBy("displayOrder", "asc"),
   );
 
   const snapshot = await getDocs(q);
@@ -38,14 +41,13 @@ export async function getVideos(): Promise<VideoCard[]> {
 
     return {
       id: snapshotDoc.id,
-      title: data.title ?? "",
-      description: data.description ?? "",
       videoUrl: data.videoUrl ?? "",
+      publicId: data.publicId ?? "",
       thumbnailUrl: data.thumbnailUrl ?? "",
-      type: data.type ?? "other",
-      href: data.href ?? "",
       isActive: Boolean(data.isActive),
-      displayOrder: data.displayOrder ?? 1,
+      displayOrder: Number(
+        data.displayOrder ?? 1,
+      ),
       createdAt:
         data.createdAt?.toDate?.() ?? new Date(),
       updatedAt:
@@ -55,19 +57,38 @@ export async function getVideos(): Promise<VideoCard[]> {
 }
 
 export async function addVideo(
-  data: VideoCardFormData
+  data: VideoCardFormData,
 ): Promise<void> {
   const countSnapshot =
     await getCountFromServer(videosRef);
 
-  if (countSnapshot.data().count >= 5) {
+  if (countSnapshot.data().count >= MAX_VIDEOS) {
     throw new Error(
-      "Maximum of 5 homepage videos allowed."
+      "Maximum of 5 homepage videos allowed.",
+    );
+  }
+
+  // Validate that the selected position is available.
+  const existingVideos = await getDocs(videosRef);
+
+  const orderTaken = existingVideos.docs.some(
+    (existingDoc) =>
+      Number(existingDoc.data().displayOrder) ===
+      data.displayOrder,
+  );
+
+  if (orderTaken) {
+    throw new Error(
+      `Position ${data.displayOrder} is already occupied. Please select an available position.`,
     );
   }
 
   await addDoc(videosRef, {
-    ...data,
+    videoUrl: data.videoUrl.trim(),
+    publicId: data.publicId.trim(),
+    thumbnailUrl: data.thumbnailUrl.trim(),
+    isActive: data.isActive,
+    displayOrder: data.displayOrder,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -75,18 +96,67 @@ export async function addVideo(
 
 export async function updateVideo(
   id: string,
-  data: VideoCardFormData
+  data: VideoCardFormData,
 ): Promise<void> {
-  await updateDoc(doc(db, COLLECTION_NAME, id), {
-    ...data,
-    updatedAt: serverTimestamp(),
+  const videoRef = doc(db, COLLECTION_NAME, id);
+
+  // Read the collection before starting the transaction.
+  const videosSnapshot = await getDocs(videosRef);
+
+  await runTransaction(db, async (transaction) => {
+    const currentSnapshot = await transaction.get(videoRef);
+
+    if (!currentSnapshot.exists()) {
+      throw new Error(
+        "The video you're trying to update no longer exists.",
+      );
+    }
+
+    const currentData = currentSnapshot.data();
+    const currentOrder = Number(currentData.displayOrder ?? 1);
+    const targetOrder = data.displayOrder;
+
+    if (
+      !Number.isInteger(targetOrder) ||
+      targetOrder < 1 ||
+      targetOrder > MAX_VIDEOS
+    ) {
+      throw new Error(
+        "Display order must be between 1 and 5.",
+      );
+    }
+
+    const conflictingVideo = videosSnapshot.docs.find(
+      (existingDoc) =>
+        existingDoc.id !== id &&
+        Number(existingDoc.data().displayOrder) === targetOrder,
+    );
+
+    if (conflictingVideo) {
+      transaction.update(conflictingVideo.ref, {
+        displayOrder: currentOrder,
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    transaction.update(videoRef, {
+      videoUrl: data.videoUrl.trim(),
+      publicId: data.publicId.trim(),
+      thumbnailUrl: data.thumbnailUrl.trim(),
+      isActive: data.isActive,
+      displayOrder: targetOrder,
+      updatedAt: serverTimestamp(),
+    });
   });
 }
-
+/**
+ * Deletes only the Firestore video record.
+ * The Cloudinary asset is intentionally preserved.
+ */
 export async function deleteVideo(
-  id: string
+  id: string,
 ): Promise<void> {
   await deleteDoc(
-    doc(db, COLLECTION_NAME, id)
+    doc(db, COLLECTION_NAME, id),
   );
 }

@@ -12,42 +12,74 @@ export default function AdBanner() {
     return null;
   }
 
-  if (!banner) {
+  if (
+    !banner ||
+    !banner.isActive
+  ) {
     return null;
   }
 
-  if (!banner.isActive) {
-    return null;
-  }
+  const desktopImageUrl =
+    banner.desktopImageUrl ||
+    banner.imageUrl ||
+    "";
 
-  if (!banner.imageUrl) {
+  const mobileImageUrl =
+    banner.mobileImageUrl ||
+    desktopImageUrl;
+
+  if (!desktopImageUrl) {
     return null;
   }
 
   const bannerContent = (
     <Box
-      component="img"
-      src={banner.imageUrl}
-      alt={banner.altText || "Advertisement"}
+      component="picture"
       sx={{
         display: "block",
         width: "100%",
-        height: "auto",
+        lineHeight: 0,
       }}
-    />
+    >
+      {mobileImageUrl && (
+        <source
+          media="(max-width: 767px)"
+          srcSet={mobileImageUrl}
+        />
+      )}
+
+      <Box
+        component="img"
+        src={desktopImageUrl}
+        alt={
+          banner.altText ||
+          "Swachha promotional banner"
+        }
+        loading="lazy"
+        draggable={false}
+        sx={{
+          display: "block",
+          width: "100%",
+          height: "auto",
+          maxWidth: "100%",
+          border: 0,
+          borderRadius: 0,
+          objectFit: "contain",
+          userSelect: "none",
+        }}
+      />
+    </Box>
   );
 
   return (
     <Box
+      component="section"
       sx={{
         width: "100%",
+        maxWidth: "100%",
         overflow: "hidden",
-        bgcolor: "#fff",
-        py: {
-          xs: 2,
-          sm: 3,
-          md: 4,
-        },
+        backgroundColor: "#F1F9ED",
+        lineHeight: 0,
       }}
     >
       {banner.href ? (
@@ -59,6 +91,8 @@ export default function AdBanner() {
             width: "100%",
             textDecoration: "none",
             lineHeight: 0,
+            WebkitTapHighlightColor:
+              "transparent",
           }}
         >
           {bannerContent}

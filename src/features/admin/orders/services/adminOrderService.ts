@@ -1,15 +1,10 @@
-import {
-  doc,
-  serverTimestamp,
-  updateDoc,
-} from "firebase/firestore";
 
-import { db } from "@/firebase/firestore";
+import { auth } from "@/firebase/auth";
 import { getAllOrders } from "@/features/orders/services/orderService";
-import type {
-  OrderStatus,
-  PaymentStatus,
-} from "@/features/orders/types/order";
+import type { OrderStatus } from "@/features/orders/types/order";
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
 
 export async function getAdminOrders() {
   return getAllOrders();
@@ -17,54 +12,100 @@ export async function getAdminOrders() {
 
 interface UpdateAdminOrderInput {
   orderStatus?: OrderStatus;
-  paymentStatus?: PaymentStatus;
   trackingNumber?: string;
   deliveryPersonName?: string;
   deliveryPersonPhone?: string;
   estimatedDelivery?: Date;
   notes?: string;
+  codPaymentCollected?: boolean;
+}
+
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const user = auth.currentUser;
+
+  if (!user) {
+    throw new Error("Please sign in to manage orders.");
+  }
+
+  const idToken = await user.getIdToken();
+
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${idToken}`,
+  };
+}
+
+async function readApiResponse<T>(response: Response): Promise<T> {
+  const result = (await response.json().catch(() => null)) as
+    | (T & { message?: string })
+    | null;
+
+  if (!response.ok) {
+    throw new Error(
+      result?.message ?? "The order update could not be completed.",
+    );
+  }
+
+  if (!result || typeof result !== "object") {
+    throw new Error("The server returned an invalid response.");
+  }
+
+  return result;
 }
 
 export async function updateAdminOrder(
   orderId: string,
-  updates: UpdateAdminOrderInput
-) {
-  const orderRef = doc(db, "orders", orderId);
-
-  const dataToUpdate: Record<string, unknown> = {
-    updatedAt: serverTimestamp(),
-  };
-
-  if (updates.orderStatus !== undefined) {
-    dataToUpdate.orderStatus = updates.orderStatus;
+  updates: UpdateAdminOrderInput,
+): Promise<void> {
+  if (!orderId.trim()) {
+    throw new Error("A valid order ID is required.");
   }
 
-  if (updates.paymentStatus !== undefined) {
-    dataToUpdate.paymentStatus = updates.paymentStatus;
+  const payload: Record<string, unknown> = {};
+
+  if (updates.orderStatus !== undefined) {
+    payload.orderStatus = updates.orderStatus;
   }
 
   if (updates.trackingNumber !== undefined) {
-    dataToUpdate.trackingNumber = updates.trackingNumber;
+    payload.trackingNumber = updates.trackingNumber;
   }
 
   if (updates.deliveryPersonName !== undefined) {
-    dataToUpdate.deliveryPersonName =
-      updates.deliveryPersonName;
+    payload.deliveryPersonName = updates.deliveryPersonName;
   }
 
   if (updates.deliveryPersonPhone !== undefined) {
-    dataToUpdate.deliveryPersonPhone =
-      updates.deliveryPersonPhone;
+    payload.deliveryPersonPhone = updates.deliveryPersonPhone;
   }
 
   if (updates.estimatedDelivery !== undefined) {
-    dataToUpdate.estimatedDelivery =
-      updates.estimatedDelivery;
+    payload.estimatedDelivery = updates.estimatedDelivery.toISOString();
   }
 
   if (updates.notes !== undefined) {
-    dataToUpdate.notes = updates.notes;
+    payload.notes = updates.notes;
   }
 
-  await updateDoc(orderRef, dataToUpdate);
+  if (updates.codPaymentCollected !== undefined) {
+    payload.codPaymentCollected = updates.codPaymentCollected;
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}/admin/orders/${encodeURIComponent(orderId)}`,
+    {
+      method: "PATCH",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(payload),
+    },
+  );
+
+  const result = await readApiResponse<{
+    success: boolean;
+    message?: string;
+  }>(response);
+
+  if (result.success !== true) {
+    throw new Error(result.message || "The order update failed.");
+  }
 }

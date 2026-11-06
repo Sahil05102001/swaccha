@@ -1,3 +1,4 @@
+import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 
 import type { OrderStatus } from "../types/order";
@@ -6,52 +7,49 @@ interface OrderStatusChipProps {
   status: OrderStatus;
 }
 
-export default function OrderStatusChip({
-  status,
-}: OrderStatusChipProps) {
-  const getChipColor = () => {
-    switch (status) {
-      case "pending":
-        return "warning";
+// Small colored dot per status; the chip itself stays neutral and minimal
+const DOT_COLORS: Record<string, string> = {
+  pending: "#B0B0B0",
+  confirmed: "#00D9FF",
+  packed: "#00D9FF",
+  shipped: "#00D9FF",
+  delivered: "#000000",
+  returned: "#757575",
+  cancelled: "#D32F2F",
+};
 
-      case "confirmed":
-        return "info";
-
-      case "packed":
-        return "secondary";
-
-      case "shipped":
-        return "primary";
-
-      case "delivered":
-        return "success";
-
-      case "cancelled":
-        return "error";
-
-      default:
-        return "default";
-    }
-  };
-
-  const getLabel = () => {
-    switch (status) {
-      case "packed":
-        return "Packed";
-
-      default:
-        return (
-          status.charAt(0).toUpperCase() +
-          status.slice(1)
-        );
-    }
-  };
+export default function OrderStatusChip({ status }: OrderStatusChipProps) {
+  const dotColor = DOT_COLORS[status] ?? "#B0B0B0";
+  const label = status.charAt(0).toUpperCase() + status.slice(1);
 
   return (
     <Chip
-      label={getLabel()}
-      color={getChipColor()}
+      label={label}
       size="small"
+      variant="outlined"
+      icon={
+        <Box
+          component="span"
+          sx={{
+            width: 8,
+            height: 8,
+            ml: "10px !important",
+            mr: "-2px !important",
+            borderRadius: "50%",
+            bgcolor: dotColor,
+            flexShrink: 0,
+          }}
+        />
+      }
+      sx={{
+        height: 28,
+        bgcolor: "#FFFFFF",
+        color: "#212121",
+        borderColor: "#E0E0E0",
+        fontWeight: 500,
+        fontSize: "0.8rem",
+        transition: "none",
+      }}
     />
   );
 }

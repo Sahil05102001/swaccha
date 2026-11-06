@@ -6,6 +6,7 @@ import {
 import { auth } from "@/firebase/auth";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { sendEmailVerification } from "firebase/auth";
+import { signOut } from "firebase/auth";
 import { reload } from "firebase/auth";
 import { createUserProfile } from "@/features/profile/services/profileService";
 
@@ -45,6 +46,10 @@ export async function loginUser(
     );
 
   return userCredential.user;
+}
+
+export async function logout() {
+  await signOut(auth);
 }
 
 export async function sendVerificationEmail() {

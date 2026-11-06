@@ -1,10 +1,5 @@
 import type { ReactNode } from "react";
-import {
-  Card,
-  CardContent,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Card, CardContent, Stack, Typography } from "@mui/material";
 
 interface SectionCardProps {
   title?: string;
@@ -20,41 +15,41 @@ export default function SectionCard({
   action,
 }: SectionCardProps) {
   return (
-    <Card elevation={2}>
-      <CardContent>
+    <Card
+      elevation={0}
+      sx={{
+        bgcolor: "#fff",
+        border: "1px solid #E5E7EB",
+        borderRadius: "14px",
+        boxShadow: "none",
+        backdropFilter: "none",
+        WebkitBackdropFilter: "none",
+        overflow: "visible",
+      }}
+    >
+      <CardContent sx={{ p: { xs: 2, md: 2.5 }, "&:last-child": { pb: { xs: 2, md: 2.5 } } }}>
         {(title || action) && (
           <Stack
-            direction={{
-              xs: "column",
-              sm: "row",
-            }}
+            direction={{ xs: "column", sm: "row" }}
             spacing={2}
             sx={{
               justifyContent: "space-between",
-              alignItems: {
-                xs: "flex-start",
-                sm: "center",
-              },
-              mb: 3,
+              alignItems: { xs: "flex-start", sm: "center" },
+              mb: 2.5,
             }}
           >
             <Stack spacing={0.5}>
               {title && (
                 <Typography
-                  variant="h6"
-                  sx={{
-                    fontWeight: 700,
-                  }}
+                  component="h3"
+                  sx={{ fontSize: "1.05rem", fontWeight: 700 }}
                 >
                   {title}
                 </Typography>
               )}
 
               {subtitle && (
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                >
+                <Typography variant="body2" color="text.secondary">
                   {subtitle}
                 </Typography>
               )}

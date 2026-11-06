@@ -23,11 +23,15 @@ interface OrdersTableProps {
 export default function OrdersTable({
   orders,
 }: OrdersTableProps) {
-  const [selectedOrder, setSelectedOrder] =
-    useState<Order | null>(null);
+  const [selectedOrderId, setSelectedOrderId] =
+    useState<string | null>(null);
+
+  // Always the latest copy from the list, so the dialog updates after a save.
+  const selectedOrder =
+    orders.find((order) => order.id === selectedOrderId) ?? null;
 
   const handleCloseDialog = () => {
-    setSelectedOrder(null);
+    setSelectedOrderId(null);
   };
 
   if (orders.length === 0) {
@@ -135,14 +139,29 @@ export default function OrdersTable({
                     }
                     color={
                       order.paymentStatus ===
-                      "paid"
+                        "paid"
                         ? "success"
                         : order.paymentStatus ===
                           "failed"
-                        ? "error"
-                        : "warning"
+                          ? "error"
+                          : order.paymentStatus ===
+                            "refunded" ||
+                            order.paymentStatus ===
+                            "partially_refunded"
+                            ? "info"
+                            : "warning"
                     }
                   />
+
+
+                  {order.refundRequired && (
+                    <Chip
+                      size="small"
+                      color="error"
+                      label="Refund needed"
+                      sx={{ ml: 0.5 }}
+                    />
+                  )}
                 </TableCell>
 
                 <TableCell>
@@ -166,11 +185,7 @@ export default function OrdersTable({
                   <Button
                     size="small"
                     variant="outlined"
-                    onClick={() =>
-                      setSelectedOrder(
-                        order
-                      )
-                    }
+                    onClick={() => setSelectedOrderId(order.id)}
                   >
                     View
                   </Button>

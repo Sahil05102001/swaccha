@@ -18,6 +18,160 @@
         }
       ],
       "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "totalAmount",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "stockMovements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "stockMovements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "movementType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "stockMovements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "movementType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "stockMovements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtyReceived",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtySold",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtyRestored",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtyManualIn",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtyManualOut",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "stockMovements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtyReceived",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtySold",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtyRestored",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtyManualIn",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtyManualOut",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "stockMovements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtyReceived",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtySold",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtyRestored",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtyManualIn",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtyManualOut",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

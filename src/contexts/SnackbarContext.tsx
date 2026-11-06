@@ -1,8 +1,4 @@
 import {
-  Alert,
-  Snackbar,
-} from "@mui/material";
-import {
   createContext,
   useCallback,
   useContext,
@@ -10,92 +6,66 @@ import {
   useState,
 } from "react";
 
-type Severity =
-  | "success"
-  | "error"
-  | "warning"
-  | "info";
+import AppSnackbar, {
+  type SnackbarSeverity,
+} from "@/components/ui/AppSnackbar";
+
+type Severity = SnackbarSeverity;
 
 interface SnackbarState {
   open: boolean;
   message: string;
   severity: Severity;
+  key: number;
 }
 
 interface SnackbarContextValue {
-  showSnackbar: (
-    message: string,
-    severity?: Severity
-  ) => void;
+  showSnackbar: (message: string, severity?: Severity) => void;
 }
 
-const SnackbarContext =
-  createContext<SnackbarContextValue | null>(null);
+const SnackbarContext = createContext<SnackbarContextValue | null>(null);
 
 export function SnackbarProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [snackbar, setSnackbar] =
-    useState<SnackbarState>({
-      open: false,
-      message: "",
-      severity: "success",
-    });
+  const [snackbar, setSnackbar] = useState<SnackbarState>({
+    open: false,
+    message: "",
+    severity: "success",
+    key: 0,
+  });
 
   const showSnackbar = useCallback(
-    (
-      message: string,
-      severity: Severity = "success"
-    ) => {
-      setSnackbar({
-        open: true,
-        message,
-        severity,
-      });
+    (message: string, severity: Severity = "success") => {
+      setSnackbar((prev) =>
+        // The same message is already on screen: don't show it twice.
+        prev.open && prev.message === message && prev.severity === severity
+          ? prev
+          : { open: true, message, severity, key: prev.key + 1 },
+      );
     },
-    []
+    [],
   );
 
-  const handleClose = () => {
-    setSnackbar((prev) => ({
-      ...prev,
-      open: false,
-    }));
-  };
+  const handleClose = useCallback(() => {
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  }, []);
 
-  const value = useMemo(
-    () => ({
-      showSnackbar,
-    }),
-    [showSnackbar]
-  );
+  const value = useMemo(() => ({ showSnackbar }), [showSnackbar]);
 
   return (
     <SnackbarContext.Provider value={value}>
       {children}
 
-      <Snackbar
+      <AppSnackbar
         open={snackbar.open}
-        autoHideDuration={3000}
+        message={snackbar.message}
+        severity={snackbar.severity}
+        messageKey={snackbar.key}
         onClose={handleClose}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "right",
-        }}
-      >
-        <Alert
-          severity={snackbar.severity}
-          onClose={handleClose}
-          variant="filled"
-          sx={{
-            width: "100%",
-          }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+      />
     </SnackbarContext.Provider>
   );
 }
@@ -104,9 +74,7 @@ export function useSnackbar() {
   const context = useContext(SnackbarContext);
 
   if (!context) {
-    throw new Error(
-      "useSnackbar must be used within SnackbarProvider"
-    );
+    throw new Error("useSnackbar must be used within SnackbarProvider");
   }
 
   return context;

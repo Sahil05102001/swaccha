@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Container, Stack } from "@mui/material";
+import { Box, Stack } from "@mui/material";
 
 interface PageContainerProps {
   children: ReactNode;
@@ -11,15 +11,8 @@ export default function PageContainer({
   spacing = 3,
 }: PageContainerProps) {
   return (
-    <Container
-      maxWidth="lg"
-      sx={{
-        py: 4,
-      }}
-    >
-      <Stack spacing={spacing}>
-        {children}
-      </Stack>
-    </Container>
+    <Box sx={{ width: "100%", maxWidth: 1400, mx: "auto", py: { xs: 1, md: 2 } }}>
+      <Stack spacing={spacing}>{children}</Stack>
+    </Box>
   );
 }

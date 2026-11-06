@@ -1,7 +1,12 @@
 import {
   Timestamp,
   collection,
-  getDocs,
+  count,
+  getAggregateFromServer,
+  getCountFromServer,
+  query,
+  sum,
+  where,
 } from "firebase/firestore";
 
 import { db } from "@/firebase/firestore";
@@ -24,117 +29,72 @@ export interface DashboardStats {
   cancelledOrders: number;
 }
 
+const STATUSES = [
+  "pending",
+  "confirmed",
+  "packed",
+  "shipped",
+  "delivered",
+  "cancelled",
+] as const;
+
+/**
+ * Uses Firestore's server-side count and sum, so no document is downloaded.
+ * Cost: roughly one read per 1,000 matching documents, per query.
+ */
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const productsSnapshot = await getDocs(
-    collection(db, "products")
+  const orders = collection(db, "orders");
+
+  const now = new Date();
+  const startOfToday = Timestamp.fromDate(
+    new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+  );
+  const startOfMonth = Timestamp.fromDate(
+    new Date(now.getFullYear(), now.getMonth(), 1),
   );
 
-  const ordersSnapshot = await getDocs(
-    collection(db, "orders")
-  );
+  const [products, users, all, today, month, ...byStatus] =
+    await Promise.all([
+      getCountFromServer(collection(db, "products")),
+      getCountFromServer(collection(db, "users")),
+      getAggregateFromServer(orders, {
+        orderCount: count(),
+        revenue: sum("totalAmount"),
+      }),
+      getAggregateFromServer(
+        query(orders, where("createdAt", ">=", startOfToday)),
+        { revenue: sum("totalAmount") },
+      ),
+      getAggregateFromServer(
+        query(orders, where("createdAt", ">=", startOfMonth)),
+        { revenue: sum("totalAmount") },
+      ),
+      ...STATUSES.map((status) =>
+        getCountFromServer(query(orders, where("orderStatus", "==", status))),
+      ),
+    ]);
 
-  const usersSnapshot = await getDocs(
-    collection(db, "users")
-  );
-
-  const today = new Date();
-
-  const startOfToday = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate()
-  );
-
-  const startOfMonth = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    1
-  );
-
-  let totalRevenue = 0;
-  let revenueToday = 0;
-  let revenueThisMonth = 0;
-
-  let pendingOrders = 0;
-  let confirmedOrders = 0;
-  let packedOrders = 0;
-  let shippedOrders = 0;
-  let deliveredOrders = 0;
-  let cancelledOrders = 0;
-
-  ordersSnapshot.docs.forEach((doc) => {
-    const order = doc.data();
-
-    const amount =
-      typeof order.totalAmount === "number"
-        ? order.totalAmount
-        : 0;
-
-    totalRevenue += amount;
-
-    const createdAt =
-      order.createdAt instanceof Timestamp
-        ? order.createdAt.toDate()
-        : null;
-
-    if (createdAt) {
-      if (createdAt >= startOfToday) {
-        revenueToday += amount;
-      }
-
-      if (createdAt >= startOfMonth) {
-        revenueThisMonth += amount;
-      }
-    }
-
-    switch (order.orderStatus) {
-      case "pending":
-        pendingOrders++;
-        break;
-
-      case "confirmed":
-        confirmedOrders++;
-        break;
-
-      case "packed":
-        packedOrders++;
-        break;
-
-      case "shipped":
-        shippedOrders++;
-        break;
-
-      case "delivered":
-        deliveredOrders++;
-        break;
-
-      case "cancelled":
-        cancelledOrders++;
-        break;
-    }
-  });
+  const totalOrders = all.data().orderCount;
+  const totalRevenue = all.data().revenue;
+  const [pending, confirmed, packed, shipped, delivered, cancelled] =
+    byStatus.map((snapshot) => snapshot.data().count);
 
   return {
-    totalProducts: productsSnapshot.size,
-    totalOrders: ordersSnapshot.size,
-    totalCustomers: usersSnapshot.size,
+    totalProducts: products.data().count,
+    totalOrders,
+    totalCustomers: users.data().count,
     totalRevenue,
 
-    revenueToday,
-    revenueThisMonth,
-
+    revenueToday: today.data().revenue,
+    revenueThisMonth: month.data().revenue,
     averageOrderValue:
-      ordersSnapshot.size > 0
-        ? Math.round(
-            totalRevenue / ordersSnapshot.size
-          )
-        : 0,
+      totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0,
 
-    pendingOrders,
-    confirmedOrders,
-    packedOrders,
-    shippedOrders,
-    deliveredOrders,
-    cancelledOrders,
+    pendingOrders: pending,
+    confirmedOrders: confirmed,
+    packedOrders: packed,
+    shippedOrders: shipped,
+    deliveredOrders: delivered,
+    cancelledOrders: cancelled,
   };
 }

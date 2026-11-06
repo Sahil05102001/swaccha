@@ -22,10 +22,7 @@ interface CategoryCirclesProps {
   backgroundColor?: string;
 }
 
-const iconMap: Record<
-  string,
-  React.ElementType
-> = {
+const iconMap: Record<string, React.ElementType> = {
   Category: CategoryIcon,
   CleaningServices: CleaningServicesIcon,
   LocalLaundryService: LocalLaundryServiceIcon,
@@ -45,14 +42,13 @@ function DefaultIcon({
   icon: string;
   accentColor: string;
 }) {
-  const IconComponent =
-    iconMap[icon] ?? CategoryIcon;
+  const IconComponent = iconMap[icon] ?? CategoryIcon;
 
   return (
     <IconComponent
       sx={{
-        width: "55%",
-        height: "55%",
+        width: "48%",
+        height: "48%",
         color: accentColor,
       }}
     />
@@ -61,48 +57,78 @@ function DefaultIcon({
 
 export default function CategoryCircles({
   categories,
-  accentColor = "#2E7D32",
-  backgroundColor = "#F3FAF1",
+  accentColor = "#00F0FF",
+  backgroundColor = "#F5F7FA",
 }: CategoryCirclesProps) {
   const activeCategories = categories
     .filter((category) => category.isActive)
-    .sort(
-      (a, b) =>
-        a.sortOrder - b.sortOrder,
-    );
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  console.log("[CategoryCircles] Diagnostics:", {
+    totalCategories: categories.length,
+    activeCategories: activeCategories.length,
+    categories: categories.map((category) => ({
+      id: category.id,
+      label: category.label,
+      isActive: category.isActive,
+      sortOrder: category.sortOrder,
+    })),
+  });
 
   return (
     <Box
+      component="section"
       sx={{
         width: "100%",
-        bgcolor: backgroundColor,
+        backgroundColor,
+        overflow: "hidden",
         py: {
-          xs: 2.5,
-          sm: 3,
-          md: 3.5,
+          xs: 2.8,
+          sm: 3.5,
+          md: 3,
+          lg: 3.5,
         },
       }}
     >
       <Box
         sx={{
-          display: "flex",
-          overflowX: "auto",
-          overflowY: "hidden",
-
-          gap: {
-            xs: 2.5,
-            sm: 3.5,
-            md: 4.5,
+          // Mobile: preserve the existing horizontal scrolling layout.
+          // Desktop: display all 10 categories in one row.
+          display: {
+            xs: "flex",
+            sm: "flex",
+            md: "grid",
           },
+
+          gridTemplateColumns: {
+            md: "repeat(10, minmax(0, 1fr))",
+          },
+
+          alignItems: "start",
+
+          overflowX: {
+            xs: "auto",
+            sm: "auto",
+            md: "hidden",
+          },
+
+          overflowY: "hidden",
 
           px: {
             xs: 2,
             sm: 3,
-            md: 5,
+            md: 2,
+            lg: 3,
+          },
+
+          gap: {
+            xs: 2.8,
+            sm: 4,
+            md: 1,
+            lg: 1.5,
           },
 
           scrollbarWidth: "none",
-
           msOverflowStyle: "none",
 
           "&::-webkit-scrollbar": {
@@ -110,130 +136,140 @@ export default function CategoryCircles({
           },
         }}
       >
-        {activeCategories.map(
-          (category) => {
-            return (
-              <Box
-                key={category.id}
-                component="a"
-                href={category.href}
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
+        {activeCategories.map((category) => (
+          <Box
+            key={category.id}
+            component="a"
+            href={category.href}
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
 
-                  flexShrink: 0,
+              // Keep fixed widths on mobile; let the desktop grid
+              // determine each category's width.
+              flexShrink: {
+                xs: 0,
+                sm: 0,
+                md: 1,
+              },
 
-                  textDecoration:
-                    "none",
+              width: {
+                xs: 82,
+                sm: 105,
+                md: "100%",
+              },
 
-                  width: {
-                    xs: 76,
-                    sm: 92,
-                    md: 112,
-                  },
+              minWidth: 0,
 
-                  cursor: "pointer",
-                }}
-              >
+              textDecoration: "none",
+              color: "inherit",
+              cursor: "pointer",
+
+              WebkitTapHighlightColor: "transparent",
+
+              "&:hover": {
+                textDecoration: "none",
+              },
+            }}
+          >
+            {/* Category Image */}
+            <Box
+              sx={{
+                width: {
+                  xs: 72,
+                  sm: 88,
+                  md: "min(7.2vw, 92px)",
+                  lg: "min(7.2vw, 104px)",
+                },
+
+                maxWidth: "100%",
+                aspectRatio: "1 / 1",
+                height: "auto",
+
+                flexShrink: 0,
+
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+
+                overflow: "hidden",
+                borderRadius: "50%",
+
+                border: `2px solid ${accentColor}`,
+                backgroundColor: "#FFFFFF",
+                padding: "2px",
+
+                boxShadow: "none",
+                transform: "none",
+                transition: "none",
+
+                "&:hover": {
+                  transform: "none",
+                  boxShadow: "none",
+                },
+              }}
+            >
+              {category.imageUrl ? (
                 <Box
-                  className="category-circle"
+                  component="img"
+                  src={category.imageUrl}
+                  alt={category.label}
+                  loading="lazy"
                   sx={{
-                    width: {
-                      xs: 64,
-                      sm: 80,
-                      md: 100,
-                    },
-
-                    height: {
-                      xs: 64,
-                      sm: 80,
-                      md: 100,
-                    },
-
+                    display: "block",
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
                     borderRadius: "50%",
-
-                    border: `2.5px solid ${accentColor}`,
-
-                    p: "3px",
-
-                    display: "flex",
-
-                    alignItems: "center",
-
-                    justifyContent:
-                      "center",
-
-                    overflow: "hidden",
-
-                    bgcolor: "#fff",
-
-                    transition:
-                      "transform 0.2s ease",
+                    transform: "none",
+                    transition: "none",
                   }}
-                >
-                  {category.imageUrl ? (
-                    <Box
-                      component="img"
-                      src={
-                        category.imageUrl
-                      }
-                      alt={
-                        category.label
-                      }
-                      loading="lazy"
-                      sx={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit:
-                          "cover",
-                        borderRadius:
-                          "50%",
-                        display:
-                          "block",
-                      }}
-                    />
-                  ) : (
-                    <DefaultIcon
-                      icon={
-                        category.icon
-                      }
-                      accentColor={
-                        accentColor
-                      }
-                    />
-                  )}
-                </Box>
+                />
+              ) : (
+                <DefaultIcon
+                  icon={category.icon}
+                  accentColor={accentColor}
+                />
+              )}
+            </Box>
 
-                <Typography
-                  sx={{
-                    mt: {
-                      xs: 1,
-                      sm: 1.25,
-                      md: 1.5,
-                    },
+            {/* Category Name */}
+            <Typography
+              component="span"
+              sx={{
+                width: "100%",
+                mt: {
+                  xs: 1,
+                  sm: 1.25,
+                  md: 1.2,
+                },
 
-                    fontWeight: 700,
+                color: "#111111",
 
-                    fontSize: {
-                      xs: "0.72rem",
-                      sm: "0.8rem",
-                      md: "0.9rem",
-                    },
+                fontSize: {
+                  xs: "0.76rem",
+                  sm: "0.92rem",
+                  md: "0.78rem",
+                  lg: "0.88rem",
+                },
 
-                    lineHeight: 1.25,
+                fontWeight: 600,
+                lineHeight: 1.15,
+                textAlign: "center",
+                letterSpacing: "-0.02em",
+                overflowWrap: "anywhere",
 
-                    textAlign: "center",
-
-                    color: "#1A1A1A",
-                  }}
-                >
-                  {category.label}
-                </Typography>
-              </Box>
-            );
-          },
-        )}
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: 2,
+                overflow: "hidden",
+              }}
+            >
+              {category.label}
+            </Typography>
+          </Box>
+        ))}
       </Box>
     </Box>
   );

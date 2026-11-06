@@ -13,7 +13,9 @@ import {
 
 import type { VideoCardFormData } from "../types/video";
 
-export const VIDEOS_QUERY_KEY = ["homepage-videos"];
+export const VIDEOS_QUERY_KEY = [
+  "homepage-videos",
+];
 
 export function useVideos() {
   return useQuery({
@@ -61,7 +63,12 @@ export function useDeleteVideo() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: deleteVideo,
+    mutationFn: ({
+      id,
+    }: {
+      id: string;
+      publicId?: string;
+    }) => deleteVideo(id),
 
     onSuccess: () => {
       queryClient.invalidateQueries({

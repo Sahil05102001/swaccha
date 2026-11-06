@@ -5,24 +5,17 @@ import {
     Stack,
     Typography,
 } from "@mui/material";
-import { useLocation, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import PageContainer from "@/components/common/PageContainer";
 import PageHeader from "@/components/common/PageHeader";
 import SectionCard from "@/components/common/SectionCard";
 
-import AdminOrderControls from "../components/AdminOrderControls";
 import OrderStatusChip from "../components/OrderStatusChip";
-import ShippingManagementCard from "../components/ShippingManagementCard";
 import { useOrder } from "../hooks/useOrders";
 
 export default function OrderDetailsPage() {
     const { id = "" } = useParams();
-    const location = useLocation();
-
-    const isAdminView =
-        location.pathname.startsWith("/admin");
-
     const {
         data: order,
         isLoading,
@@ -57,7 +50,6 @@ export default function OrderDetailsPage() {
         <PageContainer>
             <PageHeader
                 title="Order Details"
-                subtitle="Track the status and view your purchased items."
             />
 
             <SectionCard title="Order Information">
@@ -83,17 +75,90 @@ export default function OrderDetailsPage() {
                         {order.customerEmail}
                     </Typography>
 
+
                     <Typography>
                         <strong>Payment Method:</strong>{" "}
                         {order.paymentMethod.toUpperCase()}
                     </Typography>
 
+                    {order.paymentMethodType && (
+                        <Typography>
+                            <strong>Payment Method Type:</strong>{" "}
+                            {order.paymentMethodType.toUpperCase()}
+                        </Typography>
+                    )}
+
+                    {order.paymentProvider && (
+                        <Typography>
+                            <strong>Payment Provider:</strong>{" "}
+                            {order.paymentProvider.toUpperCase()}
+                        </Typography>
+                    )}
+
                     <Typography>
                         <strong>Payment Status:</strong>{" "}
-                        {order.paymentStatus}
+                        {order.paymentStatus.toUpperCase()}
                     </Typography>
+
                 </Stack>
             </SectionCard>
+
+            {(order.trackingNumber ||
+                order.deliveryPersonName ||
+                order.estimatedDelivery ||
+                order.deliveredAt) && (
+                    <SectionCard title="Delivery Information">
+                        <Stack spacing={2}>
+                            {order.estimatedDelivery &&
+                                order.orderStatus !== "delivered" && (
+                                    <Typography>
+                                        <strong>Expected Delivery:</strong>{" "}
+                                        {order.estimatedDelivery
+                                            .toDate()
+                                            .toLocaleDateString("en-IN", {
+                                                day: "numeric",
+                                                month: "short",
+                                                year: "numeric",
+                                            })}
+                                    </Typography>
+                                )}
+
+                            {order.deliveredAt && (
+                                <Typography>
+                                    <strong>Delivered On:</strong>{" "}
+                                    {order.deliveredAt
+                                        .toDate()
+                                        .toLocaleDateString("en-IN", {
+                                            day: "numeric",
+                                            month: "short",
+                                            year: "numeric",
+                                        })}
+                                </Typography>
+                            )}
+
+                            {order.deliveryPersonName && (
+                                <Typography>
+                                    <strong>Delivery Partner:</strong>{" "}
+                                    {order.deliveryPersonName}
+                                </Typography>
+                            )}
+
+                            {order.deliveryPersonPhone && (
+                                <Typography>
+                                    <strong>Delivery Partner Phone:</strong>{" "}
+                                    {order.deliveryPersonPhone}
+                                </Typography>
+                            )}
+
+                            {order.trackingNumber && (
+                                <Typography>
+                                    <strong>Dispatch Reference:</strong>{" "}
+                                    {order.trackingNumber}
+                                </Typography>
+                            )}
+                        </Stack>
+                    </SectionCard>
+                )}
 
             <SectionCard title="Delivery Address">
                 <Stack spacing={0.5}>
@@ -136,9 +201,8 @@ export default function OrderDetailsPage() {
 
             <SectionCard
                 title="Ordered Items"
-                subtitle={`${order.items.length} item${
-                    order.items.length > 1 ? "s" : ""
-                }`}
+                subtitle={`${order.items.length} item${order.items.length > 1 ? "s" : ""
+                    }`}
             >
                 <Stack spacing={2}>
                     {order.items.map((item, index) => (
@@ -161,8 +225,8 @@ export default function OrderDetailsPage() {
 
                             {index !==
                                 order.items.length - 1 && (
-                                <Divider />
-                            )}
+                                    <Divider />
+                                )}
                         </Stack>
                     ))}
                 </Stack>
@@ -203,6 +267,15 @@ export default function OrderDetailsPage() {
                         </Typography>
                     </Stack>
 
+                    {!!order.discount && (
+                        <Stack direction="row" sx={{ justifyContent: "space-between" }}>
+                            <Typography>
+                                Discount{order.couponCode ? ` (${order.couponCode})` : ""}
+                            </Typography>
+                            <Typography>-₹{order.discount}</Typography>
+                        </Stack>
+                    )}
+
                     <Divider />
 
                     <Stack
@@ -233,13 +306,6 @@ export default function OrderDetailsPage() {
                     </Stack>
                 </Stack>
             </SectionCard>
-
-            {isAdminView && (
-                <>
-                    <AdminOrderControls order={order} />
-                    <ShippingManagementCard order={order} />
-                </>
-            )}
         </PageContainer>
     );
 }

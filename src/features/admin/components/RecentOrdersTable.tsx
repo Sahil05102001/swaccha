@@ -1,102 +1,81 @@
 import {
+  Alert,
   Button,
-  Card,
-  CardContent,
-  Chip,
+  CircularProgress,
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableRow,
   Typography,
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
-const orders = [
-  {
-    id: "ORD-1001",
-    customer: "Sahil Sheikh",
-    total: "₹550",
-    status: "Pending",
-  },
-  {
-    id: "ORD-1002",
-    customer: "Rahul Sharma",
-    total: "₹890",
-    status: "Shipped",
-  },
-  {
-    id: "ORD-1003",
-    customer: "Amit Patel",
-    total: "₹1,250",
-    status: "Delivered",
-  },
-];
+import SectionCard from "@/components/common/SectionCard";
+import OrderStatusChip from "@/features/orders/components/OrderStatusChip";
 
-function getStatusColor(status: string) {
-  switch (status) {
-    case "Pending":
-      return "warning";
-    case "Shipped":
-      return "info";
-    case "Delivered":
-      return "success";
-    default:
-      return "default";
-  }
-}
+import { useRecentOrders } from "../hooks/useRecentOrders";
 
 export default function RecentOrdersTable() {
+  const navigate = useNavigate();
+  const { data: orders = [], isLoading, isError } = useRecentOrders();
+
   return (
-    <Card elevation={2}>
-      <CardContent>
-        <Typography
-          variant="h6"
-          sx={{
-            fontWeight: 700,
-            mb: 2,
-          }}
-        >
-          Recent Orders
-        </Typography>
-
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Order ID</TableCell>
-              <TableCell>Customer</TableCell>
-              <TableCell>Total</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="right">Action</TableCell>
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {orders.map((order) => (
-              <TableRow key={order.id}>
-                <TableCell>{order.id}</TableCell>
-
-                <TableCell>{order.customer}</TableCell>
-
-                <TableCell>{order.total}</TableCell>
-
-                <TableCell>
-                  <Chip
-                    label={order.status}
-                    color={getStatusColor(order.status)}
-                    size="small"
-                  />
-                </TableCell>
-
-                <TableCell align="right">
-                  <Button size="small">
-                    View
-                  </Button>
-                </TableCell>
+    <SectionCard
+      title="Recent Orders"
+      action={
+        <Button size="small" onClick={() => navigate("/admin/orders")}>
+          View all
+        </Button>
+      }
+    >
+      {isLoading ? (
+        <CircularProgress size={24} aria-label="Loading recent orders" />
+      ) : isError ? (
+        <Alert severity="error">Failed to load recent orders.</Alert>
+      ) : orders.length === 0 ? (
+        <Typography color="text.secondary">No orders yet.</Typography>
+      ) : (
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Order</TableCell>
+                <TableCell>Customer</TableCell>
+                <TableCell align="right">Total</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell align="right">Action</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+            </TableHead>
+
+            <TableBody>
+              {orders.map((order) => (
+                <TableRow key={order.id} hover>
+                  <TableCell sx={{ whiteSpace: "nowrap" }}>
+                    {order.orderNumber}
+                  </TableCell>
+                  <TableCell>{order.customerName}</TableCell>
+                  <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                    ₹{order.totalAmount.toLocaleString("en-IN")}
+                  </TableCell>
+                  <TableCell>
+                    <OrderStatusChip status={order.orderStatus} />
+                  </TableCell>
+                  <TableCell align="right">
+                    <Button
+                      size="small"
+                      onClick={() => navigate(`/admin/orders/${order.id}`)}
+                    >
+                      View
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </SectionCard>
   );
 }

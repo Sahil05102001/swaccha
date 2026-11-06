@@ -1,8 +1,12 @@
 import {
   Alert,
   CircularProgress,
+  FormControlLabel,
   Snackbar,
   Stack,
+  Switch,
+  Typography,
+  Box,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 
@@ -23,14 +27,10 @@ export default function AdminSettingsPage() {
     isError,
   } = useStoreSettings();
 
-  const saveMutation =
-    useSaveStoreSettings();
+  const saveMutation = useSaveStoreSettings();
 
-  const [successOpen, setSuccessOpen] =
-    useState(false);
-
-  const [errorOpen, setErrorOpen] =
-    useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [errorOpen, setErrorOpen] = useState(false);
 
   useEffect(() => {
     if (saveMutation.isSuccess) {
@@ -68,6 +68,15 @@ export default function AdminSettingsPage() {
     );
   }
 
+  const handleWhoWeSupplyToggle = (
+    active: boolean,
+  ) => {
+    saveMutation.mutate({
+      ...settings,
+      whoWeSupplyActive: active,
+    });
+  };
+
   return (
     <>
       <PageContainer>
@@ -88,21 +97,75 @@ export default function AdminSettingsPage() {
             }
           />
         </SectionCard>
+
+        <Box sx={{ mt: 3 }}>
+          <SectionCard
+            title="Homepage Sections"
+            subtitle="Control which sections appear on your storefront."
+          >
+            <Stack spacing={1}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={
+                      settings.whoWeSupplyActive ?? true
+                    }
+                    onChange={(event) =>
+                      handleWhoWeSupplyToggle(
+                        event.target.checked,
+                      )
+                    }
+                    disabled={saveMutation.isPending}
+                    color="primary"
+                  />
+                }
+                label={
+                  <Typography
+                    sx={{ fontWeight: 600 }}
+                  >
+                    Who We Supply
+                  </Typography>
+                }
+              />
+
+              <Typography
+                variant="body2"
+                color="text.secondary"
+              >
+                {settings.whoWeSupplyActive
+                  ? "This section is visible on the homepage."
+                  : "This section is hidden from the homepage."}
+              </Typography>
+
+              {saveMutation.isPending && (
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{ alignItems: "center" }}
+                >
+                  <CircularProgress size={16} />
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                  >
+                    Saving changes...
+                  </Typography>
+                </Stack>
+              )}
+            </Stack>
+          </SectionCard>
+        </Box>
       </PageContainer>
 
       <Snackbar
         open={successOpen}
         autoHideDuration={3000}
-        onClose={() =>
-          setSuccessOpen(false)
-        }
+        onClose={() => setSuccessOpen(false)}
       >
         <Alert
           severity="success"
           variant="filled"
-          onClose={() =>
-            setSuccessOpen(false)
-          }
+          onClose={() => setSuccessOpen(false)}
         >
           Store settings saved successfully.
         </Alert>
@@ -111,16 +174,12 @@ export default function AdminSettingsPage() {
       <Snackbar
         open={errorOpen}
         autoHideDuration={4000}
-        onClose={() =>
-          setErrorOpen(false)
-        }
+        onClose={() => setErrorOpen(false)}
       >
         <Alert
           severity="error"
           variant="filled"
-          onClose={() =>
-            setErrorOpen(false)
-          }
+          onClose={() => setErrorOpen(false)}
         >
           Failed to save store settings.
         </Alert>

@@ -17,6 +17,10 @@ import type { ProductFormData } from "../types/product";
 import { useAddProduct } from "../hooks/useAddProduct";
 import { productSchema } from "../validations/productSchema";
 
+import { useQueryClient } from "@tanstack/react-query";
+
+import { recordInitialStockRequest } from "@/features/stock/services/stockService";
+
 interface AddProductDialogProps {
   open: boolean;
   onClose: () => void;
@@ -54,6 +58,8 @@ export default function AddProductDialog({
 
   const addProductMutation = useAddProduct();
 
+  const queryClient = useQueryClient();
+
   const handleChange = (
     field: keyof ProductFormData,
     value:
@@ -88,8 +94,7 @@ export default function AddProductDialog({
       const fieldErrors: ProductErrors = {};
 
       result.error.issues.forEach((issue) => {
-        const field =
-          issue.path[0] as keyof ProductFormData;
+        const field = issue.path[0] as keyof ProductFormData;
 
         if (!fieldErrors[field]) {
           fieldErrors[field] = issue.message;
@@ -103,7 +108,19 @@ export default function AddProductDialog({
     try {
       setErrors({});
 
-      await addProductMutation.mutateAsync(formData);
+      const created: unknown = await addProductMutation.mutateAsync(formData);
+
+      // Record the opening stock. The product already exists, so a failure
+      // here must not look like a failed save.
+      if (typeof created === "string" && formData.stock > 0) {
+        try {
+          await recordInitialStockRequest(created);
+          queryClient.invalidateQueries({ queryKey: ["stock-movements"] });
+          queryClient.invalidateQueries({ queryKey: ["stock-summary"] });
+        } catch (error) {
+          console.error("Opening stock was not recorded:", error);
+        }
+      }
 
       setSuccessOpen(true);
 

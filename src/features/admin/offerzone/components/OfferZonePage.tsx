@@ -141,7 +141,7 @@ export default function OfferZonePage() {
     1,
     Math.ceil(
       offerZoneProducts.length /
-        PRODUCTS_PER_PAGE
+      PRODUCTS_PER_PAGE
     )
   );
 
@@ -517,9 +517,8 @@ export default function OfferZonePage() {
                 {[0, 1, 2].map((index) => (
                   <TextField
                     key={index}
-                    label={`Rotating text ${
-                      index + 1
-                    }`}
+                    label={`Rotating text ${index + 1
+                      }`}
                     value={
                       globalSettings
                         .rotatingSticker
@@ -660,9 +659,18 @@ export default function OfferZonePage() {
                   fullWidth
                   disabled={
                     offerZoneProducts.length >=
-                      MAX_OFFER_ZONE_PRODUCTS ||
+                    MAX_OFFER_ZONE_PRODUCTS ||
                     addOfferZoneProduct.isPending
                   }
+                  MenuProps={{
+                    slotProps: {
+                      paper: {
+                        sx: {
+                          maxHeight: 320,
+                        },
+                      },
+                    },
+                  }}
                 >
                   <MenuItem value="">
                     <em>Select a product</em>
@@ -686,7 +694,7 @@ export default function OfferZonePage() {
                   disabled={
                     !selectedProductId ||
                     offerZoneProducts.length >=
-                      MAX_OFFER_ZONE_PRODUCTS ||
+                    MAX_OFFER_ZONE_PRODUCTS ||
                     addOfferZoneProduct.isPending
                   }
                   sx={{
@@ -732,150 +740,56 @@ export default function OfferZonePage() {
               </Box>
 
               {paginatedOfferZoneProducts.length ===
-              0 ? (
+                0 ? (
                 <Alert severity="info">
                   No products have been added to
                   Offer Zone yet.
                 </Alert>
               ) : (
-                <Stack spacing={2}>
-                  {paginatedOfferZoneProducts.map(
-                    (item) => {
-                      const product = getProduct(
-                        item.productId
-                      );
-
-                      if (!product) {
-                        return (
-                          <Card
-                            key={item.id}
-                            variant="outlined"
-                          >
-                            <CardContent>
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  justifyContent:
-                                    "space-between",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <Typography>
-                                  Product not found
-                                </Typography>
-
-                                <IconButton
-                                  color="error"
-                                  onClick={() =>
-                                    handleRemoveProduct(
-                                      item
-                                    )
-                                  }
-                                  disabled={
-                                    deleteOfferZoneProduct
-                                      .isPending
-                                  }
-                                >
-                                  ×
-                                </IconButton>
-                              </Box>
-                            </CardContent>
-                          </Card>
+                <Box
+                  sx={{
+                    maxHeight: { xs: 520, md: 620 },
+                    overflowY: "auto",
+                    pr: { xs: 0.5, sm: 1 },
+                    mr: -0.5,
+                    scrollbarWidth: "thin",
+                    "&::-webkit-scrollbar": {
+                      width: 8,
+                    },
+                    "&::-webkit-scrollbar-thumb": {
+                      borderRadius: 4,
+                      backgroundColor: "rgba(47, 107, 59, 0.28)",
+                    },
+                    "&::-webkit-scrollbar-track": {
+                      backgroundColor: "transparent",
+                    },
+                  }}
+                >
+                  <Stack spacing={2}>
+                    {paginatedOfferZoneProducts.map(
+                      (item) => {
+                        const product = getProduct(
+                          item.productId
                         );
-                      }
 
-                      const isEditing =
-                        overrideProductId ===
-                        item.productId;
-
-                      return (
-                        <Card
-                          key={item.id}
-                          variant="outlined"
-                        >
-                          <CardContent>
-                            <Stack spacing={2}>
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  flexDirection: {
-                                    xs: "column",
-                                    md: "row",
-                                  },
-                                  gap: 2,
-                                  alignItems: {
-                                    xs: "stretch",
-                                    md: "center",
-                                  },
-                                }}
-                              >
-                                <Box
-                                  component="img"
-                                  src={
-                                    product.images[0]
-                                  }
-                                  alt={product.name}
-                                  sx={{
-                                    width: 80,
-                                    height: 80,
-                                    objectFit:
-                                      "contain",
-                                    borderRadius: 2,
-                                    bgcolor:
-                                      "grey.50",
-                                  }}
-                                />
-
-                                <Box
-                                  sx={{
-                                    flex: 1,
-                                  }}
-                                >
-                                  <Typography
-                                    sx={{
-                                      fontWeight: 700,
-                                    }}
-                                  >
-                                    {product.name}
-                                  </Typography>
-
-                                  <Typography
-                                    variant="body2"
-                                    color="text.secondary"
-                                  >
-                                    ₹{product.price}
-                                  </Typography>
-
-                                  <Typography
-                                    variant="body2"
-                                    color="error"
-                                    sx={{
-                                      mt: 0.5,
-                                      fontWeight: 700,
-                                    }}
-                                  >
-                                    OFFER ZONE
-                                  </Typography>
-                                </Box>
-
+                        if (!product) {
+                          return (
+                            <Card
+                              key={item.id}
+                              variant="outlined"
+                            >
+                              <CardContent>
                                 <Box
                                   sx={{
                                     display: "flex",
-                                    gap: 1,
-                                    alignItems:
-                                      "center",
+                                    justifyContent:
+                                      "space-between",
+                                    alignItems: "center",
                                   }}
                                 >
-                                  <Button
-                                    variant="outlined"
-                                    onClick={() =>
-                                      handleEditOverride(
-                                        item
-                                      )
-                                    }
-                                  >
-                                    Edit Sticker
-                                  </Button>
+                                  <Typography>
+                                    Product not found
+                                  </Typography>
 
                                   <IconButton
                                     color="error"
@@ -892,166 +806,280 @@ export default function OfferZonePage() {
                                     ×
                                   </IconButton>
                                 </Box>
-                              </Box>
+                              </CardContent>
+                            </Card>
+                          );
+                        }
 
-                              <Box
-                                sx={{
-                                  p: 2,
-                                  borderRadius: 2,
-                                  bgcolor:
-                                    "grey.50",
-                                }}
-                              >
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                  sx={{ mb: 1 }}
-                                >
-                                  Current promotional
-                                  sticker
-                                </Typography>
+                        const isEditing =
+                          overrideProductId ===
+                          item.productId;
 
-                                <Typography
+                        return (
+                          <Card
+                            key={item.id}
+                            variant="outlined"
+                          >
+                            <CardContent>
+                              <Stack spacing={2}>
+                                <Box
                                   sx={{
-                                    fontWeight: 700,
+                                    display: "flex",
+                                    flexDirection: {
+                                      xs: "column",
+                                      md: "row",
+                                    },
+                                    gap: 2,
+                                    alignItems: {
+                                      xs: "stretch",
+                                      md: "center",
+                                    },
                                   }}
                                 >
-                                  {item.promotionalSticker
-                                    .isEnabled
-                                    ? item
-                                        .promotionalSticker
-                                        .text ||
-                                      "Enabled with empty text"
-                                    : "Disabled"}
-                                </Typography>
-                              </Box>
-
-                              {isEditing && (
-                                <Stack spacing={2}>
-                                  <Divider />
-
-                                  <Typography
-                                    variant="subtitle1"
+                                  <Box
+                                    component="img"
+                                    src={
+                                      product.images[0]
+                                    }
+                                    alt={product.name}
                                     sx={{
-                                      fontWeight: 700,
-                                    }}
-                                  >
-                                    Product Promotional
-                                    Sticker Override
-                                  </Typography>
-
-                                  <FormControlLabel
-                                    control={
-                                      <Checkbox
-                                        checked={
-                                          overrideEnabled
-                                        }
-                                        onChange={(
-                                          event
-                                        ) =>
-                                          setOverrideEnabled(
-                                            event.target
-                                              .checked
-                                          )
-                                        }
-                                      />
-                                    }
-                                    label="Enable promotional sticker for this product"
-                                  />
-
-                                  <TextField
-                                    label="Sticker text"
-                                    value={
-                                      overrideText
-                                    }
-                                    onChange={(
-                                      event
-                                    ) =>
-                                      setOverrideText(
-                                        event.target
-                                          .value
-                                      )
-                                    }
-                                    fullWidth
-                                    disabled={
-                                      !overrideEnabled
-                                    }
-                                    slotProps={{
-                                      inputLabel: {
-                                        shrink: true,
-                                      },
+                                      width: 80,
+                                      height: 80,
+                                      objectFit:
+                                        "contain",
+                                      borderRadius: 2,
+                                      bgcolor:
+                                        "grey.50",
                                     }}
                                   />
 
                                   <Box
                                     sx={{
+                                      flex: 1,
+                                    }}
+                                  >
+                                    <Typography
+                                      sx={{
+                                        fontWeight: 700,
+                                      }}
+                                    >
+                                      {product.name}
+                                    </Typography>
+
+                                    <Typography
+                                      variant="body2"
+                                      color="text.secondary"
+                                    >
+                                      ₹{product.price}
+                                    </Typography>
+
+                                    <Typography
+                                      variant="body2"
+                                      color="error"
+                                      sx={{
+                                        mt: 0.5,
+                                        fontWeight: 700,
+                                      }}
+                                    >
+                                      OFFER ZONE
+                                    </Typography>
+                                  </Box>
+
+                                  <Box
+                                    sx={{
                                       display: "flex",
                                       gap: 1,
+                                      alignItems:
+                                        "center",
                                     }}
                                   >
                                     <Button
-                                      variant="contained"
+                                      variant="outlined"
                                       onClick={() =>
-                                        handleUpdateOverride(
+                                        handleEditOverride(
+                                          item
+                                        )
+                                      }
+                                    >
+                                      Edit Sticker
+                                    </Button>
+
+                                    <IconButton
+                                      color="error"
+                                      onClick={() =>
+                                        handleRemoveProduct(
                                           item
                                         )
                                       }
                                       disabled={
-                                        updateOfferZoneProduct
-                                          .isPending ||
-                                        (overrideEnabled &&
-                                          !overrideText.trim())
+                                        deleteOfferZoneProduct
+                                          .isPending
                                       }
                                     >
-                                      {updateOfferZoneProduct
-                                        .isPending
-                                        ? "Saving..."
-                                        : "Save Override"}
-                                    </Button>
+                                      ×
+                                    </IconButton>
+                                  </Box>
+                                </Box>
 
-                                    <Button
-                                      variant="outlined"
-                                      onClick={() =>
-                                        setOverrideProductId(
-                                          ""
+                                <Box
+                                  sx={{
+                                    p: 2,
+                                    borderRadius: 2,
+                                    bgcolor:
+                                      "grey.50",
+                                  }}
+                                >
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ mb: 1 }}
+                                  >
+                                    Current promotional
+                                    sticker
+                                  </Typography>
+
+                                  <Typography
+                                    sx={{
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    {item.promotionalSticker
+                                      .isEnabled
+                                      ? item
+                                        .promotionalSticker
+                                        .text ||
+                                      "Enabled with empty text"
+                                      : "Disabled"}
+                                  </Typography>
+                                </Box>
+
+                                {isEditing && (
+                                  <Stack spacing={2}>
+                                    <Divider />
+
+                                    <Typography
+                                      variant="subtitle1"
+                                      sx={{
+                                        fontWeight: 700,
+                                      }}
+                                    >
+                                      Product Promotional
+                                      Sticker Override
+                                    </Typography>
+
+                                    <FormControlLabel
+                                      control={
+                                        <Checkbox
+                                          checked={
+                                            overrideEnabled
+                                          }
+                                          onChange={(
+                                            event
+                                          ) =>
+                                            setOverrideEnabled(
+                                              event.target
+                                                .checked
+                                            )
+                                          }
+                                        />
+                                      }
+                                      label="Enable promotional sticker for this product"
+                                    />
+
+                                    <TextField
+                                      label="Sticker text"
+                                      value={
+                                        overrideText
+                                      }
+                                      onChange={(
+                                        event
+                                      ) =>
+                                        setOverrideText(
+                                          event.target
+                                            .value
                                         )
                                       }
+                                      fullWidth
+                                      disabled={
+                                        !overrideEnabled
+                                      }
+                                      slotProps={{
+                                        inputLabel: {
+                                          shrink: true,
+                                        },
+                                      }}
+                                    />
+
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        gap: 1,
+                                      }}
                                     >
-                                      Cancel
-                                    </Button>
-                                  </Box>
-                                </Stack>
-                              )}
-                            </Stack>
-                          </CardContent>
-                        </Card>
-                      );
-                    }
-                  )}
-                </Stack>
+                                      <Button
+                                        variant="contained"
+                                        onClick={() =>
+                                          handleUpdateOverride(
+                                            item
+                                          )
+                                        }
+                                        disabled={
+                                          updateOfferZoneProduct
+                                            .isPending ||
+                                          (overrideEnabled &&
+                                            !overrideText.trim())
+                                        }
+                                      >
+                                        {updateOfferZoneProduct
+                                          .isPending
+                                          ? "Saving..."
+                                          : "Save Override"}
+                                      </Button>
+
+                                      <Button
+                                        variant="outlined"
+                                        onClick={() =>
+                                          setOverrideProductId(
+                                            ""
+                                          )
+                                        }
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </Box>
+                                  </Stack>
+                                )}
+                              </Stack>
+                            </CardContent>
+                          </Card>
+                        );
+                      }
+                    )}
+                  </Stack>
+                </Box>
               )}
 
               {offerZoneProducts.length >
                 PRODUCTS_PER_PAGE && (
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    pt: 1,
-                  }}
-                >
-                  <Pagination
-                    count={totalPages}
-                    page={page}
-                    onChange={(_, value) =>
-                      setPage(value)
-                    }
-                    color="primary"
-                    showFirstButton
-                    showLastButton
-                  />
-                </Box>
-              )}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      pt: 1,
+                    }}
+                  >
+                    <Pagination
+                      count={totalPages}
+                      page={page}
+                      onChange={(_, value) =>
+                        setPage(value)
+                      }
+                      color="primary"
+                      showFirstButton
+                      showLastButton
+                    />
+                  </Box>
+                )}
             </Stack>
           </CardContent>
         </Card>

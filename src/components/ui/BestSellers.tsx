@@ -3,7 +3,6 @@ import {
   Button,
   CircularProgress,
   Container,
-  Grid,
   Typography,
 } from "@mui/material";
 
@@ -48,23 +47,17 @@ export default function BestSellers() {
 
   const bestSellerProducts = bestSellers
     .filter((item) => item.isActive)
-    .sort(
-      (a, b) =>
-        a.sortOrder - b.sortOrder
-    )
+    .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((item) =>
       products.find(
-        (product) =>
-          product.id === item.productId
-      )
+        (product) => product.id === item.productId,
+      ),
     )
     .filter(
       (
-        product
+        product,
       ): product is NonNullable<typeof product> =>
-        Boolean(
-          product && product.isActive
-        )
+        Boolean(product && product.isActive),
     )
     .slice(0, 5);
 
@@ -72,112 +65,173 @@ export default function BestSellers() {
     offerZoneProducts.map((item) => [
       item.productId,
       item,
-    ])
+    ]),
   );
 
   return (
     <Box
+      component="section"
       sx={{
+        width: "100%",
+        overflow: "hidden",
+        backgroundColor: "#F5F7FA",
         py: {
-          xs: 6,
-          md: 8,
+          xs: 4.5,
+          sm: 5.5,
+          md: 6,
+          lg: 6.5,
         },
-        bgcolor: "#fff",
       }}
     >
-      <Container maxWidth="xl">
-        <Box
+      <Container
+        maxWidth="xl"
+        sx={{
+          width: "100%",
+
+          // Was "100%", which let the cards keep growing on big screens.
+          // With 5 columns this keeps each card at roughly 250px.
+          maxWidth: 1400,
+
+          px: {
+            xs: 2,
+            sm: 3,
+            md: 4,
+            lg: 5,
+          },
+        }}
+      >
+        {/* Section heading */}
+        <Typography
+          component="h2"
           sx={{
+            color: "#111111",
             textAlign: "center",
+
+            fontSize: {
+              xs: "2rem",
+              sm: "2.3rem",
+              md: "2.65rem",
+              lg: "2.9rem",
+            },
+
+            fontWeight: 700,
+            lineHeight: 1,
+            letterSpacing: "-0.045em",
+
             mb: {
-              xs: 4,
-              md: 5,
+              xs: 3,
+              sm: 3.5,
+              md: 4,
             },
           }}
         >
-          <Typography
-            variant="h3"
-            sx={{
-              fontWeight: 700,
-              fontSize: {
-                xs: "2rem",
-                md: "2.5rem",
-              },
-            }}
-          >
-            Best Sellers
-          </Typography>
+          Our Best Sellers
+        </Typography>
 
-          <Typography
-            sx={{
-              mt: 1,
-              color: "text.secondary",
-              fontSize: {
-                xs: "0.95rem",
-                md: "1rem",
-              },
-            }}
-          >
-            Our most popular cleaning products
-          </Typography>
-        </Box>
-
+        {/* Loading */}
         {isLoading && (
           <Box
             sx={{
+              minHeight: {
+                xs: 320,
+                sm: 390,
+                md: 430,
+              },
+
               display: "flex",
+              alignItems: "center",
               justifyContent: "center",
-              py: 5,
             }}
           >
-            <CircularProgress />
+            <CircularProgress
+              size={32}
+              thickness={4}
+            />
           </Box>
         )}
 
+        {/* Empty state */}
         {!isLoading &&
           bestSellerProducts.length === 0 && (
             <Box
               sx={{
+                py: 6,
                 textAlign: "center",
-                py: 5,
               }}
             >
-              <Typography color="text.secondary">
+              <Typography
+                sx={{
+                  color: "#667066",
+                  fontSize: "0.9rem",
+                }}
+              >
                 Best sellers will appear here soon.
               </Typography>
             </Box>
           )}
 
+        {/* Products */}
         {!isLoading &&
           bestSellerProducts.length > 0 && (
-            <Grid
-              container
-              spacing={{
-                xs: 2,
-                sm: 3,
-              }}
-            >
-              {bestSellerProducts.map(
-                (product) => {
+            <>
+              {/* Mobile carousel */}
+              <Box
+                sx={{
+                  display: {
+                    xs: "flex",
+                    md: "none",
+                  },
+
+                  width: "100%",
+
+                  overflowX: "auto",
+                  overflowY: "hidden",
+
+                  gap: {
+                    xs: 1.5,
+                    sm: 2,
+                  },
+
+                  pb: 1,
+
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none",
+                  WebkitOverflowScrolling: "touch",
+
+                  "&::-webkit-scrollbar": {
+                    display: "none",
+                  },
+                }}
+              >
+                {bestSellerProducts.map((product) => {
                   const offerZoneProduct =
                     offerZoneProductMap.get(
-                      product.id
+                      product.id,
                     );
 
                   const promotionalSticker =
                     offerZoneProduct
                       ? offerZoneProduct.promotionalSticker
                       : stickerSettings
-                          ?.promotionalSticker;
+                        ?.promotionalSticker;
 
                   return (
-                    <Grid
+                    <Box
                       key={product.id}
-                      size={{
-                        xs: 6,
-                        sm: 6,
-                        md: 4,
-                        lg: 2.4,
+                      sx={{
+                        // Fixed slide widths (were 78% / 300px).
+                        // About 1.9 cards show on a phone, so the next one peeks in.
+                        flex: {
+                          xs: "0 0 175px",
+                          sm: "0 0 220px",
+                        },
+
+                        width: {
+                          xs: 175,
+                          sm: 220,
+                        },
+
+                        minWidth: 0,
                       }}
                     >
                       <ProductCard
@@ -190,47 +244,140 @@ export default function BestSellers() {
                         rotatingSticker={
                           stickerSettings?.rotatingSticker
                         }
-                        isOfferZoneProduct={
-                          Boolean(
-                            offerZoneProduct
-                          )
-                        }
+                        isOfferZoneProduct={Boolean(
+                          offerZoneProduct,
+                        )}
                       />
-                    </Grid>
+                    </Box>
                   );
-                }
-              )}
-            </Grid>
-          )}
+                })}
+              </Box>
 
-        {!isLoading &&
-          bestSellerProducts.length > 0 && (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                mt: {
-                  xs: 4,
-                  md: 5,
-                },
-              }}
-            >
-              <Button
-                component={Link}
-                to="/products"
-                variant="contained"
-                size="large"
+              {/* Desktop - exactly five cards */}
+              <Box
                 sx={{
-                  px: 5,
-                  py: 1.3,
-                  borderRadius: 1,
-                  fontWeight: 700,
-                  textTransform: "none",
+                  display: {
+                    xs: "none",
+                    md: "grid",
+                  },
+
+                  width: "100%",
+
+                  gridTemplateColumns:
+                    "repeat(5, minmax(0, 1fr))",
+
+                  gap: {
+                    md: 2,
+                    lg: 2.2,
+                    xl: 2.5,
+                  },
+
+                  alignItems: "stretch",
                 }}
               >
-                View All
-              </Button>
-            </Box>
+                {bestSellerProducts.map((product) => {
+                  const offerZoneProduct =
+                    offerZoneProductMap.get(
+                      product.id,
+                    );
+
+                  const promotionalSticker =
+                    offerZoneProduct
+                      ? offerZoneProduct.promotionalSticker
+                      : stickerSettings
+                        ?.promotionalSticker;
+
+                  return (
+                    <Box
+                      key={product.id}
+                      sx={{
+                        minWidth: 0,
+                        display: "flex",
+                      }}
+                    >
+                      <ProductCard
+                        product={product}
+                        compact
+                        showProductStickers
+                        promotionalSticker={
+                          promotionalSticker
+                        }
+                        rotatingSticker={
+                          stickerSettings?.rotatingSticker
+                        }
+                        isOfferZoneProduct={Boolean(
+                          offerZoneProduct,
+                        )}
+                      />
+                    </Box>
+                  );
+                })}
+              </Box>
+
+              {/* View All */}
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+
+                  mt: {
+                    xs: 4,
+                    sm: 4.5,
+                    md: 5,
+                  },
+                }}
+              >
+                <Button
+                  component={Link}
+                  to="/products"
+                  variant="outlined"
+                  sx={{
+                    minWidth: {
+                      xs: 132,
+                      sm: 145,
+                    },
+
+                    minHeight: {
+                      xs: 42,
+                      sm: 46,
+                    },
+
+                    px: 3,
+
+                    borderRadius: 999,
+
+                    border: "1px solid #111111",
+
+                    backgroundColor:
+                      "rgba(255,255,255,0.25)",
+
+                    color: "#111111",
+
+                    fontSize: {
+                      xs: "0.72rem",
+                      sm: "0.76rem",
+                    },
+
+                    fontWeight: 600,
+
+                    letterSpacing: "0.16em",
+
+                    textTransform: "uppercase",
+
+                    boxShadow: "none",
+
+                    "&:hover": {
+                      backgroundColor:
+                        "rgba(255,255,255,0.25)",
+                      borderColor: "#111111",
+                      boxShadow: "none",
+                    },
+                  }}
+                >
+                  View All
+                </Button>
+              </Box>
+            </>
           )}
       </Container>
     </Box>

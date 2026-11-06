@@ -1,19 +1,10 @@
 export interface VideoCard {
   id: string;
 
-  title: string;
-  description: string;
-
   videoUrl: string;
+  publicId?: string;
+
   thumbnailUrl: string;
-
-  type:
-    | "product-launch"
-    | "tutorial"
-    | "customer-review"
-    | "other";
-
-  href: string;
 
   isActive: boolean;
   displayOrder: number;
@@ -23,31 +14,19 @@ export interface VideoCard {
 }
 
 export interface VideoCardFormData {
-  title: string;
-  description: string;
-
   videoUrl: string;
+  publicId: string;
+
   thumbnailUrl: string;
-
-  type:
-    | "product-launch"
-    | "tutorial"
-    | "customer-review"
-    | "other";
-
-  href: string;
 
   isActive: boolean;
   displayOrder: number;
 }
 
 export const DEFAULT_VIDEO_CARD: VideoCardFormData = {
-  title: "",
-  description: "",
   videoUrl: "",
+  publicId: "",
   thumbnailUrl: "",
-  type: "other",
-  href: "",
   isActive: true,
   displayOrder: 1,
 };

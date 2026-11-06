@@ -12,7 +12,7 @@ import {
 
 import ImageUploadField from "./ImageUploadField";
 
-import { uploadProductImage } from "../services/storageService";
+import { uploadImage } from "../services/storageService";
 
 import { useActiveCategories } from "@/features/admin/categories/hooks/useActiveCategories";
 
@@ -27,12 +27,15 @@ interface ProductFormProps {
   errors?: Partial<
     Record<keyof ProductFormData, string>
   >;
+  // When true the stock can't be typed here (editing an existing product).
+  stockLocked?: boolean;
 }
 
 export default function ProductForm({
   formData,
   onChange,
   errors = {},
+  stockLocked = false,
 }: ProductFormProps) {
   const [uploading, setUploading] =
     useState(false);
@@ -56,11 +59,11 @@ export default function ProductForm({
       setUploading(true);
       setProgress(0);
 
-      const imageUrl =
-        await uploadProductImage(
-          file,
-          setProgress
-        );
+      const imageUrl = await uploadImage(
+        file,
+        "products",
+        setProgress
+      );
 
       onChange("images", [imageUrl]);
     } catch (error) {
@@ -173,15 +176,18 @@ export default function ProductForm({
           fullWidth
           required
           type="number"
-          label="Stock"
+          label={stockLocked ? "Current stock" : "Opening stock"}
           value={formData.stock}
           error={!!errors.stock}
-          helperText={errors.stock}
+          disabled={stockLocked}
+          helperText={
+            errors.stock ??
+            (stockLocked
+              ? "To change stock, use Stock History → Update stock."
+              : undefined)
+          }
           onChange={(e) =>
-            onChange(
-              "stock",
-              Number(e.target.value)
-            )
+            onChange("stock", Number(e.target.value))
           }
         />
       </Grid>
@@ -192,6 +198,11 @@ export default function ProductForm({
           progress={progress}
           onSelectFile={handleSelectFile}
         />
+
+        <FormHelperText sx={{ mt: 1 }}>
+          <strong>Image size:</strong> 1000 × 1000 px (square, 1:1).
+          Recommended for the best fit and visibility on product cards.
+        </FormHelperText>
 
         {errors.images && (
           <FormHelperText error>
@@ -205,7 +216,7 @@ export default function ProductForm({
           <Box
             component="img"
             src={formData.images[0]}
-            alt="Category"
+            alt="Product"
             sx={{
               width: 160,
               height: 160,

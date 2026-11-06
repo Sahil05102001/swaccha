@@ -1,4 +1,10 @@
-import { Card, CardContent, Divider, Stack, Typography } from "@mui/material";
+import {
+  Card,
+  CardContent,
+  Divider,
+  Stack,
+  Typography,
+} from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
 import AppButton from "@/components/ui/AppButton";
@@ -8,82 +14,164 @@ interface OrderSummaryProps {
   subtotal: number;
 }
 
+const COLORS = {
+  white: "#FFFFFF",
+  border: "#E5E7EB",
+  text: "#111827",
+  muted: "#6B7280",
+  blue: "#00D9FF",
+  blueText: "#0891B2",
+  black: "#000000",
+};
+
+const formatPrice = (value: number) =>
+  `₹${value.toLocaleString("en-IN")}`;
+
+function Row({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <Stack
+      direction="row"
+      sx={{
+        justifyContent: "space-between",
+        alignItems: "baseline",
+        gap: 2,
+      }}
+    >
+      <Typography
+        sx={{
+          color: strong ? COLORS.text : COLORS.muted,
+          fontWeight: strong ? 700 : 400,
+          fontSize: strong ? "1.1rem" : "0.95rem",
+        }}
+      >
+        {label}
+      </Typography>
+
+      <Typography
+        sx={{
+          color: strong ? COLORS.blueText : COLORS.text,
+          fontWeight: strong ? 700 : 500,
+          fontSize: strong ? "1.25rem" : "0.95rem",
+          whiteSpace: "nowrap",
+          textAlign: "right",
+        }}
+      >
+        {value}
+      </Typography>
+    </Stack>
+  );
+}
+
 export default function OrderSummary({
   subtotal,
 }: OrderSummaryProps) {
   const navigate = useNavigate();
-
-  const shipping = subtotal > 0 ? 50 : 0;
-  const total = subtotal + shipping;
 
   const handleCheckout = () => {
     navigate(ROUTES.CHECKOUT);
   };
 
   return (
-    <Card>
-      <CardContent>
+    <Card
+      elevation={0}
+      sx={{
+        bgcolor: COLORS.white,
+        backgroundImage: "none",
+        color: COLORS.text,
+        border: `1px solid ${COLORS.border}`,
+        borderTop: `2px solid ${COLORS.blue}`,
+        borderRadius: 2,
+        boxShadow: "none",
+      }}
+    >
+      <CardContent
+        sx={{
+          p: { xs: 2.5, md: 3 },
+          "&:last-child": {
+            pb: { xs: 2.5, md: 3 },
+          },
+        }}
+      >
         <Typography
-          variant="h6"
+          component="h2"
           sx={{
             fontWeight: 700,
+            fontSize: "1.25rem",
             mb: 3,
+            color: COLORS.text,
           }}
         >
-          Order Summary
+          Order summary
         </Typography>
 
         <Stack spacing={2}>
-          <Stack
-            direction="row"
-            sx={{
-              justifyContent: "space-between",
-            }}
+          <Row
+            label="Subtotal"
+            value={formatPrice(subtotal)}
+          />
+
+          <Row
+            label="Delivery"
+            value="Calculated at checkout"
+          />
+
+          <Divider sx={{ borderColor: COLORS.border }} />
+
+          <Row
+            label="Subtotal"
+            value={formatPrice(subtotal)}
+            strong
+          />
+
+          <Typography
+            sx={{ fontSize: "0.78rem", color: COLORS.muted }}
           >
-            <Typography>Subtotal</Typography>
-            <Typography>₹{subtotal}</Typography>
-          </Stack>
-
-          <Stack
-            direction="row"
-            sx={{
-              justifyContent: "space-between",
-            }}
-          >
-            <Typography>Shipping</Typography>
-            <Typography>₹{shipping}</Typography>
-          </Stack>
-
-          <Divider />
-
-          <Stack
-            direction="row"
-            sx={{
-              justifyContent: "space-between",
-            }}
-          >
-            <Typography
-              sx={{
-                fontWeight: 700,
-              }}
-            >
-              Total
-            </Typography>
-
-            <Typography
-              sx={{
-                fontWeight: 700,
-              }}
-            >
-              ₹{total}
-            </Typography>
-          </Stack>
+            Delivery charges and coupons are applied at checkout.
+          </Typography>
 
           <AppButton
             fullWidth
+            size="large"
             onClick={handleCheckout}
+            sx={{
+              mt: 1,
+              minHeight: 60,
+              px: 2,
+              py: 1,
+              borderRadius: "999px",
+              bgcolor: COLORS.black,
+              color: COLORS.white,
+              boxShadow: "none",
+              "&:hover": {
+                bgcolor: COLORS.black,
+                boxShadow: "none",
+              },
+            }}
           >
-            Proceed to Checkout
+            <Typography
+              component="span"
+              sx={{
+                fontSize: {
+                  xs: "0.85rem",
+                  sm: "1.05rem",
+                },
+                fontWeight: 800,
+                letterSpacing: "0.03em",
+                color: COLORS.white,
+                textAlign: "center",
+                whiteSpace: "nowrap",
+              }}
+            >
+              PROCEED TO CHECKOUT
+            </Typography>
           </AppButton>
         </Stack>
       </CardContent>

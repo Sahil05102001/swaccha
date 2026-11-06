@@ -15,12 +15,15 @@ interface UpdateOrderStatusProps {
   value: OrderStatus;
   onChange: (status: OrderStatus) => void;
   disabled?: boolean;
+  // Statuses the admin may pick. Defaults to every status.
+  options?: OrderStatus[];
 }
 
 export default function UpdateOrderStatus({
   value,
   onChange,
   disabled = false,
+  options = ORDER_STATUS_OPTIONS,
 }: UpdateOrderStatusProps) {
   return (
     <Stack spacing={2}>
@@ -35,7 +38,7 @@ export default function UpdateOrderStatus({
 
       <FormControl
         fullWidth
-        disabled={disabled}
+        disabled={disabled || options.length <= 1}
       >
         <InputLabel id="order-status-label">
           Order Status
@@ -51,7 +54,7 @@ export default function UpdateOrderStatus({
             )
           }
         >
-          {ORDER_STATUS_OPTIONS.map((option) => (
+          {options.map((option) => (
             <MenuItem
               key={option}
               value={option}

@@ -1,93 +1,88 @@
-import {
-    CircularProgress,
-    Grid,
-} from "@mui/material";
+import { lazy } from "react";
+import { Box, CircularProgress, Grid } from "@mui/material";
 
 import PageContainer from "@/components/common/PageContainer";
 import PageHeader from "@/components/common/PageHeader";
+import LazySection from "@/components/common/LazySection";
 
-import DashboardCharts from "../components/DashboardCharts";
+import B2BEnquiryStats from "../components/B2BEnquiryStats";
 import DashboardOrderStats from "../components/DashboardOrderStats";
 import DashboardOverview from "../components/DashboardOverview";
-import LowStockProducts from "../components/LowStockProducts";
-import RecentOrdersTable from "../components/RecentOrdersTable";
-import SalesByCategoryCard from "../components/SalesByCategoryCard";
-import TopCustomersCard from "../components/TopCustomersCard";
-import TopSellingProductsCard from "../components/TopSellingProductsCard";
 
 import { useDashboardStats } from "../hooks/useDashboardStats";
 
+// Downloaded only when scrolled near (the chart library is the big one).
+const DashboardCharts = lazy(() => import("../components/DashboardCharts"));
+const RecentOrdersTable = lazy(() => import("../components/RecentOrdersTable"));
+const TopSellingProductsCard = lazy(
+  () => import("../components/TopSellingProductsCard"),
+);
+const SalesByCategoryCard = lazy(
+  () => import("../components/SalesByCategoryCard"),
+);
+const TopCustomersCard = lazy(() => import("../components/TopCustomersCard"));
+const LowStockProducts = lazy(() => import("../components/LowStockProducts"));
+
 export default function AdminDashboardPage() {
-    const {
-        data: stats,
-        isLoading,
-        isError,
-        error,
-    } = useDashboardStats();
+  const { data: stats, isError, error } = useDashboardStats();
 
-    if (isError) {
-        return (
-            <PageContainer>
-                <PageHeader
-                    title="Admin Dashboard"
-                    subtitle="Monitor and manage your store."
-                />
+  return (
+    <PageContainer>
+      <PageHeader
+        title="Admin Dashboard"
+        subtitle="Monitor and manage your store."
+      />
 
-                <pre>{String(error)}</pre>
-            </PageContainer>
-        );
-    }
+      <B2BEnquiryStats />
 
-    if (isLoading || !stats) {
-        return (
-            <PageContainer>
-                <PageHeader
-                    title="Admin Dashboard"
-                    subtitle="Monitor and manage your store."
-                />
+      {isError ? (
+        <pre>{String(error)}</pre>
+      ) : !stats ? (
+        <Box sx={{ minHeight: 220, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <CircularProgress size={28} aria-label="Loading dashboard figures" />
+        </Box>
+      ) : (
+        <>
+          <DashboardOverview stats={stats} />
+          <DashboardOrderStats stats={stats} />
+        </>
+      )}
 
-                <CircularProgress />
-            </PageContainer>
-        );
-    }
+      <LazySection minHeight={320}>
+        <DashboardCharts />
+      </LazySection>
 
-    return (
-        <PageContainer>
-            <PageHeader
-                title="Admin Dashboard"
-                subtitle="Monitor and manage your store."
-            />
+      <Grid container spacing={3}>
+        <Grid size={{ xs: 12, lg: 8 }}>
+          <LazySection>
+            <RecentOrdersTable />
+          </LazySection>
+        </Grid>
 
-            <DashboardOverview stats={stats} />
+        <Grid size={{ xs: 12, lg: 4 }}>
+          <LazySection>
+            <TopSellingProductsCard />
+          </LazySection>
+        </Grid>
 
-            <DashboardOrderStats stats={stats} />
+        <Grid size={{ xs: 12, lg: 6 }}>
+          <LazySection>
+            <SalesByCategoryCard />
+          </LazySection>
+        </Grid>
 
-            <DashboardCharts />
+        <Grid size={{ xs: 12, lg: 6 }}>
+          <LazySection>
+            <TopCustomersCard />
+          </LazySection>
+        </Grid>
 
-            <Grid
-                container
-                spacing={3}
-            >
-                <Grid size={{ xs: 12, lg: 8 }}>
-                    <RecentOrdersTable />
-                </Grid>
-
-                <Grid size={{ xs: 12, lg: 4 }}>
-                    <TopSellingProductsCard />
-                </Grid>
-
-                <Grid size={{ xs: 12, lg: 6 }}>
-                    <SalesByCategoryCard />
-                </Grid>
-
-                <Grid size={{ xs: 12, lg: 6 }}>
-                    <TopCustomersCard />
-                </Grid>
-
-                <Grid size={{ xs: 12 }}>
-                    <LowStockProducts />
-                </Grid>
-            </Grid>
-        </PageContainer>
-    );
+        <Grid size={{ xs: 12 }}>
+          <LazySection minHeight={200}>
+            <LowStockProducts />
+          </LazySection>
+        </Grid>
+      </Grid>
+    </PageContainer>
+  );
 }

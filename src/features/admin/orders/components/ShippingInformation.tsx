@@ -1,8 +1,10 @@
 import {
+  Button,
   Grid,
   Stack,
   Typography,
 } from "@mui/material";
+import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
 
 import type { Order } from "@/features/orders/types/order";
 
@@ -14,6 +16,14 @@ export default function ShippingInformation({
   order,
 }: ShippingInformationProps) {
   const address = order.shippingAddress;
+
+  const hasPin =
+    typeof address.latitude === "number" &&
+    typeof address.longitude === "number";
+
+  const mapsUrl = hasPin
+    ? `https://www.google.com/maps/search/?api=1&query=${address.latitude},${address.longitude}`
+    : "";
 
   return (
     <Stack spacing={2}>
@@ -162,6 +172,45 @@ export default function ShippingInformation({
             {address.country}
           </Typography>
         </Grid>
+
+        {hasPin && (
+          <Grid size={12}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+            >
+              Delivery Location
+            </Typography>
+
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.5}
+              sx={{ mt: 0.5, alignItems: { sm: "center" } }}
+            >
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<PlaceOutlinedIcon />}
+                component="a"
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ alignSelf: "flex-start" }}
+              >
+                Open in Google Maps
+              </Button>
+
+              <Typography
+                variant="caption"
+                color="text.secondary"
+              >
+                {address.latitude!.toFixed(6)}, {address.longitude!.toFixed(6)}
+                {typeof address.locationAccuracy === "number" &&
+                  ` · GPS accuracy about ${address.locationAccuracy} m`}
+              </Typography>
+            </Stack>
+          </Grid>
+        )}
       </Grid>
     </Stack>
   );

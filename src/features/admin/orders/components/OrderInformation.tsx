@@ -105,14 +105,16 @@ export default function OrderInformation({
 
           <Chip
             size="small"
-            label={order.paymentStatus}
+            label={order.paymentStatus.replace("_", " ")}
             color={
               order.paymentStatus === "paid"
                 ? "success"
-                : order.paymentStatus ===
-                  "failed"
-                ? "error"
-                : "warning"
+                : order.paymentStatus === "failed"
+                  ? "error"
+                  : order.paymentStatus === "refunded" ||
+                    order.paymentStatus === "partially_refunded"
+                    ? "info"
+                    : "warning"
             }
           />
         </Grid>

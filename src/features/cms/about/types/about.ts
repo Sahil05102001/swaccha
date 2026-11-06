@@ -1,3 +1,4 @@
+
 export interface CompanyStatistic {
   id: string;
   label: string;
@@ -13,10 +14,32 @@ export interface AboutSettings {
   vision: string;
   whyChooseUs: string[];
   statistics: CompanyStatistic[];
+
   heroImageUrl: string;
+  desktopBannerUrl: string;
+  mobileBannerUrl: string;
   galleryImages: string[];
+
+  ownerName: string;
+  ownerTitle: string;
+  ownerBio: string;
+  ownerImageUrl: string;
+
   createdAt: Date | null;
   updatedAt: Date | null;
+}
+
+function generateId(): string {
+  if (
+    typeof globalThis.crypto !== "undefined" &&
+    typeof globalThis.crypto.randomUUID === "function"
+  ) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 11)}`;
 }
 
 export const DEFAULT_ABOUT_SETTINGS: AboutSettings = {
@@ -26,36 +49,40 @@ export const DEFAULT_ABOUT_SETTINGS: AboutSettings = {
   companyStory: "",
   mission: "",
   vision: "",
-  whyChooseUs: [
-    "",
-    "",
-    "",
-    "",
-  ],
+  whyChooseUs: ["", "", "", ""],
   statistics: [
     {
-      id: crypto.randomUUID(),
+      id: generateId(),
       label: "Happy Customers",
       value: "",
     },
     {
-      id: crypto.randomUUID(),
+      id: generateId(),
       label: "Products",
       value: "",
     },
     {
-      id: crypto.randomUUID(),
+      id: generateId(),
       label: "Years of Experience",
       value: "",
     },
     {
-      id: crypto.randomUUID(),
+      id: generateId(),
       label: "Cities Served",
       value: "",
     },
   ],
+
   heroImageUrl: "",
+  desktopBannerUrl: "",
+  mobileBannerUrl: "",
   galleryImages: [],
+
+  ownerName: "",
+  ownerTitle: "",
+  ownerBio: "",
+  ownerImageUrl: "",
+
   createdAt: null,
   updatedAt: null,
 };

@@ -1,6 +1,6 @@
+
 import {
     Box,
-    Container,
     Typography,
 } from "@mui/material";
 
@@ -18,109 +18,209 @@ export default function BrandStatement() {
         return null;
     }
 
+    // Support both new responsive banners and legacy records.
+    const desktopImageUrl =
+        statement.desktopImageUrl ||
+        statement.imageUrl ||
+        "";
+
+    const mobileImageUrl =
+        statement.mobileImageUrl ||
+        desktopImageUrl;
+
+    const hasImage = Boolean(
+        desktopImageUrl.trim(),
+    );
+
     return (
         <Box
+            component="section"
             sx={{
-                py: { xs: 6, md: 8 },
+                width: "100%",
+                overflow: "hidden",
+                backgroundColor: "#000000",
             }}
         >
-            <Container maxWidth="xl">
+            {hasImage ? (
+                <Box
+                    component="picture"
+                    sx={{
+                        display: "block",
+                        width: "100%",
+                        lineHeight: 0,
+                    }}
+                >
+                    {mobileImageUrl && (
+                        <source
+                            media="(max-width: 767px)"
+                            srcSet={mobileImageUrl}
+                        />
+                    )}
+
+                    <Box
+                        component="img"
+                        src={desktopImageUrl}
+                        alt={
+                            statement.brandName ||
+                            "Swachha brand statement"
+                        }
+                        loading="lazy"
+                        draggable={false}
+                        sx={{
+                            display: "block",
+                            width: "100%",
+                            height: "auto",
+                            maxWidth: "100%",
+                            objectFit: "contain",
+                            border: 0,
+                            userSelect: "none",
+                        }}
+                    />
+                </Box>
+            ) : (
                 <Box
                     sx={{
                         position: "relative",
+                        width: "100%",
                         minHeight: {
-                            xs: 420,
-                            md: 500,
+                            xs: 390,
+                            sm: 450,
+                            md: 540,
+                            lg: 600,
                         },
-                        borderRadius: {
-                            xs: 3,
-                            md: 4,
-                        },
-                        overflow: "hidden",
-                        backgroundImage: `url(${statement.imageUrl})`,
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
                         display: "flex",
                         alignItems: "center",
+                        overflow: "hidden",
                     }}
                 >
-                    {/* Overlay */}
-                    <Box
-                        sx={{
-                            position: "absolute",
-                            inset: 0,
-                            background:
-                                "linear-gradient(90deg, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.35) 50%, rgba(0,0,0,0.08) 100%)",
-                        }}
-                    />
-
-                    {/* Content */}
                     <Box
                         sx={{
                             position: "relative",
                             zIndex: 1,
                             width: "100%",
-                            maxWidth: 720,
-                            px: {
-                                xs: 3,
-                                sm: 5,
-                                md: 7,
+                            maxWidth: {
+                                xs: "100%",
+                                md: 850,
                             },
-                            py: 6,
+                            px: {
+                                xs: 2.5,
+                                sm: 4,
+                                md: 6,
+                                lg: 8,
+                            },
+                            py: {
+                                xs: 5,
+                                sm: 6,
+                                md: 8,
+                            },
                         }}
                     >
-                        <Typography
-                            variant="overline"
-                            sx={{
-                                color: "white",
-                                fontWeight: 700,
-                                letterSpacing: 2,
-                                display: "block",
-                                mb: 1,
-                            }}
-                        >
-                            {statement.brandName}
-                        </Typography>
+                        {statement.brandName && (
+                            <Typography
+                                component="div"
+                                sx={{
+                                    display: "inline-block",
+                                    mb: {
+                                        xs: 1.2,
+                                        sm: 1.5,
+                                        md: 1.8,
+                                    },
+                                    color: "#00F0FF",
+                                    fontSize: {
+                                        xs: "0.65rem",
+                                        sm: "0.72rem",
+                                        md: "0.78rem",
+                                    },
+                                    fontWeight: 700,
+                                    letterSpacing: "0.14em",
+                                    lineHeight: 1.2,
+                                    textTransform: "uppercase",
+                                }}
+                            >
+                                {statement.brandName}
+                            </Typography>
+                        )}
 
                         <Typography
-                            variant="h2"
+                            component="h2"
                             sx={{
-                                color: "white",
-                                fontWeight: 900,
-                                lineHeight: 1.05,
-                                mb: 3,
+                                maxWidth: {
+                                    xs: "100%",
+                                    sm: 680,
+                                    md: 780,
+                                },
+                                color: "#FFFFFF",
                                 fontSize: {
-                                    xs: "2.2rem",
-                                    sm: "3rem",
-                                    md: "4rem",
+                                    xs: "2.35rem",
+                                    sm: "3.3rem",
+                                    md: "4.5rem",
+                                    lg: "5.2rem",
+                                },
+                                fontWeight: 700,
+                                lineHeight: {
+                                    xs: 0.98,
+                                    sm: 0.96,
+                                    md: 0.94,
+                                },
+                                letterSpacing: "-0.055em",
+                                overflowWrap: "break-word",
+                                mb: {
+                                    xs: 1.8,
+                                    sm: 2.2,
+                                    md: 2.8,
                                 },
                             }}
                         >
                             {statement.title}
                         </Typography>
 
-                        <Typography
-                            variant="body1"
-                            sx={{
-                                color: "rgba(255,255,255,0.9)",
-                                maxWidth: 600,
-                                fontSize: {
-                                    xs: "1rem",
-                                    md: "1.15rem",
-                                },
-                                lineHeight: 1.7,
-                                mb: 2,
-                            }}
-                        >
-                            {statement.description}
-                        </Typography>
+                        {statement.description && (
+                            <Typography
+                                sx={{
+                                    maxWidth: {
+                                        xs: "100%",
+                                        sm: 560,
+                                        md: 640,
+                                    },
+                                    color: "rgba(255,255,255,0.82)",
+                                    fontSize: {
+                                        xs: "0.86rem",
+                                        sm: "0.96rem",
+                                        md: "1.05rem",
+                                    },
+                                    lineHeight: 1.6,
+                                    mb: statement.tagline
+                                        ? {
+                                            xs: 1.8,
+                                            sm: 2.2,
+                                            md: 2.5,
+                                        }
+                                        : 0,
+                                }}
+                            >
+                                {statement.description}
+                            </Typography>
+                        )}
 
                         {statement.tagline && (
                             <Typography
-                                variant="h6"
+                                component="p"
                                 sx={{
-                                    color: "white",
-                                    fontWeight: 700,
+                                    maxWidth: {
+                                        xs: "100%",
+                                        sm: 600,
+                                        md: 700,
+                                    },
+                                    color: "#FFFFFF",
+                                    fontSize: {
+                                        xs: "0.98rem",
+                                        sm: "1.12rem",
+                                        md: "1.28rem",
+                                    },
+                                    fontWeight: 600,
+                                    lineHeight: 1.35,
+                                    letterSpacing: "-0.015em",
+                                    m: 0,
                                 }}
                             >
                                 {statement.tagline}
@@ -128,7 +228,7 @@ export default function BrandStatement() {
                         )}
                     </Box>
                 </Box>
-            </Container>
+            )}
         </Box>
     );
 }

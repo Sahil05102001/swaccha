@@ -1,25 +1,27 @@
-import { useState } from "react";
+import { memo, Suspense, useCallback, useState, type ReactNode } from "react";
 import {
-  AppBar,
   Box,
+  Button,
+  CircularProgress,
   CssBaseline,
-  Divider,
   Drawer,
   IconButton,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Link as MuiLink,
   Toolbar,
   Tooltip,
   Typography,
   useMediaQuery,
 } from "@mui/material";
-
 import { useTheme } from "@mui/material/styles";
+import { useQueryClient } from "@tanstack/react-query";
+import { signOut } from "firebase/auth";
 
 import MenuIcon from "@mui/icons-material/Menu";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import CloseIcon from "@mui/icons-material/Close";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 import CategoryIcon from "@mui/icons-material/Category";
@@ -41,440 +43,576 @@ import VideoLibraryIcon from "@mui/icons-material/VideoLibrary";
 import FormatQuoteIcon from "@mui/icons-material/FormatQuote";
 import StarIcon from "@mui/icons-material/Star";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import ViewCarouselIcon from "@mui/icons-material/ViewCarousel";
+import InboxOutlinedIcon from "@mui/icons-material/InboxOutlined";
+import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
+import ConfirmationNumberOutlinedIcon from "@mui/icons-material/ConfirmationNumberOutlined";
+import DeliveryDiningOutlinedIcon from "@mui/icons-material/DeliveryDiningOutlined";
+import HistoryIcon from "@mui/icons-material/History";
+import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
+import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 
-import {
-  Outlet,
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 
-const drawerWidth = 260;
-const collapsedDrawerWidth = 72;
+import { useSnackbar } from "@/contexts/SnackbarContext";
+import { auth } from "@/firebase/auth";
 
-const menuItems = [
+const DRAWER_WIDTH = 260;
+const HEADER_HEIGHT = 64;
+
+const COLORS = {
+  sidebar: "#0B0B0B",
+  sidebarText: "rgba(255,255,255,0.78)",
+  sidebarMuted: "rgba(255,255,255,0.55)",
+  sidebarBorder: "rgba(255,255,255,0.08)",
+  hover: "rgba(255,255,255,0.06)",
+  selectedBg: "rgba(255,255,255,0.09)",
+  accent: "#FFC83D",
+  canvas: "#F4F5F7",
+  border: "#E5E7EB",
+};
+
+type MenuItem = {
+  text: string;
+  icon: ReactNode;
+  path: string;
+};
+
+type MenuSection = {
+  title: string;
+  items: MenuItem[];
+};
+
+const menuSections: MenuSection[] = [
   {
-    text: "Dashboard",
-    icon: <DashboardIcon />,
-    path: "/admin",
+    title: "Overview",
+    items: [{ text: "Dashboard", icon: <DashboardIcon />, path: "/admin" }],
   },
   {
-    text: "Products",
-    icon: <Inventory2Icon />,
-    path: "/admin/products",
+    title: "Catalog",
+    items: [
+      { text: "Products", icon: <Inventory2Icon />, path: "/admin/products" },
+      { text: "Categories", icon: <CategoryIcon />, path: "/admin/categories" },
+    ],
   },
   {
-    text: "Categories",
-    icon: <CategoryIcon />,
-    path: "/admin/categories",
+    title: "Inventory",
+    items: [
+      {
+        text: "Stock History",
+        icon: <HistoryIcon />,
+        path: "/admin/stock-history",
+      },
+    ],
   },
   {
-    text: "Category Circles",
-    icon: <CircleIcon />,
-    path: "/admin/category-circles",
+    title: "Storefront",
+    items: [
+      {
+        text: "Category Circles",
+        icon: <CircleIcon />,
+        path: "/admin/category-circles",
+      },
+      {
+        text: "Hero Banners",
+        icon: <ViewCarouselIcon />,
+        path: "/admin/hero-banners",
+      },
+      {
+        text: "Best Sellers",
+        icon: <LocalFireDepartmentIcon />,
+        path: "/admin/best-sellers",
+      },
+      {
+        text: "Featured Products",
+        icon: <StarIcon />,
+        path: "/admin/featured-products",
+      },
+      { text: "Offer Zone", icon: <LocalOfferIcon />, path: "/admin/offer-zone" },
+      { text: "Ad Banner", icon: <CampaignIcon />, path: "/admin/ad-banner" },
+      { text: "Videos", icon: <VideoLibraryIcon />, path: "/admin/videos" },
+      {
+        text: "Brand Statement",
+        icon: <FormatQuoteIcon />,
+        path: "/admin/cms/brand-statement",
+      },
+    ],
   },
   {
-    text: "Best Sellers",
-    icon: <LocalFireDepartmentIcon />,
-    path: "/admin/best-sellers",
+    title: "Orders & Customers",
+    items: [
+      { text: "Orders", icon: <ShoppingCartIcon />, path: "/admin/orders" },
+      { text: "Customers", icon: <PeopleIcon />, path: "/admin/customers" },
+      {
+        text: "Reviews",
+        icon: <RateReviewOutlinedIcon />,
+        path: "/admin/reviews",
+      },
+      {
+        text: "Coupons",
+        icon: <ConfirmationNumberOutlinedIcon />,
+        path: "/admin/coupons",
+      },
+      {
+        text: "Shipping",
+        icon: <DeliveryDiningOutlinedIcon />,
+        path: "/admin/shipping",
+      },
+      {
+        text: "B2B Enquiries",
+        icon: <InboxOutlinedIcon />,
+        path: "/admin/b2b-enquiries",
+      },
+    ],
   },
   {
-    text: "Featured Products",
-    icon: <StarIcon />,
-    path: "/admin/featured-products",
+    title: "Reports",
+    items: [
+      {
+        text: "Sales Report",
+        icon: <AssessmentIcon />,
+        path: "/admin/reports/sales",
+      },
+      {
+        text: "Inventory Report",
+        icon: <AssessmentIcon />,
+        path: "/admin/reports/inventory",
+      },
+    ],
   },
   {
-    text: "Offer Zone",
-    icon: <LocalOfferIcon />,
-    path: "/admin/offer-zone",
-  },
-  {
-    text: "Ad Banner",
-    icon: <CampaignIcon />,
-    path: "/admin/ad-banner",
-  },
-  {
-    text: "Videos",
-    icon: <VideoLibraryIcon />,
-    path: "/admin/videos",
-  },
-  {
-    text: "Orders",
-    icon: <ShoppingCartIcon />,
-    path: "/admin/orders",
-  },
-  {
-    text: "Customers",
-    icon: <PeopleIcon />,
-    path: "/admin/customers",
-  },
-  {
-    text: "Sales Report",
-    icon: <AssessmentIcon />,
-    path: "/admin/reports/sales",
-  },
-  {
-    text: "Inventory Report",
-    icon: <AssessmentIcon />,
-    path: "/admin/reports/inventory",
-  },
-  {
-    text: "Settings",
-    icon: <SettingsIcon />,
-    path: "/admin/settings",
-  },
-  {
-    text: "About",
-    icon: <InfoOutlinedIcon />,
-    path: "/admin/cms/about",
-  },
-  {
-    text: "Contact",
-    icon: <ContactSupportOutlinedIcon />,
-    path: "/admin/cms/contact",
-  },
-  {
-    text: "FAQ",
-    icon: <HelpIcon />,
-    path: "/admin/cms/faq",
-  },
-  {
-    text: "Privacy Policy",
-    icon: <PrivacyTipOutlinedIcon />,
-    path: "/admin/cms/privacy",
-  },
-  {
-    text: "Terms & Conditions",
-    icon: <DescriptionOutlinedIcon />,
-    path: "/admin/cms/terms",
-  },
-  {
-    text: "Shipping Policy",
-    icon: <LocalShippingOutlinedIcon />,
-    path: "/admin/cms/shipping",
-  },
-  {
-    text: "Cancellation & Refund",
-    icon: <CancelOutlinedIcon />,
-    path: "/admin/cms/cancellation",
-  },
-  {
-    text: "Brand Statement",
-    icon: <FormatQuoteIcon />,
-    path: "/admin/cms/brand-statement",
+    title: "Content & Settings",
+    items: [
+      { text: "About", icon: <InfoOutlinedIcon />, path: "/admin/cms/about" },
+      {
+        text: "Contact",
+        icon: <ContactSupportOutlinedIcon />,
+        path: "/admin/cms/contact",
+      },
+      { text: "FAQ", icon: <HelpIcon />, path: "/admin/cms/faq" },
+      {
+        text: "Privacy Policy",
+        icon: <PrivacyTipOutlinedIcon />,
+        path: "/admin/cms/privacy",
+      },
+      {
+        text: "Terms & Conditions",
+        icon: <DescriptionOutlinedIcon />,
+        path: "/admin/cms/terms",
+      },
+      {
+        text: "Shipping Policy",
+        icon: <LocalShippingOutlinedIcon />,
+        path: "/admin/cms/shipping",
+      },
+      {
+        text: "Cancellation & Refund",
+        icon: <CancelOutlinedIcon />,
+        path: "/admin/cms/cancellation",
+      },
+      {
+        text: "Offer Terms & Conditions",
+        icon: <DescriptionOutlinedIcon />,
+        path: "/admin/cms/offer-terms",
+      },
+      {
+        text: "Replacement Policy",
+        icon: <DescriptionOutlinedIcon />,
+        path: "/admin/cms/replacement",
+      },
+      { text: "Settings", icon: <SettingsIcon />, path: "/admin/settings" },
+    ],
   },
 ];
 
-export default function AdminLayout() {
-  const navigate = useNavigate();
-  const location = useLocation();
+const isSelected = (pathname: string, path: string) =>
+  path === "/admin"
+    ? pathname === "/admin"
+    : pathname === path || pathname.startsWith(`${path}/`);
 
-  const theme = useTheme();
-  const isMobile = useMediaQuery(
-    theme.breakpoints.down("md")
-  );
+interface SidebarProps {
+  pathname: string;
+  collapsed: boolean;
+  onNavigate: (path: string) => void;
+  onToggle: () => void;
+}
 
-  const [mobileOpen, setMobileOpen] =
-    useState(false);
-
-  const [collapsed, setCollapsed] =
-    useState(false);
-
-  const currentDrawerWidth = collapsed
-    ? collapsedDrawerWidth
-    : drawerWidth;
-
-  const handleNavigation = (path: string) => {
-    navigate(path);
-
-    if (isMobile) {
-      setMobileOpen(false);
-    }
-  };
-
-  const drawer = (
+// Only re-renders when the page, collapse state or handlers change.
+const Sidebar = memo(function Sidebar({
+  pathname,
+  collapsed,
+  onNavigate,
+  onToggle,
+}: SidebarProps) {
+  return (
     <Box
       sx={{
         height: "100%",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
+        bgcolor: COLORS.sidebar,
+        color: COLORS.sidebarText,
       }}
     >
-      {/* Fixed Sidebar Header */}
-      <Box
+      <Toolbar
         sx={{
           flexShrink: 0,
-          backgroundColor: "background.paper",
-          position: "relative",
-          zIndex: 2,
+          minHeight: `${HEADER_HEIGHT}px !important`,
+          px: 2.5,
+          justifyContent: "space-between",
+          borderBottom: `1px solid ${COLORS.sidebarBorder}`,
         }}
       >
-        <Toolbar
-          sx={{
-            minHeight: "64px !important",
-            px: collapsed ? 1 : 2,
-            justifyContent: collapsed
-              ? "center"
-              : "flex-start",
-          }}
-        >
-          {!collapsed && (
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 700,
-                whiteSpace: "nowrap",
-              }}
-            >
-              Swachha
-            </Typography>
-          )}
-
-          {collapsed && (
-            <IconButton
-              onClick={() => setCollapsed(false)}
-              size="small"
-              aria-label="Open admin menu"
-            >
-              <MenuIcon />
-            </IconButton>
-          )}
-        </Toolbar>
-
-        <Divider />
-
-        {/* Collapse control lives inside menu, not beside Swachha */}
         {!collapsed && (
-          <Box
+          <Typography
+            component="span"
             sx={{
-              display: "flex",
-              justifyContent: "flex-end",
-              px: 1,
-              py: 0.5,
+              fontWeight: 800,
+              fontSize: "1rem",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "#fff",
+              whiteSpace: "nowrap",
             }}
           >
-            <IconButton
-              onClick={() => setCollapsed(true)}
-              size="small"
-              aria-label="Collapse admin menu"
-            >
-              <ChevronLeftIcon />
-            </IconButton>
-          </Box>
+            Swachha
+            <Box component="span" sx={{ color: COLORS.accent }}>
+              .
+            </Box>
+          </Typography>
         )}
-      </Box>
 
-      {/* Scrollable Menu */}
+        <IconButton
+          disableRipple
+          onClick={onToggle}
+          size="small"
+          aria-label={collapsed ? "Expand admin menu" : "Close admin menu"}
+          sx={{ color: COLORS.sidebarText, borderRadius: 0 }}
+        >
+          {collapsed ? <MenuIcon /> : <CloseIcon />}
+        </IconButton>
+      </Toolbar>
+
       <List
+        component="nav"
+        aria-label="Admin navigation"
         sx={{
           flex: 1,
           overflowY: "auto",
           overflowX: "hidden",
-          px: collapsed ? 1 : 1.5,
+          p: 0,
           py: 1,
-
-          "&::-webkit-scrollbar": {
-            width: 6,
-          },
-
-          "&::-webkit-scrollbar-thumb": {
-            borderRadius: 3,
-          },
+          scrollbarWidth: "thin",
+          scrollbarColor: "rgba(255,255,255,0.2) transparent",
         }}
       >
-        {menuItems.map((item) => {
-          const selected =
-            item.path === "/admin"
-              ? location.pathname === "/admin"
-              : location.pathname.startsWith(
-                  item.path
-                );
-
-          const button = (
-            <ListItemButton
-              selected={selected}
-              onClick={() =>
-                handleNavigation(item.path)
-              }
-              sx={{
-                minHeight: 48,
-                mb: 0.5,
-                px: collapsed ? 1.5 : 2,
-                borderRadius: 1.5,
-                justifyContent: collapsed
-                  ? "center"
-                  : "initial",
-              }}
-            >
-              <ListItemIcon
+        {menuSections.map((section) => (
+          <Box key={section.title} sx={{ mb: 1 }}>
+            {!collapsed && (
+              <Typography
+                component="div"
                 sx={{
-                  minWidth: 0,
-                  mr: collapsed ? 0 : 2,
-                  justifyContent: "center",
+                  px: 2.5,
+                  pt: 1.5,
+                  pb: 0.5,
+                  color: COLORS.sidebarMuted,
+                  fontSize: "0.68rem",
+                  fontWeight: 700,
+                  lineHeight: 1.6,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
                 }}
               >
-                {item.icon}
-              </ListItemIcon>
+                {section.title}
+              </Typography>
+            )}
 
-              {!collapsed && (
-                <ListItemText
-                  primary={item.text}
-                  slotProps={{
-                    primary: {
-                      sx: {
-                        whiteSpace: "nowrap",
-                      },
+            {section.items.map((item) => {
+              const selected = isSelected(pathname, item.path);
+
+              const button = (
+                <ListItemButton
+                  selected={selected}
+                  disableRipple
+                  onClick={() => onNavigate(item.path)}
+                  aria-current={selected ? "page" : undefined}
+                  sx={{
+                    minHeight: 42,
+                    px: collapsed ? 1.5 : 2.5,
+                    borderRadius: 0,
+                    borderLeft: "3px solid transparent",
+                    justifyContent: collapsed ? "center" : "initial",
+                    color: COLORS.sidebarText,
+                    transition: "background-color 120ms, color 120ms",
+                    "&:hover": { bgcolor: COLORS.hover, color: "#fff" },
+                    "&.Mui-selected": {
+                      bgcolor: COLORS.selectedBg,
+                      color: "#fff",
+                      borderLeftColor: COLORS.accent,
+                      "& .MuiListItemIcon-root": { color: COLORS.accent },
                     },
+                    "&.Mui-selected:hover": { bgcolor: COLORS.selectedBg },
                   }}
-                />
-              )}
-            </ListItemButton>
-          );
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 0,
+                      mr: collapsed ? 0 : 1.75,
+                      justifyContent: "center",
+                      color: "inherit",
+                      "& svg": { fontSize: 20 },
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
 
-          return collapsed ? (
-            <Tooltip
-              key={item.text}
-              title={item.text}
-              placement="right"
-              arrow
-            >
-              {button}
-            </Tooltip>
-          ) : (
-            <Box key={item.text}>
-              {button}
-            </Box>
-          );
-        })}
+                  {!collapsed && (
+                    <ListItemText
+                      primary={item.text}
+                      slotProps={{
+                        primary: {
+                          sx: {
+                            whiteSpace: "normal",
+                            fontSize: "0.875rem",
+                            fontWeight: selected ? 700 : 500,
+                            lineHeight: 1.4,
+                          },
+                        },
+                      }}
+                    />
+                  )}
+                </ListItemButton>
+              );
+
+              return collapsed ? (
+                <Tooltip
+                  key={item.path}
+                  title={item.text}
+                  placement="right"
+                  arrow={false}
+                >
+                  {button}
+                </Tooltip>
+              ) : (
+                <Box key={item.path}>{button}</Box>
+              );
+            })}
+          </Box>
+        ))}
       </List>
     </Box>
   );
+});
+
+const headerButtonSx = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 0.75,
+  px: 1.5,
+  py: 0.75,
+  minHeight: 0,
+  borderRadius: "8px",
+  border: `1px solid ${COLORS.border}`,
+  fontSize: "0.85rem",
+  fontWeight: 600,
+  color: "text.primary",
+  textTransform: "none",
+  transition: "background-color 120ms",
+  "&:hover": { bgcolor: COLORS.canvas },
+} as const;
+
+export default function AdminLayout() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const theme = useTheme();
+  const queryClient = useQueryClient();
+  const { showSnackbar } = useSnackbar();
+
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
+  const currentDrawerWidth = collapsed ? 0 : DRAWER_WIDTH;
+
+  const handleNavigation = useCallback(
+    (path: string) => {
+      navigate(path);
+      setMobileOpen(false);
+    },
+    [navigate],
+  );
+
+  const toggleCollapsed = useCallback(() => setCollapsed((c) => !c), []);
+  const closeMobile = useCallback(() => setMobileOpen(false), []);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      // Leave the admin pages first, so nothing refetches without a login.
+      navigate("/login", { replace: true });
+      await signOut(auth);
+      queryClient.clear();
+    } catch (error) {
+      console.error("Logout failed:", error);
+      showSnackbar("Could not log out. Please try again.", "error");
+    }
+  }, [navigate, queryClient, showSnackbar]);
+
+  const sidebar = (
+    <Sidebar
+      pathname={pathname}
+      collapsed={collapsed && !isMobile}
+      onNavigate={handleNavigation}
+      onToggle={isMobile ? closeMobile : toggleCollapsed}
+    />
+  );
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-      }}
-    >
+    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: COLORS.canvas }}>
       <CssBaseline />
 
-      {/* Top App Bar */}
-      <AppBar
-        position="fixed"
+      {/* Top bar */}
+      <Box
+        component="header"
         sx={{
-          width: {
-            md: `calc(100% - ${currentDrawerWidth}px)`,
-          },
-          ml: {
-            md: `${currentDrawerWidth}px`,
-          },
-          transition: theme.transitions.create(
-            ["width", "margin"],
-            {
-              duration:
-                theme.transitions.duration.standard,
-            }
-          ),
+          position: "fixed",
+          top: 0,
+          right: 0,
+          left: { xs: 0, md: `${currentDrawerWidth}px` },
+          height: HEADER_HEIGHT,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 1,
+          px: { xs: 2, md: 3 },
+          bgcolor: "#fff",
+          borderBottom: `1px solid ${COLORS.border}`,
+          zIndex: (t) => t.zIndex.appBar,
         }}
       >
-        <Toolbar>
-          {/* Mobile menu button ONLY */}
-          {isMobile && (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+          {(isMobile || collapsed) && (
             <IconButton
-              color="inherit"
-              edge="start"
-              onClick={() =>
-                setMobileOpen(true)
-              }
-              sx={{
-                mr: 2,
-              }}
+              disableRipple
+              onClick={() => (isMobile ? setMobileOpen(true) : setCollapsed(false))}
               aria-label="Open admin menu"
+              edge="start"
             >
               <MenuIcon />
             </IconButton>
           )}
 
           <Typography
-            variant="h6"
+            component="h1"
             sx={{
+              fontSize: { xs: "1.05rem", sm: "1.25rem" },
               fontWeight: 700,
+              color: "text.primary",
+              whiteSpace: "nowrap",
             }}
           >
-            Swachha Admin Panel
+            Admin Panel
           </Typography>
-        </Toolbar>
-      </AppBar>
+        </Box>
 
-      {/* Mobile Drawer */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <MuiLink
+            component={Link}
+            to="/"
+            underline="none"
+            aria-label="View store"
+            sx={headerButtonSx}
+          >
+            <StorefrontOutlinedIcon sx={{ fontSize: 18 }} />
+            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+              View store
+            </Box>
+          </MuiLink>
+
+          <Button
+            onClick={handleLogout}
+            disableRipple
+            aria-label="Log out"
+            sx={headerButtonSx}
+          >
+            <LogoutOutlinedIcon sx={{ fontSize: 18 }} />
+            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+              Log out
+            </Box>
+          </Button>
+        </Box>
+      </Box>
+
+      {/* Mobile drawer */}
       <Drawer
         open={mobileOpen}
-        onClose={() => setMobileOpen(false)}
+        onClose={closeMobile}
         variant="temporary"
+        transitionDuration={0}
         sx={{
-          display: {
-            xs: "block",
-            md: "none",
-          },
+          display: { xs: "block", md: "none" },
           "& .MuiDrawer-paper": {
-            width: drawerWidth,
+            width: DRAWER_WIDTH,
             boxSizing: "border-box",
+            bgcolor: COLORS.sidebar,
+            borderRight: "none",
+            borderRadius: 0,
           },
         }}
       >
-        {drawer}
+        {sidebar}
       </Drawer>
 
-      {/* Desktop Drawer */}
+      {/* Desktop drawer */}
       <Drawer
         variant="permanent"
         sx={{
-          display: {
-            xs: "none",
-            md: "block",
-          },
+          display: { xs: "none", md: "block" },
           width: currentDrawerWidth,
           flexShrink: 0,
-
           "& .MuiDrawer-paper": {
             width: currentDrawerWidth,
             boxSizing: "border-box",
             overflow: "hidden",
-
-            transition: theme.transitions.create(
-              "width",
-              {
-                duration:
-                  theme.transitions.duration.standard,
-              }
-            ),
+            visibility: collapsed ? "hidden" : "visible",
+            bgcolor: COLORS.sidebar,
+            borderRight: "none",
+            borderRadius: 0,
           },
         }}
       >
-        {drawer}
+        {sidebar}
       </Drawer>
 
-      {/* Main Content */}
+      {/* Main content. The page changes here; the sidebar never remounts. */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
-          width: {
-            md: `calc(100% - ${currentDrawerWidth}px)`,
-          },
-          transition: theme.transitions.create(
-            ["width", "margin"],
-            {
-              duration:
-                theme.transitions.duration.standard,
-            }
-          ),
+          minWidth: 0,
+          p: { xs: 1.5, sm: 2.5, md: 3 },
+          width: { md: `calc(100% - ${currentDrawerWidth}px)` },
         }}
       >
-        <Toolbar />
+        <Box sx={{ height: HEADER_HEIGHT }} />
 
-        <Outlet />
+        <Suspense
+          fallback={
+            <Box
+              sx={{
+                minHeight: "40vh",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <CircularProgress size={28} aria-label="Loading page" />
+            </Box>
+          }
+        >
+          <Outlet />
+        </Suspense>
       </Box>
     </Box>
   );

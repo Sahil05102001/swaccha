@@ -1,3 +1,4 @@
+
 export interface BrandStatement {
     id: string;
 
@@ -6,7 +7,15 @@ export interface BrandStatement {
     description: string;
     tagline: string;
 
+    // Legacy image fields retained for backward compatibility.
     imageUrl: string;
+    imagePublicId: string;
+
+    // Responsive banner images.
+    desktopImageUrl: string;
+    desktopImagePublicId: string;
+    mobileImageUrl: string;
+    mobileImagePublicId: string;
 
     isActive: boolean;
 
@@ -20,7 +29,15 @@ export interface BrandStatementFormData {
     description: string;
     tagline: string;
 
+    // Legacy image fields retained for existing records.
     imageUrl: string;
+    imagePublicId: string;
+
+    // Responsive banner images.
+    desktopImageUrl: string;
+    desktopImagePublicId: string;
+    mobileImageUrl: string;
+    mobileImagePublicId: string;
 
     isActive: boolean;
 }
@@ -31,6 +48,14 @@ export const DEFAULT_BRAND_STATEMENT: BrandStatementFormData = {
     description:
         "At Swachha, we believe a clean space leads to a healthy life and a better planet.",
     tagline: "Better for you. Better for the earth.",
+
     imageUrl: "",
+    imagePublicId: "",
+
+    desktopImageUrl: "",
+    desktopImagePublicId: "",
+    mobileImageUrl: "",
+    mobileImagePublicId: "",
+
     isActive: true,
 };

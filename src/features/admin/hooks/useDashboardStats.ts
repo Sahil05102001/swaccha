@@ -10,5 +10,6 @@ export function useDashboardStats() {
   return useQuery({
     queryKey: DASHBOARD_STATS_QUERY_KEY,
     queryFn: getDashboardStats,
+    staleTime: 2 * 60_000,
   });
 }

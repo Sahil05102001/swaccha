@@ -20,6 +20,7 @@ import OrderSummaryCard from "./OrderSummaryCard";
 import ShippingInformation from "./ShippingInformation";
 
 import { generateInvoice } from "@/features/orders/utils/generateInvoice";
+import OrderRefundPanel from "./OrderRefundPanel";
 
 interface OrderDetailsDialogProps {
   open: boolean;
@@ -56,7 +57,7 @@ export default function OrderDetailsDialog({
       })),
       subtotal: order.subtotal,
       shippingCharge: order.shippingCharge,
-      discount: 0,
+      discount: order.discount ?? 0,
       total: order.totalAmount,
     });
   };
@@ -94,6 +95,8 @@ export default function OrderDetailsDialog({
 
           <OrderSummaryCard order={order} />
 
+          <OrderRefundPanel order={order} />
+
           <Divider />
 
           <OrderActions order={order} />
@@ -103,15 +106,17 @@ export default function OrderDetailsDialog({
       <Divider />
 
       <DialogActions>
-        <Button
-          variant="outlined"
-          startIcon={
-            <DownloadOutlinedIcon />
-          }
-          onClick={handleDownloadInvoice}
-        >
-          Download Invoice
-        </Button>
+        {order.orderStatus === "delivered" && (
+          <Button
+            variant="outlined"
+            startIcon={
+              <DownloadOutlinedIcon />
+            }
+            onClick={handleDownloadInvoice}
+          >
+            Download Invoice
+          </Button>
+        )}
 
         <Button onClick={onClose}>
           Close

@@ -9,6 +9,7 @@ import {
   deleteProduct,
   getProduct,
   getProducts,
+  getProductsPage,
   updateProduct,
   updateProductFeatured,
 } from "../services/productService";
@@ -19,6 +20,17 @@ export function useProducts() {
   return useQuery({
     queryKey: ["products"],
     queryFn: getProducts,
+  });
+}
+
+export function usePaginatedProducts(
+  pageSize: number,
+  lastDocument?: Parameters<typeof getProductsPage>[1]
+) {
+  return useQuery({
+    queryKey: ["products", "paginated", pageSize, lastDocument?.id ?? "first"],
+    queryFn: () => getProductsPage(pageSize, lastDocument),
+    staleTime: 30_000,
   });
 }
 

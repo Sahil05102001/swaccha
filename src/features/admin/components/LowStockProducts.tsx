@@ -1,120 +1,105 @@
 import {
-  Card,
-  CardContent,
+  Alert,
   Chip,
+  CircularProgress,
   List,
   ListItem,
   ListItemText,
   Typography,
 } from "@mui/material";
+import { useQuery } from "@tanstack/react-query";
+import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
 
-import { useProducts } from "../products/hooks/useProducts";
+import SectionCard from "@/components/common/SectionCard";
+import { db } from "@/firebase/firestore";
+
+const LOW_STOCK_AT = 5;
+const MAX_SHOWN = 20;
+
+interface LowStockItem {
+  id: string;
+  name: string;
+  category: string;
+  stock: number;
+}
 
 export default function LowStockProducts() {
-  const {
-    data: products = [],
-    isLoading,
-  } = useProducts();
+  const { data: items = [], isLoading, isError } = useQuery({
+    queryKey: ["low-stock-products"],
+    queryFn: async (): Promise<LowStockItem[]> => {
+      const snap = await getDocs(
+        query(
+          collection(db, "products"),
+          where("stock", "<=", LOW_STOCK_AT),
+          orderBy("stock"),
+          limit(MAX_SHOWN),
+        ),
+      );
 
-  if (isLoading) {
-    return (
-      <Card elevation={2}>
-        <CardContent>
-          <Typography
-            variant="h6"
-            sx={{
-              fontWeight: 700,
-              mb: 2,
-            }}
-          >
-            Inventory Alerts
-          </Typography>
+      return snap.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          name: String(data.name ?? ""),
+          category: String(data.category ?? ""),
+          stock: Number(data.stock ?? 0),
+        };
+      });
+    },
+    staleTime: 2 * 60_000,
+    retry: false,
+  });
 
-          <Typography color="text.secondary">
-            Loading...
-          </Typography>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const lowStockProducts = products
-    .filter((product) => product.stock <= 5)
-    .sort((a, b) => a.stock - b.stock);
-
-  const outOfStockCount =
-    lowStockProducts.filter(
-      (product) => product.stock === 0
-    ).length;
-
-  const lowStockCount =
-    lowStockProducts.filter(
-      (product) => product.stock > 0
-    ).length;
+  const outOfStock = items.filter((p) => p.stock === 0).length;
+  const low = items.length - outOfStock;
 
   return (
-    <Card elevation={2}>
-      <CardContent>
-        <Typography
-          variant="h6"
-          sx={{
-            fontWeight: 700,
-            mb: 2,
-          }}
-        >
-          Inventory Alerts
+    <SectionCard title="Inventory Alerts">
+      {isLoading ? (
+        <CircularProgress size={24} aria-label="Loading inventory alerts" />
+      ) : isError ? (
+        <Alert severity="error">Failed to load inventory alerts.</Alert>
+      ) : items.length === 0 ? (
+        <Typography color="success.main">
+          All products are sufficiently stocked.
         </Typography>
-
-        {lowStockProducts.length === 0 ? (
-          <Typography color="success.main">
-            ✅ All products are sufficiently stocked.
-          </Typography>
-        ) : (
-          <>
-            <List disablePadding>
-              {lowStockProducts.map((product) => (
-                <ListItem
-                  key={product.id}
-                  divider
-                  disableGutters
-                  secondaryAction={
-                    <Chip
-                      size="small"
-                      color={
-                        product.stock === 0
-                          ? "error"
-                          : "warning"
-                      }
-                      label={
-                        product.stock === 0
-                          ? "Out of Stock"
-                          : `${product.stock} Left`
-                      }
-                    />
-                  }
-                >
-                  <ListItemText
-                    primary={product.name}
-                    secondary={product.category}
+      ) : (
+        <>
+          <List disablePadding>
+            {items.map((product) => (
+              <ListItem
+                key={product.id}
+                divider
+                disableGutters
+                secondaryAction={
+                  <Chip
+                    size="small"
+                    color={product.stock === 0 ? "error" : "warning"}
+                    label={
+                      product.stock === 0
+                        ? "Out of Stock"
+                        : `${product.stock} Left`
+                    }
                   />
-                </ListItem>
-              ))}
-            </List>
+                }
+              >
+                <ListItemText
+                  primary={product.name}
+                  secondary={product.category}
+                  sx={{ pr: 12 }}
+                />
+              </ListItem>
+            ))}
+          </List>
 
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: 2 }}
-            >
-              Low Stock:{" "}
-              <strong>{lowStockCount}</strong>
-              {" • "}
-              Out of Stock:{" "}
-              <strong>{outOfStockCount}</strong>
-            </Typography>
-          </>
-        )}
-      </CardContent>
-    </Card>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            Low Stock: <strong>{low}</strong>
+            {" • "}
+            Out of Stock: <strong>{outOfStock}</strong>
+            {items.length === MAX_SHOWN && ` (showing the first ${MAX_SHOWN})`}
+          </Typography>
+        </>
+      )}
+    </SectionCard>
   );
 }

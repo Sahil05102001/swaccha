@@ -52,8 +52,14 @@ export default function PolicyPage({
 
       <Paper sx={{ p: 4 }}>
         <Typography
+          component="div"
           sx={{
             whiteSpace: "pre-wrap",
+            textAlign: "justify",
+            lineHeight: 1.8,
+            fontSize: "1rem",
+            overflowWrap: "anywhere",
+            color: "text.primary",
           }}
         >
           {policy.content}
