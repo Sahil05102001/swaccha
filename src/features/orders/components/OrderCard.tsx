@@ -250,8 +250,6 @@ export default function OrderCard({ order }: OrderCardProps) {
             </Typography>
           )}
 
-          <RefundNote order={order} />
-
           {isDelivered && <DeliveredHelpNote orderNumber={order.orderNumber} />}
 
           <RefundNote order={order} />
