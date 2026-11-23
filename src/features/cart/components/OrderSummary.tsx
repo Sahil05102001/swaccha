@@ -12,6 +12,8 @@ import { ROUTES } from "@/constants/routes";
 
 interface OrderSummaryProps {
   subtotal: number;
+  savings?: number;
+  itemCount?: number;
 }
 
 const COLORS = {
@@ -31,10 +33,12 @@ function Row({
   label,
   value,
   strong = false,
+  accent = false,
 }: {
   label: string;
   value: string;
   strong?: boolean;
+  accent?: boolean;
 }) {
   return (
     <Stack
@@ -49,7 +53,7 @@ function Row({
         sx={{
           color: strong ? COLORS.text : COLORS.muted,
           fontWeight: strong ? 700 : 400,
-          fontSize: strong ? "1.1rem" : "0.95rem",
+          fontSize: strong ? "1.05rem" : "0.92rem",
         }}
       >
         {label}
@@ -57,9 +61,9 @@ function Row({
 
       <Typography
         sx={{
-          color: strong ? COLORS.blueText : COLORS.text,
+          color: strong || accent ? COLORS.blueText : COLORS.text,
           fontWeight: strong ? 700 : 500,
-          fontSize: strong ? "1.25rem" : "0.95rem",
+          fontSize: strong ? "1.25rem" : "0.92rem",
           whiteSpace: "nowrap",
           textAlign: "right",
         }}
@@ -72,6 +76,8 @@ function Row({
 
 export default function OrderSummary({
   subtotal,
+  savings = 0,
+  itemCount,
 }: OrderSummaryProps) {
   const navigate = useNavigate();
 
@@ -88,15 +94,15 @@ export default function OrderSummary({
         color: COLORS.text,
         border: `1px solid ${COLORS.border}`,
         borderTop: `2px solid ${COLORS.blue}`,
-        borderRadius: 2,
+        borderRadius: "12px",
         boxShadow: "none",
       }}
     >
       <CardContent
         sx={{
-          p: { xs: 2.5, md: 3 },
+          p: { xs: 2, md: 2.5 },
           "&:last-child": {
-            pb: { xs: 2.5, md: 3 },
+            pb: { xs: 2, md: 2.5 },
           },
         }}
       >
@@ -104,19 +110,33 @@ export default function OrderSummary({
           component="h2"
           sx={{
             fontWeight: 700,
-            fontSize: "1.25rem",
-            mb: 3,
+            fontSize: "1.15rem",
+            mb: 2,
             color: COLORS.text,
           }}
         >
           Order summary
         </Typography>
 
-        <Stack spacing={2}>
+        <Stack spacing={1.5}>
           <Row
-            label="Subtotal"
+            label={
+              itemCount
+                ? `Subtotal (${itemCount} ${
+                    itemCount === 1 ? "item" : "items"
+                  })`
+                : "Subtotal"
+            }
             value={formatPrice(subtotal)}
           />
+
+          {savings > 0 && (
+            <Row
+              label="You save"
+              value={formatPrice(savings)}
+              accent
+            />
+          )}
 
           <Row
             label="Delivery"
@@ -126,7 +146,7 @@ export default function OrderSummary({
           <Divider sx={{ borderColor: COLORS.border }} />
 
           <Row
-            label="Subtotal"
+            label="Estimated total"
             value={formatPrice(subtotal)}
             strong
           />
@@ -142,8 +162,8 @@ export default function OrderSummary({
             size="large"
             onClick={handleCheckout}
             sx={{
-              mt: 1,
-              minHeight: 60,
+              mt: 0.5,
+              minHeight: 54,
               px: 2,
               py: 1,
               borderRadius: "999px",
@@ -160,8 +180,8 @@ export default function OrderSummary({
               component="span"
               sx={{
                 fontSize: {
-                  xs: "0.85rem",
-                  sm: "1.05rem",
+                  xs: "0.9rem",
+                  sm: "1rem",
                 },
                 fontWeight: 800,
                 letterSpacing: "0.03em",

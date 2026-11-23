@@ -1,94 +1,81 @@
 import { useEffect, useState } from "react";
-import {
-  Alert,
-  Box,
-  Button,
-  Paper,
-  Stack,
-  TextField,
-} from "@mui/material";
+import { Box, Button, Stack, TextField, Typography } from "@mui/material";
 
+import SectionCard from "@/components/common/SectionCard";
+import { useSnackbar } from "@/contexts/SnackbarContext";
+
+import RichTextEditor from "./RichTextEditor";
 import type { PolicySettings } from "../types/policy";
 
 interface Props {
   initialValues: PolicySettings;
   isSaving: boolean;
-  onSubmit: (
-    values: PolicySettings,
-  ) => Promise<void> | void;
+  onSubmit: (values: PolicySettings) => Promise<void> | void;
 }
 
-export default function PolicyForm({
-  initialValues,
-  isSaving,
-  onSubmit,
-}: Props) {
-  const [form, setForm] =
-    useState(initialValues);
+function scrollTop() {
+  window.scrollTo({ top: 0 });
+  document.querySelector("main")?.scrollTo({ top: 0 });
+}
 
-  const [success, setSuccess] =
-    useState(false);
+export default function PolicyForm({ initialValues, isSaving, onSubmit }: Props) {
+  const { showSnackbar } = useSnackbar();
+  const [form, setForm] = useState(initialValues);
 
   useEffect(() => {
     setForm(initialValues);
-  }, [initialValues]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialValues.title, initialValues.content, initialValues.updatedAt?.getTime()]);
+
+  const dirty =
+    form.title !== initialValues.title || form.content !== initialValues.content;
+
+  const save = async () => {
+    try {
+      await onSubmit(form);
+      showSnackbar("Saved. The page now shows your changes.", "success");
+      scrollTop();
+    } catch {
+      showSnackbar("Could not save. Please try again.", "error");
+    }
+  };
 
   return (
-    <Paper sx={{ p: 3 }}>
-      {success && (
-        <Alert
-          severity="success"
-          sx={{ mb: 2 }}
-        >
-          Saved Successfully
-        </Alert>
-      )}
-
+    <SectionCard
+      title="Page content"
+      subtitle="Customers see this exactly as shown in Preview."
+    >
       <Stack spacing={3}>
         <TextField
           fullWidth
           label="Title"
           value={form.title}
-          onChange={(e) =>
-            setForm({
-              ...form,
-              title: e.target.value,
-            })
-          }
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
         />
 
-        <TextField
-          fullWidth
-          multiline
-          minRows={20}
-          label="Content"
+        <RichTextEditor
           value={form.content}
-          onChange={(e) =>
-            setForm({
-              ...form,
-              content: e.target.value,
-            })
-          }
+          disabled={isSaving}
+          onChange={(content) => setForm({ ...form, content })}
         />
 
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "flex-end",
-          }}
-        >
+        <Typography variant="caption" color="text.secondary">
+          Tip: type "## " at the start of a line for a heading, **words** for bold, [words](https://address) for a link.
+        </Typography>
+
+        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
           <Button
-            variant="contained"
-            disabled={isSaving}
-            onClick={async () => {
-              await onSubmit(form);
-              setSuccess(true);
-            }}
+            color="inherit"
+            disabled={!dirty || isSaving}
+            onClick={() => setForm(initialValues)}
           >
-            Save
+            Discard
+          </Button>
+          <Button variant="contained" disabled={!dirty || isSaving} onClick={save}>
+            {isSaving ? "Saving…" : "Save changes"}
           </Button>
         </Box>
       </Stack>
-    </Paper>
+    </SectionCard>
   );
 }

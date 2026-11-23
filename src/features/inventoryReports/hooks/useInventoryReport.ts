@@ -1,33 +1,27 @@
+import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import {
-    getInventoryReport,
+  buildInventoryReport,
+  fetchInventoryRows,
+  type InventoryReportFilters,
+  type InventoryReportRow,
 } from "../services/inventoryReportService";
 
-import type {
-    InventoryReportFilters,
-} from "../services/inventoryReportService";
+export const INVENTORY_REPORT_QUERY_KEY = ["inventory-report"] as const;
 
-export const INVENTORY_REPORT_QUERY_KEY = [
-    "inventory-report",
-] as const;
+/** Products download once. Search, category and status filter on screen. */
+export function useInventoryReport(filters: InventoryReportFilters) {
+  const select = useCallback(
+    (rows: InventoryReportRow[]) => buildInventoryReport(rows, filters),
+    [filters],
+  );
 
-export function useInventoryReport(
-    filters?: InventoryReportFilters
-) {
-    return useQuery({
-        queryKey: [
-            ...INVENTORY_REPORT_QUERY_KEY,
-            {
-                search:
-                    filters?.search?.trim() ?? "",
-                category:
-                    filters?.category ?? "",
-                stockStatus:
-                    filters?.stockStatus ?? "",
-            },
-        ],
-        queryFn: () =>
-            getInventoryReport(filters),
-    });
+  return useQuery({
+    queryKey: INVENTORY_REPORT_QUERY_KEY,
+    queryFn: fetchInventoryRows,
+    select,
+    staleTime: 30_000,
+    retry: false,
+  });
 }

@@ -1,14 +1,27 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 
-import { getCategorySales } from "../services/dashboardCategorySalesService";
-
-export const SALES_BY_CATEGORY_QUERY_KEY = [
-    "sales-by-category",
-];
+import { useProducts } from "../products/hooks/useProducts";
+import { computeCategorySales } from "../services/dashboardCategorySalesService";
+import { useSalesOrders } from "./useSalesOrders";
 
 export function useSalesByCategory() {
-    return useQuery({
-        queryKey: SALES_BY_CATEGORY_QUERY_KEY,
-        queryFn: getCategorySales,
-    });
+  const orders = useSalesOrders();
+  const products = useProducts();
+
+  const data = useMemo(() => {
+    if (!orders.data || !products.data) return undefined;
+
+    const categoryOf = new Map(
+      products.data.map((p) => [p.id, p.category] as const),
+    );
+
+    return computeCategorySales(orders.data, categoryOf);
+  }, [orders.data, products.data]);
+
+  return {
+    data,
+    isLoading: orders.isLoading || products.isLoading,
+    isError: orders.isError || products.isError,
+    error: orders.error ?? products.error,
+  };
 }

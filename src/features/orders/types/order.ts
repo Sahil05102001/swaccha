@@ -1,4 +1,4 @@
-
+import type { CreditNoteInfo, OrderTax } from "@/features/tax/types/tax";
 import type { Timestamp } from "firebase/firestore";
 
 export type OrderStatus =
@@ -39,6 +39,7 @@ export interface OrderRefund {
   id: string;
   amount: number;
   reason: string;
+  creditNote?: CreditNoteInfo;
   status: "initiated" | "pending" | "processed" | "failed";
   source?: "app" | "dashboard" | "manual";
   by: string;
@@ -96,6 +97,10 @@ export interface Order {
   subtotal: number;
   shippingCharge: number;
   totalAmount: number;
+  // GST. Missing on orders placed before GST existed (treated as no GST).
+  tax?: OrderTax;
+  invoiceNumber?: string;
+  invoiceDate?: Timestamp;
 
   refunds?: OrderRefund[];
   refundRequired?: boolean;

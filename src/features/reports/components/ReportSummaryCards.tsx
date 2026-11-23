@@ -1,102 +1,20 @@
-import {
-    Card,
-    CardContent,
-    Grid,
-    Typography,
-} from "@mui/material";
+import { Stack } from "@mui/material";
 
 import type { SalesReportSummary } from "../services/salesReportService";
+import { money } from "../utils/reportUtils";
 
-interface Props {
-    summary: SalesReportSummary;
-}
+import ReportStat from "./ReportStat";
 
-export default function ReportSummaryCards({
-    summary,
-}: Props) {
-    return (
-        <Grid
-            container
-            spacing={3}
-            sx={{ mb: 3 }}
-        >
-            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-                <Card>
-                    <CardContent>
-                        <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            gutterBottom
-                        >
-                            Total Revenue
-                        </Typography>
-
-                        <Typography variant="h5">
-                            ₹
-                            {summary.totalRevenue.toLocaleString(
-                                "en-IN"
-                            )}
-                        </Typography>
-                    </CardContent>
-                </Card>
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-                <Card>
-                    <CardContent>
-                        <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            gutterBottom
-                        >
-                            Total Orders
-                        </Typography>
-
-                        <Typography variant="h5">
-                            {summary.totalOrders}
-                        </Typography>
-                    </CardContent>
-                </Card>
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-                <Card>
-                    <CardContent>
-                        <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            gutterBottom
-                        >
-                            Products Sold
-                        </Typography>
-
-                        <Typography variant="h5">
-                            {summary.totalProductsSold}
-                        </Typography>
-                    </CardContent>
-                </Card>
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-                <Card>
-                    <CardContent>
-                        <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            gutterBottom
-                        >
-                            Average Order Value
-                        </Typography>
-
-                        <Typography variant="h5">
-                            ₹
-                            {summary.averageOrderValue.toLocaleString(
-                                "en-IN"
-                            )}
-                        </Typography>
-                    </CardContent>
-                </Card>
-            </Grid>
-        </Grid>
-    );
+export default function ReportSummaryCards({ summary }: { summary: SalesReportSummary }) {
+  return (
+    <Stack direction="row" useFlexGap sx={{ flexWrap: "wrap", gap: 1.5 }}>
+      <ReportStat label="Net revenue" value={money(summary.netRevenue)} hint="After refunds" />
+      <ReportStat label="Orders" value={summary.totalOrders} hint="Counted as sales" />
+      <ReportStat label="Units sold" value={summary.totalProductsSold} />
+      <ReportStat label="Average order" value={money(summary.averageOrderValue)} />
+      <ReportStat label="GST included" value={money(summary.gstIncluded)} hint="Part of net revenue" />
+      <ReportStat label="Partial refunds" value={money(summary.refundedAmount)} />
+      <ReportStat label="Cancelled / returned" value={summary.cancelledOrders} hint="Not in revenue" />
+    </Stack>
+  );
 }

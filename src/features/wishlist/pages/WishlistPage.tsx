@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 
-import { useState } from "react";
+
 
 import {
   Alert,
@@ -7,14 +8,19 @@ import {
   Button,
   CircularProgress,
   Container,
+  Pagination,
   Paper,
   Snackbar,
   Stack,
   Typography,
 } from "@mui/material";
 
+
+
 import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
 import { useNavigate } from "react-router-dom";
+
+
 
 import { useAuth } from "@/features/auth/AuthContext";
 import { useAddToCart } from "@/features/cart/hooks/useCart";
@@ -23,7 +29,11 @@ import {
   useRemoveFromWishlist,
 } from "@/features/wishlist/hooks/useWishlist";
 
+
+
 import type { WishlistItem } from "../types/wishlist";
+
+
 
 const COLORS = {
   blue: "#00D9FF",
@@ -33,6 +43,8 @@ const COLORS = {
   muted: "#757575",
   border: "#E0E0E0",
 };
+
+
 
 const pillButtonBase = {
   borderRadius: 999,
@@ -45,9 +57,13 @@ const pillButtonBase = {
   transition: "none",
 } as const;
 
+
+
 export default function WishlistPage() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+
+
 
   const {
     data: wishlistItems = [],
@@ -56,13 +72,37 @@ export default function WishlistPage() {
     error,
   } = useWishlist(Boolean(user) && !authLoading);
 
+
+
+  const visibleItems = wishlistItems.filter((item) => item.isActive !== false);
+
+
+  const PAGE_SIZE = 10;
+  const [page, setPage] = useState(1);
+
+
+  const pageCount = Math.max(1, Math.ceil(visibleItems.length / PAGE_SIZE));
+  const pageItems = visibleItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+
+  // If the last item on a page is removed, step back to the previous page.
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
+
+
+
   const addToCart = useAddToCart();
   const removeWishlist = useRemoveFromWishlist();
+
+
 
   const [feedback, setFeedback] = useState<{
     message: string;
     severity: "success" | "error" | "info";
   } | null>(null);
+
+
 
   const handleAddToCart = (
     event: React.MouseEvent<HTMLButtonElement>,
@@ -70,7 +110,11 @@ export default function WishlistPage() {
   ) => {
     event.stopPropagation();
 
+
+
     if (authLoading) return;
+
+
 
     if (!user) {
       navigate("/login", {
@@ -78,6 +122,8 @@ export default function WishlistPage() {
       });
       return;
     }
+
+
 
     if (item.stock <= 0) {
       setFeedback({
@@ -87,7 +133,11 @@ export default function WishlistPage() {
       return;
     }
 
+
+
     if (addToCart.isPending) return;
+
+
 
     addToCart.mutate(
       {
@@ -115,13 +165,19 @@ export default function WishlistPage() {
     );
   };
 
+
+
   const handleRemove = (
     event: React.MouseEvent<HTMLButtonElement>,
     itemId: string,
   ) => {
     event.stopPropagation();
 
+
+
     if (removeWishlist.isPending) return;
+
+
 
     removeWishlist.mutate(itemId, {
       onSuccess: () => {
@@ -138,6 +194,8 @@ export default function WishlistPage() {
       },
     });
   };
+
+
 
   const feedbackSnackbar = (
     <Snackbar
@@ -157,6 +215,8 @@ export default function WishlistPage() {
     </Snackbar>
   );
 
+
+
   if (authLoading || isLoading) {
     return (
       <>
@@ -174,6 +234,8 @@ export default function WishlistPage() {
       </>
     );
   }
+
+
 
   if (!user) {
     return (
@@ -197,9 +259,13 @@ export default function WishlistPage() {
             Sign in to view your wishlist
           </Typography>
 
+
+
           <Typography sx={{ mt: 1, mb: 3, color: COLORS.muted }}>
             Log in to see your saved products.
           </Typography>
+
+
 
           <Button
             disableElevation
@@ -223,6 +289,8 @@ export default function WishlistPage() {
     );
   }
 
+
+
   if (isError) {
     return (
       <>
@@ -238,7 +306,9 @@ export default function WishlistPage() {
     );
   }
 
-  if (wishlistItems.length === 0) {
+
+
+  if (visibleItems.length === 0) {
     return (
       <>
         <Container
@@ -270,6 +340,8 @@ export default function WishlistPage() {
             <FavoriteBorderRoundedIcon sx={{ fontSize: 30 }} />
           </Box>
 
+
+
           <Typography
             component="h1"
             sx={{
@@ -281,11 +353,15 @@ export default function WishlistPage() {
             Your wishlist is empty
           </Typography>
 
+
+
           <Typography
             sx={{ mt: 1, mb: 3, fontSize: "0.95rem", color: COLORS.muted }}
           >
             Save items you like and they will show up here.
           </Typography>
+
+
 
           <Button
             disableRipple
@@ -306,6 +382,8 @@ export default function WishlistPage() {
       </>
     );
   }
+
+
 
   return (
     <>
@@ -336,14 +414,18 @@ export default function WishlistPage() {
             My Wishlist
           </Typography>
 
+
+
           <Typography sx={{ fontSize: "0.875rem", color: COLORS.muted }}>
-            {wishlistItems.length}{" "}
-            {wishlistItems.length === 1 ? "item" : "items"}
+            {visibleItems.length}{" "}
+            {visibleItems.length === 1 ? "item" : "items"}
           </Typography>
         </Stack>
 
+
+
         <Stack spacing={{ xs: 1.5, sm: 2 }}>
-          {wishlistItems.map((item) => (
+          {pageItems.map((item) => (
             <Paper
               key={item.id}
               component="article"
@@ -401,6 +483,7 @@ export default function WishlistPage() {
                     component="img"
                     src={item.images?.[0] ?? ""}
                     alt={item.name}
+                    loading="lazy"
                     sx={{
                       width: "100%",
                       height: "100%",
@@ -409,6 +492,8 @@ export default function WishlistPage() {
                     }}
                   />
                 </Box>
+
+
 
                 <Box sx={{ minWidth: 0 }}>
                   <Typography
@@ -426,6 +511,8 @@ export default function WishlistPage() {
                     {item.name}
                   </Typography>
 
+
+
                   <Typography
                     sx={{
                       mt: 0.5,
@@ -442,17 +529,53 @@ export default function WishlistPage() {
                     {item.description}
                   </Typography>
 
-                  <Typography
-                    sx={{
-                      mt: 1,
-                      fontWeight: 700,
-                      fontSize: "1rem",
-                      color: COLORS.text,
-                    }}
+
+
+                  <Stack
+                    direction="row"
+                    useFlexGap
+                    sx={{ mt: 1, alignItems: "baseline", flexWrap: "wrap", gap: 1 }}
                   >
-                    ₹{item.price}
-                  </Typography>
+                    <Typography
+                      sx={{ fontWeight: 700, fontSize: "1.05rem", color: COLORS.text }}
+                    >
+                      ₹{item.price.toLocaleString("en-IN")}
+                    </Typography>
+
+
+
+                    {item.mrp > item.price && (
+                      <>
+                        <Typography
+                          sx={{
+                            fontSize: "0.85rem",
+                            color: COLORS.muted,
+                            textDecoration: "line-through",
+                          }}
+                        >
+                          ₹{item.mrp.toLocaleString("en-IN")}
+                        </Typography>
+                        <Typography
+                          sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#007F89" }}
+                        >
+                          {Math.round(((item.mrp - item.price) / item.mrp) * 100)}% off
+                        </Typography>
+                      </>
+                    )}
+                  </Stack>
+
+
+
+                  {item.stock <= 0 && (
+                    <Typography
+                      sx={{ mt: 0.5, fontSize: "0.8rem", fontWeight: 600, color: "#B42318" }}
+                    >
+                      Out of stock
+                    </Typography>
+                  )}
                 </Box>
+
+
 
                 <Stack
                   direction={{ xs: "row", sm: "column" }}
@@ -466,7 +589,7 @@ export default function WishlistPage() {
                     disableRipple
                     disableElevation
                     variant="contained"
-                    disabled={authLoading || addToCart.isPending}
+                    disabled={authLoading || addToCart.isPending || item.stock <= 0}
                     onClick={(event) => handleAddToCart(event, item)}
                     sx={{
                       ...pillButtonBase,
@@ -483,8 +606,10 @@ export default function WishlistPage() {
                       },
                     }}
                   >
-                    Add to Cart
+                    {item.stock <= 0 ? "Out of stock" : "Add to Cart"}
                   </Button>
+
+
 
                   <Button
                     disableRipple
@@ -510,6 +635,30 @@ export default function WishlistPage() {
             </Paper>
           ))}
         </Stack>
+
+
+        {pageCount > 1 && (
+          <Stack sx={{ mt: { xs: 3, sm: 4 }, alignItems: "center" }}>
+            <Pagination
+              count={pageCount}
+              page={page}
+              onChange={(_, value) => {
+                setPage(value);
+                window.scrollTo({ top: 0 });
+              }}
+              shape="rounded"
+              siblingCount={0}
+              sx={{
+                "& .MuiPaginationItem-root": { borderRadius: 0 },
+                "& .Mui-selected": {
+                  bgcolor: "#00D9FF !important",
+                  color: "#212121",
+                  fontWeight: 700,
+                },
+              }}
+            />
+          </Stack>
+        )}
       </Container>
       {feedbackSnackbar}
     </>

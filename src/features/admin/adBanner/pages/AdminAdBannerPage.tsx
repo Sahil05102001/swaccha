@@ -1,462 +1,278 @@
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useState } from "react";
 
 import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   FormControlLabel,
+  Skeleton,
   Stack,
   Switch,
   TextField,
   Typography,
 } from "@mui/material";
+import RefreshIcon from "@mui/icons-material/Refresh";
 
 import PageContainer from "@/components/common/PageContainer";
 import PageHeader from "@/components/common/PageHeader";
+import SectionCard from "@/components/common/SectionCard";
+import { useSnackbar } from "@/contexts/SnackbarContext";
+import DeferredImageField from "@/features/admin/components/DeferredImageField";
+import { checkImageFile, type ImageSpec } from "@/features/admin/utils/imageAdvice";
+import { scrollToTop } from "@/features/admin/utils/scrollToTop";
 
-import ImageUploadField from "@/features/admin/products/components/ImageUploadField";
+import { useAdBanner, useSaveAdBanner } from "../hooks/useAdBanner";
+import type { SaveAdBannerInput } from "../services/adBannerService";
+import type { AdBanner } from "../types/adBanner";
 
-import { uploadImageWithDetails } from "@/features/admin/products/services/storageService";
+const DESKTOP_SPEC: ImageSpec = {
+  width: 1920,
+  height: 480,
+  kb: 150,
+  warnKb: 250,
+  minWidth: 1400,
+  maxWidth: 2600,
+  shape: "4:1 wide banner",
+  keepSameShape: true,
+};
 
-import {
-  useAdBanner,
-  useSaveAdBanner,
-} from "../hooks/useAdBanner";
+const MOBILE_SPEC: ImageSpec = {
+  width: 800,
+  height: 600,
+  kb: 80,
+  warnKb: 130,
+  minWidth: 640,
+  maxWidth: 1300,
+  shape: "4:3 landscape",
+  keepSameShape: true,
+};
 
-const DESKTOP_UPLOAD_FOLDER =
-  "ad-banners/desktop";
+interface AdBannerFormProps {
+  banner: AdBanner | null;
+  saving: boolean;
+  onSave: (input: SaveAdBannerInput) => void;
+  onDiscard: () => void;
+}
 
-const MOBILE_UPLOAD_FOLDER =
-  "ad-banners/mobile";
+function AdBannerForm({ banner, saving, onSave, onDiscard }: AdBannerFormProps) {
+  const initialAlt = banner?.altText ?? "Advertisement";
+  const initialHref = banner?.href ?? "";
+  const initialActive = banner?.isActive ?? true;
+
+  const desktopUrl = banner?.desktopImageUrl || banner?.imageUrl || "";
+  const mobileUrl = banner?.mobileImageUrl || desktopUrl;
+
+  const [altText, setAltText] = useState(initialAlt);
+  const [href, setHref] = useState(initialHref);
+  const [isActive, setIsActive] = useState(initialActive);
+
+  const [desktopFile, setDesktopFile] = useState<File | null>(null);
+  const [mobileFile, setMobileFile] = useState<File | null>(null);
+  const [desktopNotes, setDesktopNotes] = useState<string[]>([]);
+  const [mobileNotes, setMobileNotes] = useState<string[]>([]);
+
+  const dirty =
+    Boolean(desktopFile || mobileFile) ||
+    altText !== initialAlt ||
+    href !== initialHref ||
+    isActive !== initialActive;
+
+  const hasBoth =
+    Boolean(desktopFile || desktopUrl) && Boolean(mobileFile || mobileUrl);
+
+  return (
+    <Stack spacing={3}>
+      <SectionCard
+        title="Banner images"
+        subtitle="Images are uploaded only when you press Save, so nothing unused is left in Cloudinary."
+      >
+        <Stack spacing={4}>
+          <DeferredImageField
+            title="Desktop banner"
+            guide={`Recommended: ${DESKTOP_SPEC.width} × ${DESKTOP_SPEC.height} px (4:1 wide banner), WebP or JPEG, around ${DESKTOP_SPEC.kb} KB. Shown on screens wider than 767 px. Keep text and logos away from the edges. You can convert images for free at squoosh.app.`}
+            existingUrl={desktopUrl}
+            thumbWidth={960}
+            file={desktopFile}
+            notes={desktopNotes}
+            disabled={saving}
+            onPick={async (file) => {
+              setDesktopFile(file);
+              setDesktopNotes(await checkImageFile(file, DESKTOP_SPEC));
+            }}
+            onUndoPick={() => {
+              setDesktopFile(null);
+              setDesktopNotes([]);
+            }}
+          />
+
+          <DeferredImageField
+            title="Mobile banner"
+            guide={`Recommended: ${MOBILE_SPEC.width} × ${MOBILE_SPEC.height} px (4:3 landscape), WebP or JPEG, around ${MOBILE_SPEC.kb} KB. Shown on phones (767 px and narrower). Design it separately instead of cropping the desktop banner.`}
+            existingUrl={mobileUrl}
+            thumbWidth={480}
+            file={mobileFile}
+            notes={mobileNotes}
+            disabled={saving}
+            maxPreviewWidth={420}
+            onPick={async (file) => {
+              setMobileFile(file);
+              setMobileNotes(await checkImageFile(file, MOBILE_SPEC));
+            }}
+            onUndoPick={() => {
+              setMobileFile(null);
+              setMobileNotes([]);
+            }}
+          />
+        </Stack>
+      </SectionCard>
+
+      <SectionCard title="Link and visibility">
+        <Stack spacing={2}>
+          <TextField
+            fullWidth
+            label="Alt text"
+            value={altText}
+            onChange={(event) => setAltText(event.target.value)}
+            helperText="Describes the banner for screen readers and search engines."
+            disabled={saving}
+          />
+
+          <TextField
+            fullWidth
+            label="Banner link"
+            value={href}
+            onChange={(event) => setHref(event.target.value)}
+            placeholder="/products"
+            helperText="Optional. Example: /products"
+            disabled={saving}
+          />
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={isActive}
+                onChange={(event) => setIsActive(event.target.checked)}
+                disabled={saving}
+              />
+            }
+            label="Show banner on homepage"
+          />
+        </Stack>
+      </SectionCard>
+
+      <Box
+        sx={{
+          position: "sticky",
+          bottom: 0,
+          zIndex: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 1.5,
+          p: 1.5,
+          bgcolor: "background.paper",
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: 2,
+        }}
+      >
+        <Typography variant="body2" color="text.secondary">
+          {!hasBoth
+            ? "Choose both a desktop and a mobile image to save."
+            : dirty
+              ? "You have unsaved changes."
+              : "All changes are saved."}
+        </Typography>
+
+        <Stack direction="row" spacing={1}>
+          <Button disabled={!dirty || saving} onClick={onDiscard}>
+            Discard
+          </Button>
+
+          <Button
+            variant="contained"
+            disabled={!dirty || saving || !hasBoth}
+            onClick={() =>
+              onSave({
+                altText,
+                href,
+                isActive,
+                files: { desktop: desktopFile, mobile: mobileFile },
+              })
+            }
+          >
+            {saving ? "Saving..." : "Save banner"}
+          </Button>
+        </Stack>
+      </Box>
+    </Stack>
+  );
+}
 
 export default function AdminAdBannerPage() {
-  const {
-    data: banner,
-    isLoading,
-  } = useAdBanner();
+  const { showSnackbar } = useSnackbar();
 
+  const { data: banner, isLoading, isError, refetch, isRefetching } = useAdBanner();
   const saveMutation = useSaveAdBanner();
 
-  const [desktopImageUrl, setDesktopImageUrl] =
-    useState("");
+  // Changing the key gives the form a fresh start (after save or discard).
+  const [formKey, setFormKey] = useState(0);
 
-  const [mobileImageUrl, setMobileImageUrl] =
-    useState("");
-
-  const [desktopImagePublicId, setDesktopImagePublicId] =
-    useState("");
-
-  const [mobileImagePublicId, setMobileImagePublicId] =
-    useState("");
-
-  const [altText, setAltText] =
-    useState("Advertisement");
-
-  const [href, setHref] =
-    useState("");
-
-  const [isActive, setIsActive] =
-    useState(true);
-
-  const [desktopUploading, setDesktopUploading] =
-    useState(false);
-
-  const [desktopProgress, setDesktopProgress] =
-    useState(0);
-
-  const [mobileUploading, setMobileUploading] =
-    useState(false);
-
-  const [mobileProgress, setMobileProgress] =
-    useState(0);
-
-  const [saveFeedback, setSaveFeedback] =
-    useState<{
-      severity: "success" | "warning" | "error";
-      message: string;
-    } | null>(null);
-
-  useEffect(() => {
-    if (!banner) {
-      return;
-    }
-
-    setDesktopImageUrl(
-      banner.desktopImageUrl ||
-        banner.imageUrl ||
-        "",
-    );
-
-    setMobileImageUrl(
-      banner.mobileImageUrl ||
-        banner.desktopImageUrl ||
-        banner.imageUrl ||
-        "",
-    );
-
-    setDesktopImagePublicId(
-      banner.desktopImagePublicId || "",
-    );
-
-    setMobileImagePublicId(
-      banner.mobileImagePublicId || "",
-    );
-
-    setAltText(banner.altText);
-    setHref(banner.href);
-    setIsActive(banner.isActive);
-
-    setDesktopUploading(false);
-    setMobileUploading(false);
-
-    setDesktopProgress(0);
-    setMobileProgress(0);
-  }, [banner]);
-
-  const handleDesktopSelectFile = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
+  const handleSave = async (input: SaveAdBannerInput) => {
     try {
-      setDesktopUploading(true);
-      setDesktopProgress(0);
-      setSaveFeedback(null);
+      const result = await saveMutation.mutateAsync(input);
 
-      const uploadedImage =
-        await uploadImageWithDetails(
-          file,
-          DESKTOP_UPLOAD_FOLDER,
-          setDesktopProgress,
-        );
-
-      setDesktopImageUrl(uploadedImage.secureUrl);
-      setDesktopImagePublicId(uploadedImage.publicId);
-    } catch (error) {
-      console.error(
-        "Failed to upload desktop ad banner image:",
-        error,
+      showSnackbar(
+        result.cleanupFailed
+          ? "Banner saved, but an old image could not be removed from Cloudinary."
+          : "Banner saved.",
+        result.cleanupFailed ? "error" : "success",
       );
 
-      setSaveFeedback({
-        severity: "error",
-        message: "Desktop banner image upload failed.",
-      });
-    } finally {
-      setDesktopUploading(false);
-      event.target.value = "";
-    }
-  };
-
-  const handleMobileSelectFile = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    try {
-      setMobileUploading(true);
-      setMobileProgress(0);
-      setSaveFeedback(null);
-
-      const uploadedImage =
-        await uploadImageWithDetails(
-          file,
-          MOBILE_UPLOAD_FOLDER,
-          setMobileProgress,
-        );
-
-      setMobileImageUrl(uploadedImage.secureUrl);
-      setMobileImagePublicId(uploadedImage.publicId);
+      scrollToTop();
+      setFormKey((key) => key + 1);
     } catch (error) {
-      console.error(
-        "Failed to upload mobile ad banner image:",
-        error,
+      showSnackbar(
+        error instanceof Error ? error.message : "Failed to save the banner.",
+        "error",
       );
-
-      setSaveFeedback({
-        severity: "error",
-        message: "Mobile banner image upload failed.",
-      });
-    } finally {
-      setMobileUploading(false);
-      event.target.value = "";
     }
   };
-
-  const handleSave = async () => {
-    if (desktopUploading || mobileUploading) {
-      return;
-    }
-
-    setSaveFeedback(null);
-
-    try {
-      await saveMutation.mutateAsync({
-        imageUrl: desktopImageUrl,
-        desktopImageUrl,
-        mobileImageUrl,
-        desktopImagePublicId,
-        mobileImagePublicId,
-        altText,
-        href,
-        isActive,
-      });
-
-      setSaveFeedback({
-        severity: "success",
-        message: "Banner saved successfully.",
-      });
-    } catch (error) {
-      console.error("Failed to save AdBanner:", error);
-
-      const message =
-        error instanceof Error
-          ? error.message
-          : "An unexpected error occurred.";
-
-      if (
-        message.startsWith(
-          "Banner saved successfully, but old image cleanup failed:",
-        )
-      ) {
-        setSaveFeedback({
-          severity: "warning",
-          message:
-            "Your banner was saved successfully, but an old Cloudinary image could not be deleted. Please check the console for details.",
-        });
-      } else {
-        setSaveFeedback({
-          severity: "error",
-          message:
-            "Failed to save the banner. Please try again.",
-        });
-      }
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <PageContainer>
-        <PageHeader
-          title="Ad Banner"
-          subtitle="Manage the homepage advertisement banner."
-        />
-
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            py: 6,
-          }}
-        >
-          <CircularProgress />
-        </Box>
-      </PageContainer>
-    );
-  }
-
-  const isUploading =
-    desktopUploading || mobileUploading;
-
-  const isSaving =
-    saveMutation.isPending || isUploading;
 
   return (
     <PageContainer>
       <PageHeader
         title="Ad Banner"
-        subtitle="Manage the responsive advertisement banner displayed on the homepage."
+        subtitle="The advertisement banner shown on the homepage, with a desktop and a mobile image."
+        action={
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={() => void refetch()}
+            disabled={isRefetching}
+          >
+            {isRefetching ? "Refreshing..." : "Refresh"}
+          </Button>
+        }
       />
 
-      <Box
-        sx={{
-          maxWidth: 900,
-          mt: 3,
-        }}
-      >
-        {/* Desktop Banner */}
-        <Stack spacing={1.5} sx={{ mb: 4 }}>
-          <Typography
-            variant="h6"
-            sx={{ fontWeight: 700 }}
-          >
-            Desktop Banner
-          </Typography>
-
-          <Typography
-            variant="body2"
-            color="text.secondary"
-          >
-            Upload a wide banner designed
-            specifically for desktop screens.
-          </Typography>
-
-          <ImageUploadField
-            uploading={desktopUploading}
-            progress={desktopProgress}
-            onSelectFile={handleDesktopSelectFile}
-          />
-
-          {desktopImageUrl && (
-            <Box
-              sx={{
-                width: "100%",
-                borderRadius: 2,
-                overflow: "hidden",
-                border: "1px solid",
-                borderColor: "divider",
-                bgcolor: "#f5f5f5",
-              }}
-            >
-              <Box
-                component="img"
-                src={desktopImageUrl}
-                alt="Desktop ad banner preview"
-                sx={{
-                  display: "block",
-                  width: "100%",
-                  height: "auto",
-                }}
-              />
-            </Box>
-          )}
+      {isLoading ? (
+        <Stack spacing={3}>
+          <Skeleton variant="rounded" height={300} />
+          <Skeleton variant="rounded" height={220} />
         </Stack>
-
-        {/* Mobile Banner */}
-        <Stack spacing={1.5} sx={{ mb: 4 }}>
-          <Typography
-            variant="h6"
-            sx={{ fontWeight: 700 }}
-          >
-            Mobile Banner
-          </Typography>
-
-          <Typography
-            variant="body2"
-            color="text.secondary"
-          >
-            Upload a separate mobile composition.
-            Do not simply crop the desktop banner.
-          </Typography>
-
-          <ImageUploadField
-            uploading={mobileUploading}
-            progress={mobileProgress}
-            onSelectFile={handleMobileSelectFile}
-          />
-
-          {mobileImageUrl && (
-            <Box
-              sx={{
-                width: "100%",
-                maxWidth: 420,
-                mx: "auto",
-                borderRadius: 2,
-                overflow: "hidden",
-                border: "1px solid",
-                borderColor: "divider",
-                bgcolor: "#f5f5f5",
-              }}
-            >
-              <Box
-                component="img"
-                src={mobileImageUrl}
-                alt="Mobile ad banner preview"
-                sx={{
-                  display: "block",
-                  width: "100%",
-                  height: "auto",
-                }}
-              />
-            </Box>
-          )}
-        </Stack>
-
-        {/* Alt Text */}
-        <TextField
-          fullWidth
-          label="Alt Text"
-          value={altText}
-          onChange={(event) =>
-            setAltText(event.target.value)
-          }
-          sx={{ mb: 3 }}
+      ) : isError ? (
+        <Alert severity="error">Failed to load the ad banner.</Alert>
+      ) : (
+        <AdBannerForm
+          key={formKey}
+          banner={banner ?? null}
+          saving={saveMutation.isPending}
+          onSave={(input) => void handleSave(input)}
+          onDiscard={() => setFormKey((key) => key + 1)}
         />
-
-        {/* Link */}
-        <TextField
-          fullWidth
-          label="Banner Link"
-          value={href}
-          onChange={(event) =>
-            setHref(event.target.value)
-          }
-          placeholder="/products"
-          helperText="Optional. Example: /products"
-          sx={{ mb: 3 }}
-        />
-
-        {/* Active */}
-        <FormControlLabel
-          control={
-            <Switch
-              checked={isActive}
-              onChange={(event) =>
-                setIsActive(event.target.checked)
-              }
-            />
-          }
-          label="Show banner on homepage"
-          sx={{ mb: 3 }}
-        />
-
-        {/* Save */}
-        <Box>
-          <Button
-            variant="contained"
-            size="large"
-            onClick={handleSave}
-            disabled={
-              isSaving ||
-              !desktopImageUrl ||
-              !mobileImageUrl
-            }
-            sx={{
-              px: 5,
-              py: 1.3,
-              fontWeight: 700,
-              textTransform: "none",
-            }}
-          >
-            {isUploading
-              ? "Uploading..."
-              : saveMutation.isPending
-                ? "Saving..."
-                : "Save Banner"}
-          </Button>
-        </Box>
-
-        {saveFeedback && (
-          <Alert
-            severity={saveFeedback.severity}
-            sx={{ mt: 2 }}
-          >
-            {saveFeedback.message}
-          </Alert>
-        )}
-      </Box>
+      )}
     </PageContainer>
   );
 }

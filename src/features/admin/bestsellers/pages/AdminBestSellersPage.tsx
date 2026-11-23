@@ -1,476 +1,299 @@
 import { useMemo, useState } from "react";
 
 import {
-    Box,
-    Button,
-    Card,
-    CardContent,
-    CircularProgress,
-    FormControl,
-    InputLabel,
-    MenuItem,
-    Select,
-    Stack,
-    Switch,
-    Typography,
+  Alert,
+  Box,
+  Button,
+  Card,
+  Chip,
+  FormControlLabel,
+  IconButton,
+  MenuItem,
+  Skeleton,
+  Stack,
+  Switch,
+  Typography,
 } from "@mui/material";
-
-import DeleteIcon from "@mui/icons-material/Delete";
+import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
+import RefreshIcon from "@mui/icons-material/Refresh";
 
 import PageContainer from "@/components/common/PageContainer";
 import PageHeader from "@/components/common/PageHeader";
-
+import SectionCard from "@/components/common/SectionCard";
+import { useSnackbar } from "@/contexts/SnackbarContext";
+import AdminSelect from "@/features/admin/components/AdminSelect";
+import ProductPicker from "@/features/admin/components/ProductPicker";
+import ProductThumb from "@/features/admin/components/ProductThumb";
 import { useProducts } from "@/features/admin/products/hooks/useProducts";
 
 import {
-    useBestSellers,
-    useCreateBestSeller,
-    useDeleteBestSeller,
-    useUpdateBestSeller,
+  useBestSellers,
+  useCreateBestSeller,
+  useDeleteBestSeller,
+  useUpdateBestSeller,
 } from "../hooks/useBestSellers";
+import type { BestSeller } from "../types/bestSeller";
+
+const POSITIONS = [1, 2, 3, 4, 5];
 
 export default function AdminBestSellersPage() {
-    const {
-        data: products = [],
-        isLoading: productsLoading,
-    } = useProducts();
+  const { showSnackbar } = useSnackbar();
 
-    const {
-        data: bestSellers = [],
-        isLoading: bestSellersLoading,
-    } = useBestSellers();
+  const productsQuery = useProducts();
+  const sellersQuery = useBestSellers();
 
-    const createMutation =
-        useCreateBestSeller();
+  const createMutation = useCreateBestSeller();
+  const updateMutation = useUpdateBestSeller();
+  const deleteMutation = useDeleteBestSeller();
 
-    const updateMutation =
-        useUpdateBestSeller();
+  const [selectedProduct, setSelectedProduct] = useState("");
+  const [selectedPosition, setSelectedPosition] = useState(1);
 
-    const deleteMutation =
-        useDeleteBestSeller();
+  const products = productsQuery.data ?? [];
 
-    const [selectedProduct, setSelectedProduct] =
-        useState("");
+  const sellers = useMemo(
+    () => [...(sellersQuery.data ?? [])].sort((a, b) => a.sortOrder - b.sortOrder),
+    [sellersQuery.data],
+  );
 
-    const [selectedOrder, setSelectedOrder] =
-        useState(1);
+  const usedPositions = new Set(sellers.map((seller) => seller.sortOrder));
+  const freePositions = POSITIONS.filter((position) => !usedPositions.has(position));
 
-    const activeBestSellers = useMemo(
-        () =>
-            bestSellers
-                .filter((item) => item.isActive)
-                .sort(
-                    (a, b) =>
-                        a.sortOrder - b.sortOrder
-                ),
-        [bestSellers]
-    );
+  // Keep the chosen position valid as positions get used up.
+  const addPosition = freePositions.includes(selectedPosition)
+    ? selectedPosition
+    : (freePositions[0] ?? 0);
 
-    const usedProductIds = new Set(
-        bestSellers.map(
-            (item) => item.productId
-        )
-    );
+  const usedProductIds = new Set(sellers.map((seller) => seller.productId));
 
-    const availableProducts =
-        products.filter(
-            (product) =>
-                product.isActive &&
-                !usedProductIds.has(product.id)
-        );
+  const availableProducts = products.filter(
+    (product) => product.isActive && !usedProductIds.has(product.id),
+  );
 
-    const handleAdd = async () => {
-        if (!selectedProduct) {
-            return;
-        }
+  const activeCount = sellers.filter((seller) => seller.isActive).length;
 
-        await createMutation.mutateAsync({
-            productId: selectedProduct,
-            sortOrder: selectedOrder,
-            isActive: true,
-        });
+  const isLoading = productsQuery.isLoading || sellersQuery.isLoading;
+  const isRefreshing = productsQuery.isRefetching || sellersQuery.isRefetching;
+  const busy =
+    createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
 
-        setSelectedProduct("");
-        setSelectedOrder(1);
-    };
+  const handleAdd = async () => {
+    if (!selectedProduct || !addPosition) return;
 
-    const handleDelete = async (
-        id: string
-    ) => {
-        await deleteMutation.mutateAsync(id);
-    };
+    try {
+      await createMutation.mutateAsync({
+        productId: selectedProduct,
+        sortOrder: addPosition,
+        isActive: true,
+      });
 
-    const handleToggle = async (
-        id: string,
-        isActive: boolean
-    ) => {
-        const item = bestSellers.find(
-            (seller) => seller.id === id
-        );
-
-        if (!item) {
-            return;
-        }
-
-        await updateMutation.mutateAsync({
-            id,
-            data: {
-                productId: item.productId,
-                sortOrder: item.sortOrder,
-                isActive,
-            },
-        });
-    };
-
-    const getProduct = (
-        productId: string
-    ) =>
-        products.find(
-            (product) =>
-                product.id === productId
-        );
-
-    const isLoading =
-        productsLoading ||
-        bestSellersLoading;
-
-    if (isLoading) {
-        return (
-            <PageContainer>
-                <PageHeader
-                    title="Best Sellers"
-                    subtitle="Manage the products displayed in your Best Sellers section."
-                />
-
-                <Box
-                    sx={{
-                        display: "flex",
-                        justifyContent: "center",
-                        py: 8,
-                    }}
-                >
-                    <CircularProgress />
-                </Box>
-            </PageContainer>
-        );
+      setSelectedProduct("");
+      showSnackbar("Best seller added.", "success");
+    } catch {
+      showSnackbar("Failed to add the best seller.", "error");
     }
+  };
 
-    return (
-        <PageContainer>
-            <PageHeader
-                title="Best Sellers"
-                subtitle="Choose and manage the products displayed in the Best Sellers section."
-            />
+  const handleUpdate = async (
+    seller: BestSeller,
+    changes: Partial<Pick<BestSeller, "sortOrder" | "isActive">>,
+  ) => {
+    try {
+      await updateMutation.mutateAsync({
+        id: seller.id,
+        data: {
+          productId: seller.productId,
+          sortOrder: changes.sortOrder ?? seller.sortOrder,
+          isActive: changes.isActive ?? seller.isActive,
+        },
+      });
+    } catch {
+      showSnackbar("Failed to update the best seller.", "error");
+    }
+  };
 
-            {/* Add Best Seller */}
-            <Card
-                sx={{
-                    mb: 4,
-                }}
+  const handleRemove = async (seller: BestSeller) => {
+    try {
+      await deleteMutation.mutateAsync(seller.id);
+      showSnackbar("Best seller removed.", "success");
+    } catch {
+      showSnackbar("Failed to remove the best seller.", "error");
+    }
+  };
+
+  return (
+    <PageContainer>
+      <PageHeader
+        title="Best Sellers"
+        subtitle={`${activeCount} active · ${sellers.length}/5 positions used. Active best sellers are shown on the homepage in position order.`}
+        action={
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={() => {
+              void productsQuery.refetch();
+              void sellersQuery.refetch();
+            }}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? "Refreshing..." : "Refresh"}
+          </Button>
+        }
+      />
+
+      <Stack spacing={3}>
+        <SectionCard title="Add best seller">
+          {freePositions.length === 0 ? (
+            <Alert severity="info">
+              All 5 positions are used. Remove a best seller to add another.
+            </Alert>
+          ) : (
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={2}
+              sx={{ alignItems: { xs: "stretch", sm: "flex-start" } }}
             >
-                <CardContent>
-                    <Typography
-                        variant="h6"
-                        sx={{
-                            fontWeight: 700,
-                            mb: 2,
-                        }}
-                    >
-                        Add Best Seller
-                    </Typography>
+              <ProductPicker
+                products={availableProducts}
+                value={selectedProduct}
+                onChange={setSelectedProduct}
+                disabled={isLoading || createMutation.isPending}
+              />
 
-                    <Stack
-                        direction={{ xs: "column", sm: "row" }}
-                        spacing={2}
-                        sx={{
-                            alignItems: {
-                                xs: "stretch",
-                                sm: "center",
-                            },
-                        }}
-                    >
-                        <FormControl
-                            fullWidth
-                            sx={{
-                                minWidth: {
-                                    sm: 280,
-                                },
-                            }}
-                        >
-                            <InputLabel>
-                                Product
-                            </InputLabel>
+              <AdminSelect
+                label="Position"
+                value={addPosition}
+                onChange={(event) => setSelectedPosition(Number(event.target.value))}
+                disabled={createMutation.isPending}
+                sx={{ minWidth: 140 }}
+              >
+                {freePositions.map((position) => (
+                  <MenuItem key={position} value={position}>
+                    Position {position}
+                  </MenuItem>
+                ))}
+              </AdminSelect>
 
-                            <Select
-                                value={selectedProduct}
-                                label="Product"
-                                onChange={(event) =>
-                                    setSelectedProduct(
-                                        event.target.value
-                                    )
-                                }
-                            >
-                                {availableProducts.map(
-                                    (product) => (
-                                        <MenuItem
-                                            key={product.id}
-                                            value={product.id}
-                                        >
-                                            {product.name}
-                                        </MenuItem>
-                                    )
-                                )}
-                            </Select>
-                        </FormControl>
+              <Button
+                variant="contained"
+                onClick={() => void handleAdd()}
+                disabled={!selectedProduct || createMutation.isPending}
+                sx={{ minWidth: 110, height: 56 }}
+              >
+                {createMutation.isPending ? "Adding..." : "Add"}
+              </Button>
+            </Stack>
+          )}
+        </SectionCard>
 
-                        <FormControl
-                            sx={{
-                                minWidth: 130,
-                            }}
-                        >
-                            <InputLabel>
-                                Position
-                            </InputLabel>
-
-                            <Select
-                                value={selectedOrder}
-                                label="Position"
-                                onChange={(event) =>
-                                    setSelectedOrder(
-                                        Number(
-                                            event.target.value
-                                        )
-                                    )
-                                }
-                            >
-                                {[1, 2, 3, 4, 5].map(
-                                    (position) => (
-                                        <MenuItem
-                                            key={position}
-                                            value={position}
-                                        >
-                                            {position}
-                                        </MenuItem>
-                                    )
-                                )}
-                            </Select>
-                        </FormControl>
-
-                        <Button
-                            variant="contained"
-                            onClick={handleAdd}
-                            disabled={
-                                !selectedProduct ||
-                                createMutation.isPending ||
-                                activeBestSellers.length >= 5
-                            }
-                            sx={{
-                                minWidth: 120,
-                                height: 56,
-                            }}
-                        >
-                            {createMutation.isPending
-                                ? "Adding..."
-                                : "Add"}
-                        </Button>
-                    </Stack>
-
-                    {activeBestSellers.length >=
-                        5 && (
-                            <Typography
-                                sx={{
-                                    mt: 2,
-                                    color: "text.secondary",
-                                    fontSize: "0.9rem",
-                                }}
-                            >
-                                You already have 5 active Best
-                                Sellers. Remove one before adding
-                                another.
-                            </Typography>
-                        )}
-                </CardContent>
-            </Card>
-
-            {/* Current Best Sellers */}
-            <Typography
-                variant="h6"
-                sx={{
-                    fontWeight: 700,
-                    mb: 2,
-                }}
-            >
-                Current Best Sellers
+        <SectionCard title="Current best sellers">
+          {isLoading ? (
+            <Stack spacing={1.5}>
+              {[0, 1, 2].map((item) => (
+                <Skeleton key={item} variant="rounded" height={84} />
+              ))}
+            </Stack>
+          ) : sellers.length === 0 ? (
+            <Typography color="text.secondary" sx={{ py: 3, textAlign: "center" }}>
+              No best sellers have been added yet.
             </Typography>
+          ) : (
+            <Stack spacing={1.5}>
+              {sellers.map((seller) => {
+                const product = products.find((item) => item.id === seller.productId);
 
-            {activeBestSellers.length === 0 ? (
-                <Card>
-                    <CardContent>
-                        <Typography
-                            color="text.secondary"
-                            sx={{
-                                py: 4,
-                                textAlign: "center",
-                            }}
-                        >
-                            No Best Sellers have been added
-                            yet.
+                const positionOptions = POSITIONS.filter(
+                  (position) =>
+                    position === seller.sortOrder || !usedPositions.has(position),
+                );
+
+                if (!POSITIONS.includes(seller.sortOrder)) {
+                  positionOptions.push(seller.sortOrder);
+                }
+
+                return (
+                  <Card
+                    key={seller.id}
+                    variant="outlined"
+                    sx={{
+                      p: 1.5,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 2,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <ProductThumb src={product?.images?.[0]} alt={product?.name ?? ""} size={56} />
+
+                    <Box sx={{ flex: 1, minWidth: 160 }}>
+                      <Typography sx={{ fontWeight: 700 }}>
+                        {product?.name ?? "Product not found"}
+                      </Typography>
+
+                      {product && (
+                        <Typography variant="body2" color="text.secondary">
+                          ₹{product.price.toLocaleString("en-IN")}
                         </Typography>
-                    </CardContent>
-                </Card>
-            ) : (
-                <Stack spacing={2}>
-                    {activeBestSellers.map(
-                        (seller) => {
-                            const product =
-                                getProduct(
-                                    seller.productId
-                                );
+                      )}
 
-                            if (!product) {
-                                return null;
-                            }
+                      {product && !product.isActive && (
+                        <Chip
+                          size="small"
+                          variant="outlined"
+                          color="warning"
+                          label="Product inactive: hidden on homepage"
+                          sx={{ mt: 0.5 }}
+                        />
+                      )}
+                    </Box>
 
-                            return (
-                                <Card
-                                    key={seller.id}
-                                >
-                                    <CardContent>
-                                        <Stack
-                                            direction={{ xs: "column", sm: "row" }}
-                                            spacing={2}
-                                            sx={{
-                                                alignItems: {
-                                                    xs: "stretch",
-                                                    sm: "center",
-                                                },
-                                            }}
-                                        >
-                                            {/* Position */}
-                                            <Box
-                                                sx={{
-                                                    width: 42,
-                                                    height: 42,
-                                                    borderRadius: "50%",
-                                                    bgcolor:
-                                                        "primary.main",
-                                                    color:
-                                                        "primary.contrastText",
-                                                    display: "flex",
-                                                    alignItems:
-                                                        "center",
-                                                    justifyContent:
-                                                        "center",
-                                                    fontWeight: 700,
-                                                    flexShrink: 0,
-                                                }}
-                                            >
-                                                {seller.sortOrder}
-                                            </Box>
+                    <AdminSelect
+                      size="small"
+                      label="Position"
+                      value={seller.sortOrder}
+                      onChange={(event) =>
+                        void handleUpdate(seller, {
+                          sortOrder: Number(event.target.value),
+                        })
+                      }
+                      disabled={busy}
+                      sx={{ minWidth: 130 }}
+                    >
+                      {positionOptions.map((position) => (
+                        <MenuItem key={position} value={position}>
+                          Position {position}
+                        </MenuItem>
+                      ))}
+                    </AdminSelect>
 
-                                            {/* Image */}
-                                            <Box
-                                                component="img"
-                                                src={
-                                                    product.images?.[0] ||
-                                                    "/placeholder-product.png"
-                                                }
-                                                alt={
-                                                    product.name
-                                                }
-                                                sx={{
-                                                    width: 80,
-                                                    height: 80,
-                                                    borderRadius: 2,
-                                                    objectFit:
-                                                        "cover",
-                                                    bgcolor:
-                                                        "#f5f5f5",
-                                                }}
-                                            />
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={seller.isActive}
+                          onChange={(event) =>
+                            void handleUpdate(seller, { isActive: event.target.checked })
+                          }
+                          disabled={busy}
+                        />
+                      }
+                      label="Active"
+                    />
 
-                                            {/* Product */}
-                                            <Box
-                                                sx={{
-                                                    flex: 1,
-                                                }}
-                                            >
-                                                <Typography
-                                                    sx={{
-                                                        fontWeight: 700,
-                                                    }}
-                                                >
-                                                    {product.name}
-                                                </Typography>
-
-                                                <Typography
-                                                    color="text.secondary"
-                                                    sx={{
-                                                        mt: 0.5,
-                                                    }}
-                                                >
-                                                    ₹
-                                                    {product.price.toLocaleString(
-                                                        "en-IN"
-                                                    )}
-                                                </Typography>
-                                            </Box>
-
-                                            {/* Active */}
-                                            <Stack
-                                                direction="row"
-                                                sx={{
-                                                    alignItems: "center",
-                                                }}
-                                            >
-                                                <Typography
-                                                    variant="body2"
-                                                >
-                                                    Active
-                                                </Typography>
-
-                                                <Switch
-                                                    checked={
-                                                        seller.isActive
-                                                    }
-                                                    onChange={(
-                                                        event
-                                                    ) =>
-                                                        handleToggle(
-                                                            seller.id,
-                                                            event.target
-                                                                .checked
-                                                        )
-                                                    }
-                                                />
-                                            </Stack>
-
-                                            {/* Delete */}
-                                            <Button
-                                                color="error"
-                                                variant="outlined"
-                                                startIcon={
-                                                    <DeleteIcon />
-                                                }
-                                                onClick={() =>
-                                                    handleDelete(
-                                                        seller.id
-                                                    )
-                                                }
-                                                disabled={
-                                                    deleteMutation.isPending
-                                                }
-                                            >
-                                                Remove
-                                            </Button>
-                                        </Stack>
-                                    </CardContent>
-                                </Card>
-                            );
-                        }
-                    )}
-                </Stack>
-            )}
-        </PageContainer>
-    );
+                    <IconButton
+                      color="error"
+                      onClick={() => void handleRemove(seller)}
+                      disabled={busy}
+                      aria-label="Remove best seller"
+                    >
+                      <DeleteOutlinedIcon />
+                    </IconButton>
+                  </Card>
+                );
+              })}
+            </Stack>
+          )}
+        </SectionCard>
+      </Stack>
+    </PageContainer>
+  );
 }

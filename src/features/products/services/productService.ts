@@ -19,6 +19,7 @@ import { db } from "@/firebase/firestore";
 
 import type { ProductFormData } from "../schemas/productSchema";
 import type { Product } from "../types/product";
+import { deleteCloudinaryProductImage } from "@/features/admin/products/services/productImageService";
 
 const productsCollection = collection(db, "products");
 
@@ -107,6 +108,25 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(id: string) {
+  const productSnapshot = await getDoc(
+    doc(db, "products", id)
+  );
+
+  if (!productSnapshot.exists()) {
+    throw new Error("Product not found.");
+  }
+
+  const product = productSnapshot.data();
+
+  const imagePublicId =
+    typeof product.imagePublicId === "string"
+      ? product.imagePublicId.trim()
+      : "";
+
+  if (imagePublicId) {
+    await deleteCloudinaryProductImage(imagePublicId, id);
+  }
+
   await deleteDoc(doc(db, "products", id));
 }
 

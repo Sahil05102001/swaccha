@@ -1,5 +1,5 @@
-import { useState } from "react";
 
+import { useRef, useState } from "react";
 import {
   Alert,
   Button,
@@ -9,17 +9,15 @@ import {
   DialogTitle,
   Snackbar,
 } from "@mui/material";
-
 import ProductForm from "./ProductForm";
-
 import type { ProductFormData } from "../types/product";
-
 import { useAddProduct } from "../hooks/useAddProduct";
 import { productSchema } from "../validations/productSchema";
-
 import { useQueryClient } from "@tanstack/react-query";
-
 import { recordInitialStockRequest } from "@/features/stock/services/stockService";
+import { deleteCloudinaryProductImage } from "../services/productImageService";
+import { DuplicateProductError } from "@/features/admin/products/services/productService";
+import { scrollToTop } from "@/features/admin/utils/scrollToTop";
 
 interface AddProductDialogProps {
   open: boolean;
@@ -29,16 +27,24 @@ interface AddProductDialogProps {
 const initialFormData: ProductFormData = {
   name: "",
   description: "",
+  brand: "",
+  sku: "",
   category: "",
+  subcategory: "",
+  productSize: "",
+  unit: "",
   price: 0,
+  mrp: 0,
   stock: 0,
   images: [],
   isActive: true,
+  hsnCode: "",
+  gstRate: "",
+  badgeMode: "none",
+  badgeText: "",
 };
 
-type ProductErrors = Partial<
-  Record<keyof ProductFormData, string>
->;
+type ProductErrors = Partial<Record<keyof ProductFormData, string>>;
 
 export default function AddProductDialog({
   open,
@@ -56,9 +62,24 @@ export default function AddProductDialog({
   const [errorOpen, setErrorOpen] =
     useState(false);
 
+  const [uploading, setUploading] = useState(false);
+
+  const temporaryImagePublicId = useRef<string | null>(null);
+
   const addProductMutation = useAddProduct();
 
   const queryClient = useQueryClient();
+
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Scrolls the dialog to the first field that has an error.
+  const showFirstError = () => {
+    window.setTimeout(() => {
+      contentRef.current
+        ?.querySelector(".Mui-error")
+        ?.scrollIntoView({ block: "center" });
+    }, 0);
+  };
 
   const handleChange = (
     field: keyof ProductFormData,
@@ -68,6 +89,29 @@ export default function AddProductDialog({
       | boolean
       | string[]
   ) => {
+    if (field === "imagePublicId") {
+      const newPublicId =
+        typeof value === "string" ? value.trim() : "";
+
+      const previousPublicId = temporaryImagePublicId.current;
+
+      if (
+        previousPublicId &&
+        previousPublicId !== newPublicId
+      ) {
+        void deleteCloudinaryProductImage(previousPublicId).catch(
+          (error) => {
+            console.error(
+              "Previous temporary product image cleanup failed:",
+              error,
+            );
+          },
+        );
+      }
+
+      temporaryImagePublicId.current = newPublicId || null;
+    }
+
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -81,13 +125,37 @@ export default function AddProductDialog({
     }
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
+    if (uploading || addProductMutation.isPending) {
+      return;
+    }
+
+    const publicId = temporaryImagePublicId.current;
+
+    // Clear tracking before cleanup so the image cannot be
+    // accidentally deleted again by another close action.
+    temporaryImagePublicId.current = null;
+
     setFormData(initialFormData);
     setErrors({});
+
+    if (publicId) {
+      try {
+        await deleteCloudinaryProductImage(publicId);
+      } catch (error) {
+        console.error(
+          "Temporary product image cleanup failed:",
+          error,
+        );
+      }
+    }
+
     onClose();
   };
 
   const handleSave = async () => {
+    if (uploading) return;
+
     const result = productSchema.safeParse(formData);
 
     if (!result.success) {
@@ -102,21 +170,33 @@ export default function AddProductDialog({
       });
 
       setErrors(fieldErrors);
+      showFirstError();
       return;
     }
 
     try {
       setErrors({});
+      setErrorOpen(false);
 
-      const created: unknown = await addProductMutation.mutateAsync(formData);
+      const created: unknown =
+        await addProductMutation.mutateAsync(formData);
 
-      // Record the opening stock. The product already exists, so a failure
-      // here must not look like a failed save.
+      // The product now references the uploaded image.
+      // Do not delete it when the dialog closes.
+      temporaryImagePublicId.current = null;
+
+      // Record opening stock separately, preserving the existing flow.
       if (typeof created === "string" && formData.stock > 0) {
         try {
           await recordInitialStockRequest(created);
-          queryClient.invalidateQueries({ queryKey: ["stock-movements"] });
-          queryClient.invalidateQueries({ queryKey: ["stock-summary"] });
+
+          queryClient.invalidateQueries({
+            queryKey: ["stock-movements"],
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: ["stock-summary"],
+          });
         } catch (error) {
           console.error("Opening stock was not recorded:", error);
         }
@@ -124,10 +204,21 @@ export default function AddProductDialog({
 
       setSuccessOpen(true);
 
-      handleClose();
-    } catch (error) {
-      console.error(error);
-      setErrorOpen(true);
+      setFormData(initialFormData);
+      setErrors({});
+      onClose();
+      scrollToTop();
+    } catch (error: unknown) {
+      if (error instanceof DuplicateProductError) {
+        setErrors((prev) => ({
+          ...prev,
+          [error.field]: error.message,
+        }));
+        showFirstError();
+      } else {
+        console.error(error);
+        setErrorOpen(true);
+      }
     }
   };
 
@@ -135,24 +226,31 @@ export default function AddProductDialog({
     <>
       <Dialog
         open={open}
-        onClose={handleClose}
+        onClose={() => {
+          void handleClose();
+        }}
         fullWidth
         maxWidth="md"
       >
         <DialogTitle>Add Product</DialogTitle>
 
-        <DialogContent dividers>
+        <DialogContent dividers ref={contentRef}>
           <ProductForm
             formData={formData}
             onChange={handleChange}
             errors={errors}
+            onUploadingChange={setUploading}
           />
         </DialogContent>
 
         <DialogActions>
           <Button
-            onClick={handleClose}
-            disabled={addProductMutation.isPending}
+            onClick={() => {
+              void handleClose();
+            }}
+            disabled={
+              uploading || addProductMutation.isPending
+            }
           >
             Cancel
           </Button>
@@ -160,11 +258,15 @@ export default function AddProductDialog({
           <Button
             variant="contained"
             onClick={handleSave}
-            disabled={addProductMutation.isPending}
+            disabled={
+              uploading || addProductMutation.isPending
+            }
           >
-            {addProductMutation.isPending
-              ? "Saving..."
-              : "Save Product"}
+            {uploading
+              ? "Uploading image..."
+              : addProductMutation.isPending
+                ? "Saving..."
+                : "Save Product"}
           </Button>
         </DialogActions>
       </Dialog>

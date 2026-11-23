@@ -1,13 +1,72 @@
+import {
+  collection,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  startAfter,
+  where,
+  type QueryConstraint,
+  type QueryDocumentSnapshot,
+} from "firebase/firestore";
 
 import { auth } from "@/firebase/auth";
-import { getAllOrders } from "@/features/orders/services/orderService";
-import type { OrderStatus } from "@/features/orders/types/order";
+import { db } from "@/firebase/firestore";
+import {
+  getAllOrders,
+  isUnpaidRazorpayOrder,
+} from "@/features/orders/services/orderService";
+import type { Order, OrderStatus } from "@/features/orders/types/order";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
 
 export async function getAdminOrders() {
   return getAllOrders();
+}
+
+export const ADMIN_ORDERS_PAGE_SIZE = 10;
+
+export interface AdminOrdersPage {
+  orders: Order[];
+  last: QueryDocumentSnapshot | null;
+  hasMore: boolean;
+}
+
+/**
+ * One page of orders, newest first, optionally for a single status.
+ * Unpaid online orders are hidden after loading, so a page can have
+ * fewer than 20 rows even when more orders exist.
+ */
+export async function getAdminOrdersPage(
+  after: QueryDocumentSnapshot | null,
+  status: OrderStatus | "all",
+): Promise<AdminOrdersPage> {
+  const constraints: QueryConstraint[] = [];
+
+  if (status !== "all") {
+    constraints.push(where("orderStatus", "==", status));
+  }
+
+  constraints.push(orderBy("createdAt", "desc"));
+
+  if (after) {
+    constraints.push(startAfter(after));
+  }
+
+  constraints.push(limit(ADMIN_ORDERS_PAGE_SIZE + 1));
+
+  const snap = await getDocs(query(collection(db, "orders"), ...constraints));
+
+  const docs = snap.docs.slice(0, ADMIN_ORDERS_PAGE_SIZE);
+
+  return {
+    orders: docs
+      .map((d) => ({ id: d.id, ...d.data() }) as Order)
+      .filter((order) => !isUnpaidRazorpayOrder(order)),
+    last: docs[docs.length - 1] ?? null,
+    hasMore: snap.docs.length > ADMIN_ORDERS_PAGE_SIZE,
+  };
 }
 
 interface UpdateAdminOrderInput {

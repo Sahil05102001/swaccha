@@ -1,86 +1,40 @@
-import {
-    Timestamp,
-    collection,
-    getDocs,
-} from "firebase/firestore";
-
-import { db } from "@/firebase/firestore";
+import type { Order } from "@/features/orders/types/order";
 
 export interface TopCustomer {
-    userId: string;
-    customerName: string;
-    customerEmail: string;
-    totalOrders: number;
-    totalSpent: number;
-    lastOrderDate: Date | null;
+  userId: string;
+  customerName: string;
+  customerEmail: string;
+  totalOrders: number;
+  totalSpent: number;
+  lastOrderDate: Date | null;
 }
 
-export async function getTopCustomers(): Promise<
-    TopCustomer[]
-> {
-    const ordersSnapshot = await getDocs(
-        collection(db, "orders")
-    );
+export function computeTopCustomers(orders: Order[]): TopCustomer[] {
+  const map = new Map<string, TopCustomer>();
 
-    const customerMap = new Map<
-        string,
-        TopCustomer
-    >();
+  for (const order of orders) {
+    const created = order.createdAt?.toDate() ?? null;
 
-    ordersSnapshot.forEach((doc) => {
-        const order = doc.data();
+    const entry = map.get(order.userId) ?? {
+      userId: order.userId,
+      customerName: order.customerName || "Unknown Customer",
+      customerEmail: order.customerEmail || "",
+      totalOrders: 0,
+      totalSpent: 0,
+      lastOrderDate: created,
+    };
 
-        const userId =
-            order.userId ?? "unknown";
+    entry.totalOrders += 1;
+    entry.totalSpent += order.totalAmount;
 
-        const customerName =
-            order.shippingAddress?.fullName ??
-            order.userName ??
-            "Unknown Customer";
+    if (created && (!entry.lastOrderDate || created > entry.lastOrderDate)) {
+      entry.lastOrderDate = created;
+    }
 
-        const customerEmail =
-            order.userEmail ?? "";
+    map.set(order.userId, entry);
+  }
 
-        const totalAmount =
-            typeof order.totalAmount === "number"
-                ? order.totalAmount
-                : 0;
-
-        const createdAt =
-            order.createdAt instanceof Timestamp
-                ? order.createdAt.toDate()
-                : null;
-
-        if (!customerMap.has(userId)) {
-            customerMap.set(userId, {
-                userId,
-                customerName,
-                customerEmail,
-                totalOrders: 0,
-                totalSpent: 0,
-                lastOrderDate: createdAt,
-            });
-        }
-
-        const customer =
-            customerMap.get(userId)!;
-
-        customer.totalOrders += 1;
-        customer.totalSpent += totalAmount;
-
-        if (
-            createdAt &&
-            (!customer.lastOrderDate ||
-                createdAt > customer.lastOrderDate)
-        ) {
-            customer.lastOrderDate = createdAt;
-        }
-    });
-
-    return [...customerMap.values()]
-        .sort(
-            (a, b) =>
-                b.totalSpent - a.totalSpent
-        )
-        .slice(0, 5);
+  return [...map.values()]
+    .sort((a, b) => b.totalSpent - a.totalSpent)
+    .slice(0, 5);
 }

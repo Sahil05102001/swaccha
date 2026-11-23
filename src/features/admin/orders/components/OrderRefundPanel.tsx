@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
   Alert,
@@ -19,12 +20,19 @@ import {
   useRefundOrder,
 } from "@/features/orders/hooks/useOrderActions";
 import type { Order } from "@/features/orders/types/order";
+import { SectionTitle } from "./OrderSection";
 
 const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
 type Confirm = "refund" | "cancel" | "retry" | null;
 
-export default function OrderRefundPanel({ order }: { order: Order }) {
+export default function OrderRefundPanel({
+  order,
+  onSaved,
+}: {
+  order: Order;
+  onSaved?: () => void;
+}) {
   const { showSnackbar } = useSnackbar();
   const refund = useRefundOrder();
   const cancel = useCancelOrder(true);
@@ -74,6 +82,7 @@ export default function OrderRefundPanel({ order }: { order: Order }) {
     setReason("");
     setCancelReason("");
     setRestock(false);
+    onSaved?.();
   };
 
   const fail = (e: unknown) => {
@@ -89,10 +98,7 @@ export default function OrderRefundPanel({ order }: { order: Order }) {
 
   return (
     <Stack spacing={2}>
-      <Typography variant="h6" sx={{ fontWeight: 600 }}>
-        Cancellation and Refunds
-      </Typography>
-
+      <SectionTitle>Cancellation and refunds</SectionTitle>
       {order.refundRequired && (
         <Alert severity="warning">
           The customer paid online but has not been fully refunded
@@ -239,7 +245,7 @@ export default function OrderRefundPanel({ order }: { order: Order }) {
       )}
 
       {/* Confirmations */}
-      <Dialog open={confirm === "refund"} onClose={() => setConfirm(null)}>
+      <Dialog open={confirm === "refund"} onClose={() => setConfirm(null)} transitionDuration={0}>
         <DialogTitle>Confirm refund</DialogTitle>
         <DialogContent>
           <Typography variant="body2">
@@ -271,7 +277,7 @@ export default function OrderRefundPanel({ order }: { order: Order }) {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={confirm === "retry"} onClose={() => setConfirm(null)}>
+      <Dialog open={confirm === "retry"} onClose={() => setConfirm(null)} transitionDuration={0}>
         <DialogTitle>Retry refund</DialogTitle>
         <DialogContent>
           <Typography variant="body2">
@@ -297,7 +303,7 @@ export default function OrderRefundPanel({ order }: { order: Order }) {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={confirm === "cancel"} onClose={() => setConfirm(null)}>
+      <Dialog open={confirm === "cancel"} onClose={() => setConfirm(null)} transitionDuration={0}>
         <DialogTitle>Cancel this order?</DialogTitle>
         <DialogContent>
           <Typography variant="body2">

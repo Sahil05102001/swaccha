@@ -17,6 +17,7 @@ interface DeleteProductDialogProps {
   open: boolean;
   productId: string | null;
   productName: string;
+  imagePublicId?: string;
   onClose: () => void;
 }
 
@@ -24,6 +25,7 @@ export default function DeleteProductDialog({
   open,
   productId,
   productName,
+  imagePublicId,
   onClose,
 }: DeleteProductDialogProps) {
   const deleteMutation = useDeleteProduct();
@@ -38,7 +40,10 @@ export default function DeleteProductDialog({
     if (!productId) return;
 
     try {
-      await deleteMutation.mutateAsync(productId);
+      await deleteMutation.mutateAsync({
+        id: productId,
+        imagePublicId,
+      });
 
       setSuccessOpen(true);
 

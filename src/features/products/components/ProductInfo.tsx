@@ -1,13 +1,8 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   Alert,
   Box,
-  Collapse,
   Divider,
   Link,
   Snackbar,
@@ -32,7 +27,8 @@ interface ProductInfoProps {
   product: Product;
 }
 
-const DESCRIPTION_COLLAPSED_LINES = 4;
+// Lines of description shown before "Read more".
+const DESCRIPTION_COLLAPSED_LINES = 3;
 
 const COLORS = {
   blue: "#00DDEB",
@@ -41,101 +37,58 @@ const COLORS = {
   divider: "rgba(0, 221, 235, 0.5)",
 };
 
-export default function ProductInfo({
-  product,
-}: ProductInfoProps) {
+export default function ProductInfo({ product }: ProductInfoProps) {
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
+
   const addToCart = useAddToCart();
+  const addToWishlist = useAddToWishlist();
 
-  const [descriptionExpanded, setDescriptionExpanded] =
-    useState(false);
-
-  const [descriptionNeedsToggle, setDescriptionNeedsToggle] =
-    useState(false);
-
-  // Height (in px) of exactly four lines of text, measured from the real line height.
-  const [collapsedHeight, setCollapsedHeight] =
-    useState(96);
+  const [expanded, setExpanded] = useState(false);
+  const [canToggle, setCanToggle] = useState(false);
 
   const descriptionRef = useRef<HTMLDivElement | null>(null);
 
-  const description =
-    product.description?.trim() ?? "";
-
+  const description = product.description?.trim() ?? "";
   const hasDescription = description.length > 0;
 
+  // The text is clamped to a few lines. If it is taller than the clamped box,
+  // the text is longer than what is shown, so "Read more" is needed.
   useEffect(() => {
     const element = descriptionRef.current;
 
     if (!element || !hasDescription) {
-      setDescriptionNeedsToggle(false);
+      setCanToggle(false);
       return;
     }
 
-    const checkDescriptionHeight = () => {
-      const computedStyle =
-        window.getComputedStyle(element);
+    const check = () => {
+      // While expanded nothing is clamped, so keep the current answer.
+      if (expanded) return;
 
-      const lineHeight =
-        parseFloat(computedStyle.lineHeight);
-
-      if (!Number.isFinite(lineHeight) || lineHeight <= 0) {
-        setDescriptionNeedsToggle(false);
-        return;
-      }
-
-      const measuredCollapsedHeight =
-        lineHeight * DESCRIPTION_COLLAPSED_LINES;
-
-      setCollapsedHeight(measuredCollapsedHeight);
-
-      setDescriptionNeedsToggle(
-        element.scrollHeight > measuredCollapsedHeight + 1
-      );
+      setCanToggle(element.scrollHeight > element.clientHeight + 1);
     };
 
-    checkDescriptionHeight();
+    check();
 
-    const resizeObserver = new ResizeObserver(
-      checkDescriptionHeight
-    );
+    const observer = new ResizeObserver(check);
+    observer.observe(element);
 
-    resizeObserver.observe(element);
+    return () => observer.disconnect();
+  }, [description, hasDescription, expanded]);
 
-    window.addEventListener(
-      "resize",
-      checkDescriptionHeight
-    );
-
-    return () => {
-      resizeObserver.disconnect();
-
-      window.removeEventListener(
-        "resize",
-        checkDescriptionHeight
-      );
-    };
-  }, [description, hasDescription]);
-
+  // A different product starts collapsed.
   useEffect(() => {
-    if (!descriptionNeedsToggle) {
-      setDescriptionExpanded(false);
-    }
-  }, [descriptionNeedsToggle]);
+    setExpanded(false);
+  }, [product.id]);
 
-  const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const [wishlistFeedback, setWishlistFeedback] = useState<{
+    message: string;
+    severity: "success" | "error" | "info";
+  } | null>(null);
 
   const handleAddToCart = () => {
     if (loading) return;
-
-    if (!user) {
-      navigate("/login", {
-        state: {
-          from: `/products/${product.id}`,
-        },
-      });
-      return;
-    }
 
     if (product.stock <= 0 || addToCart.isPending) {
       return;
@@ -148,23 +101,12 @@ export default function ProductInfo({
         product,
       },
       {
-        onSuccess: () => {
-          console.log("Added successfully");
-        },
         onError: (error) => {
           console.error("Add to cart failed:", error);
         },
-      }
+      },
     );
   };
-
-
-  const addToWishlist = useAddToWishlist();
-
-  const [wishlistFeedback, setWishlistFeedback] = useState<{
-    message: string;
-    severity: "success" | "error" | "info";
-  } | null>(null);
 
   const handleAddToWishlist = () => {
     if (loading || addToWishlist.isPending) return;
@@ -198,21 +140,8 @@ export default function ProductInfo({
     });
   };
 
-
-  const descriptionTextSx = {
-    color: COLORS.body,
-    lineHeight: 1.7,
-    overflowWrap: "anywhere",
-    wordBreak: "break-word",
-  } as const;
-
   return (
-    <Stack
-      spacing={{
-        xs: 2,
-        sm: 2.5,
-      }}
-    >
+    <Stack spacing={{ xs: 2, sm: 2.5 }}>
       {/* Product identity */}
       <Box>
         <ProductHeader product={product} />
@@ -239,11 +168,7 @@ export default function ProductInfo({
         <ProductActions
           onAddToCart={handleAddToCart}
           onAddToWishlist={handleAddToWishlist}
-          disabled={
-            loading ||
-            product.stock <= 0 ||
-            addToCart.isPending
-          }
+          disabled={loading || product.stock <= 0 || addToCart.isPending}
           wishlistDisabled={loading || addToWishlist.isPending}
         />
       </Box>
@@ -255,11 +180,8 @@ export default function ProductInfo({
 
           <Box
             sx={{
-              p: {
-                xs: 1.75,
-                sm: 2.25,
-              },
-              borderRadius: "14px",
+              p: { xs: 1.5, sm: 2 },
+              borderRadius: "12px",
               backgroundColor: "#FFFFFF",
               border: `1px solid ${COLORS.blue}`,
               overflow: "hidden",
@@ -268,7 +190,7 @@ export default function ProductInfo({
             <Typography
               variant="subtitle2"
               sx={{
-                mb: 0.75,
+                mb: 0.5,
                 fontWeight: 700,
                 fontSize: "0.95rem",
                 color: COLORS.ink,
@@ -277,83 +199,73 @@ export default function ProductInfo({
               About this product
             </Typography>
 
-            {/* Short description: natural height */}
-            {!descriptionNeedsToggle && (
-              <Typography
-                ref={descriptionRef}
-                variant="body2"
-                sx={descriptionTextSx}
-              >
-                {description}
-              </Typography>
-            )}
+            <Typography
+              ref={descriptionRef}
+              variant="body2"
+              sx={{
+                color: COLORS.body,
+                lineHeight: 1.6,
+                overflowWrap: "anywhere",
+                wordBreak: "break-word",
+                whiteSpace: "pre-line",
 
-            {/* Long description: collapsible */}
-            {descriptionNeedsToggle && (
-              <>
-                <Collapse
-                  in={descriptionExpanded}
-                  collapsedSize={collapsedHeight}
-                  timeout={220}
-                >
-                  <Typography
-                    ref={descriptionRef}
-                    variant="body2"
-                    sx={descriptionTextSx}
-                  >
-                    {description}
-                  </Typography>
-                </Collapse>
+                ...(expanded
+                  ? {}
+                  : {
+                      display: "-webkit-box",
+                      WebkitBoxOrient: "vertical",
+                      WebkitLineClamp: DESCRIPTION_COLLAPSED_LINES,
+                      overflow: "hidden",
+                    }),
+              }}
+            >
+              {description}
+            </Typography>
 
-                <Link
-                  component="button"
-                  type="button"
-                  underline="always"
-                  onClick={() =>
-                    setDescriptionExpanded(
-                      (current) => !current
-                    )
-                  }
-                  sx={{
-                    display: "inline-block",
-                    mt: 1,
-                    p: 0,
-                    border: 0,
-                    background: "none",
-                    cursor: "pointer",
+            {canToggle && (
+              <Link
+                component="button"
+                type="button"
+                underline="always"
+                onClick={() => setExpanded((current) => !current)}
+                sx={{
+                  display: "inline-block",
+                  mt: 0.75,
+                  p: 0,
+                  border: 0,
+                  background: "none",
+                  cursor: "pointer",
 
-                    // Black text with an electric-blue underline (blue text alone is too faint on white).
+                  // Black text with an electric-blue underline.
+                  color: COLORS.ink,
+                  textDecorationColor: COLORS.blue,
+                  textDecorationThickness: "2px",
+                  textUnderlineOffset: "4px",
+
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  lineHeight: 1.4,
+                  textAlign: "left",
+
+                  "&:hover": {
                     color: COLORS.ink,
-                    textDecorationColor: COLORS.blue,
-                    textDecorationThickness: "2px",
-                    textUnderlineOffset: "4px",
+                    textDecorationColor: COLORS.ink,
+                  },
 
-                    fontSize: "0.875rem",
-                    fontWeight: 700,
-                    lineHeight: 1.4,
-                    textAlign: "left",
-
-                    "&:hover": {
-                      color: COLORS.ink,
-                      textDecorationColor: COLORS.ink,
-                    },
-
-                    "&:focus-visible": {
-                      outline: `2px solid ${COLORS.blue}`,
-                      outlineOffset: 3,
-                      borderRadius: "4px",
-                    },
-                  }}
-                >
-                  {descriptionExpanded
-                    ? "Read less"
-                    : "Read more"}
-                </Link>
-              </>
+                  "&:focus-visible": {
+                    outline: `2px solid ${COLORS.blue}`,
+                    outlineOffset: 3,
+                    borderRadius: "4px",
+                  },
+                }}
+              >
+                {expanded ? "Read less" : "Read more"}
+              </Link>
             )}
           </Box>
         </>
       )}
+
       <Snackbar
         open={Boolean(wishlistFeedback)}
         autoHideDuration={3000}
@@ -364,6 +276,14 @@ export default function ProductInfo({
             severity={wishlistFeedback.severity}
             onClose={() => setWishlistFeedback(null)}
             variant="filled"
+            sx={{
+              // Black with cyan text instead of the default green / blue.
+              ...(wishlistFeedback.severity !== "error" && {
+                backgroundColor: "#111111",
+                color: COLORS.blue,
+                "& .MuiAlert-icon": { color: COLORS.blue },
+              }),
+            }}
           >
             {wishlistFeedback.message}
           </Alert>

@@ -5,16 +5,35 @@ import {
   useState,
 } from "react";
 
+
+
+
 import { Box } from "@mui/material";
+
+
+
+import { useNavigate } from "react-router-dom";
+
+
 
 import { useHeroBanners } from "@/features/admin/hero/hooks/useHeroBanners";
 
+
+
+
 export default function Hero() {
+  const navigate = useNavigate();
+
+
+
   const {
     data: banners = [],
     isLoading,
     isError,
   } = useHeroBanners();
+
+
+
 
   const activeBanners = useMemo(
     () =>
@@ -32,16 +51,28 @@ export default function Hero() {
     [banners]
   );
 
+
+
+
   const [activeIndex, setActiveIndex] =
     useState(0);
+
+
+
 
   const touchStartX = useRef<number | null>(
     null
   );
 
+
+
+
   const touchEndX = useRef<number | null>(
     null
   );
+
+
+
 
   useEffect(() => {
     if (
@@ -55,23 +86,35 @@ export default function Hero() {
     activeBanners.length,
   ]);
 
+
+
+
   useEffect(() => {
     if (activeBanners.length <= 1) {
       return;
     }
 
+
+
+
     const interval = window.setInterval(() => {
       setActiveIndex((current) =>
         current ===
-        activeBanners.length - 1
+          activeBanners.length - 1
           ? 0
           : current + 1
       );
     }, 5000);
 
+
+
+
     return () =>
       window.clearInterval(interval);
   }, [activeBanners.length]);
+
+
+
 
   const goToPrevious = () => {
     setActiveIndex((current) =>
@@ -81,14 +124,20 @@ export default function Hero() {
     );
   };
 
+
+
+
   const goToNext = () => {
     setActiveIndex((current) =>
       current ===
-      activeBanners.length - 1
+        activeBanners.length - 1
         ? 0
         : current + 1
     );
   };
+
+
+
 
   const handleTouchStart = (
     event: React.TouchEvent
@@ -97,8 +146,14 @@ export default function Hero() {
       event.changedTouches[0]?.clientX ??
       null;
 
+
+
+
     touchEndX.current = null;
   };
+
+
+
 
   const handleTouchEnd = (
     event: React.TouchEvent
@@ -107,6 +162,9 @@ export default function Hero() {
       event.changedTouches[0]?.clientX ??
       null;
 
+
+
+
     if (
       touchStartX.current === null ||
       touchEndX.current === null
@@ -114,13 +172,22 @@ export default function Hero() {
       return;
     }
 
+
+
+
     const distance =
       touchStartX.current -
       touchEndX.current;
 
+
+
+
     if (Math.abs(distance) < 50) {
       return;
     }
+
+
+
 
     if (distance > 0) {
       goToNext();
@@ -128,9 +195,15 @@ export default function Hero() {
       goToPrevious();
     }
 
+
+
+
     touchStartX.current = null;
     touchEndX.current = null;
   };
+
+
+
 
   if (isLoading) {
     return (
@@ -142,11 +215,9 @@ export default function Hero() {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          minHeight: {
-            xs: 220,
-            sm: 300,
-            md: 420,
-            lg: 500,
+          aspectRatio: "3 / 4",
+          "@media (min-width: 768px)": {
+            aspectRatio: "1521 / 396",
           },
         }}
       >
@@ -174,6 +245,9 @@ export default function Hero() {
     );
   }
 
+
+
+
   if (
     isError ||
     activeBanners.length === 0
@@ -181,31 +255,43 @@ export default function Hero() {
     return null;
   }
 
+
+
+
   const banner =
     activeBanners[activeIndex];
+
+
+
 
   const bannerLink =
     banner.bannerLink?.trim() ||
     "/products";
+
+
+
 
   const isExternalLink =
     /^https?:\/\//i.test(
       bannerLink
     );
 
+
+
+
   const handleBannerClick = () => {
     if (isExternalLink) {
-      window.location.href =
-        bannerLink;
-
+      window.location.href = bannerLink;
       return;
     }
 
-    window.location.href =
-      bannerLink.startsWith("/")
-        ? bannerLink
-        : `/${bannerLink}`;
+
+
+    navigate(bannerLink.startsWith("/") ? bannerLink : `/${bannerLink}`);
   };
+
+
+
 
   return (
     <Box
@@ -243,6 +329,9 @@ export default function Hero() {
           lineHeight: 0,
           outline: "none",
 
+
+
+
           "&:focus-visible": {
             boxShadow:
               "inset 0 0 0 3px #00F0FF",
@@ -255,6 +344,10 @@ export default function Hero() {
             display: "block",
             width: "100%",
             lineHeight: 0,
+            aspectRatio: "3 / 4",
+            "@media (min-width: 768px)": {
+              aspectRatio: "1521 / 396",
+            },
           }}
         >
           {banner.mobileImageUrl && (
@@ -266,15 +359,21 @@ export default function Hero() {
             />
           )}
 
+
+
+
           <Box
             component="img"
             src={banner.desktopImageUrl}
             alt=""
             draggable={false}
+            loading="eager"
+            decoding="async"
+            fetchPriority={activeIndex === 0 ? "high" : "auto"}
             sx={{
               display: "block",
               width: "100%",
-              height: "auto",
+              height: "100%",
               minWidth: 0,
               objectFit: "contain",
               userSelect: "none",
@@ -282,6 +381,9 @@ export default function Hero() {
           />
         </Box>
       </Box>
+
+
+
 
       {/* Dots */}
       {activeBanners.length > 1 && (
@@ -299,9 +401,9 @@ export default function Hero() {
               "translateX(-50%)",
             display: "flex",
             alignItems: "center",
-            gap: 0.7,
+            gap: 0,
             px: 1,
-            py: 0.7,
+            py: 0.25,
             borderRadius: 999,
             backgroundColor:
               "rgba(0,0,0,0.35)",
@@ -315,29 +417,36 @@ export default function Hero() {
                 key={currentBanner.id}
                 component="button"
                 type="button"
-                aria-label={`Go to hero banner ${
-                  index + 1
-                }`}
+                aria-label={`Go to hero banner ${index + 1
+                  }`}
                 onClick={(event) => {
                   event.stopPropagation();
                   setActiveIndex(index);
                 }}
                 sx={{
-                  width:
-                    index === activeIndex
-                      ? 22
-                      : 7,
-                  height: 7,
-                  padding: 0,
+                  position: "relative",
+                  width: index === activeIndex ? 34 : 24,
+                  height: 24,
+                  p: 0,
                   border: 0,
-                  borderRadius: 999,
+                  background: "transparent",
                   cursor: "pointer",
-                  backgroundColor:
-                    index === activeIndex
-                      ? "#00F0FF"
-                      : "rgba(255,255,255,0.55)",
-                  transition:
-                    "width 180ms ease, background-color 180ms ease",
+                  "&::before": {
+                    content: '""',
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    width: index === activeIndex ? 22 : 7,
+                    height: 7,
+                    transform: "translate(-50%, -50%)",
+                    borderRadius: 999,
+                    backgroundColor:
+                      index === activeIndex
+                        ? "#00F0FF"
+                        : "rgba(255,255,255,0.55)",
+                    transition:
+                      "width 180ms ease, background-color 180ms ease",
+                  },
                 }}
               />
             )

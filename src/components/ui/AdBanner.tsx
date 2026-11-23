@@ -1,6 +1,9 @@
 import { Box } from "@mui/material";
+import { Link } from "react-router-dom";
+
 
 import { useAdBanner } from "@/features/admin/adBanner/hooks/useAdBanner";
+
 
 export default function AdBanner() {
   const {
@@ -8,9 +11,11 @@ export default function AdBanner() {
     isLoading,
   } = useAdBanner();
 
+
   if (isLoading) {
     return null;
   }
+
 
   if (
     !banner ||
@@ -19,18 +24,22 @@ export default function AdBanner() {
     return null;
   }
 
+
   const desktopImageUrl =
     banner.desktopImageUrl ||
     banner.imageUrl ||
     "";
 
+
   const mobileImageUrl =
     banner.mobileImageUrl ||
     desktopImageUrl;
 
+
   if (!desktopImageUrl) {
     return null;
   }
+
 
   const bannerContent = (
     <Box
@@ -47,6 +56,7 @@ export default function AdBanner() {
           srcSet={mobileImageUrl}
         />
       )}
+
 
       <Box
         component="img"
@@ -71,6 +81,7 @@ export default function AdBanner() {
     </Box>
   );
 
+
   return (
     <Box
       component="section"
@@ -78,21 +89,26 @@ export default function AdBanner() {
         width: "100%",
         maxWidth: "100%",
         overflow: "hidden",
-        backgroundColor: "#F1F9ED",
+        backgroundColor: "#FFFFFF",
         lineHeight: 0,
       }}
     >
       {banner.href ? (
         <Box
-          component="a"
-          href={banner.href}
+          {...(banner.href.startsWith("/")
+            ? { component: Link, to: banner.href }
+            : {
+                component: "a",
+                href: banner.href,
+                target: "_blank",
+                rel: "noopener noreferrer",
+              })}
           sx={{
             display: "block",
             width: "100%",
             textDecoration: "none",
             lineHeight: 0,
-            WebkitTapHighlightColor:
-              "transparent",
+            WebkitTapHighlightColor: "transparent",
           }}
         >
           {bannerContent}

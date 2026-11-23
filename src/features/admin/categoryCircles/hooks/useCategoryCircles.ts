@@ -1,23 +1,14 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   createCategoryCircle,
   deleteCategoryCircle,
   getCategoryCircles,
   updateCategoryCircle,
+  type CategoryCircleInput,
 } from "../services/categoryCircleService";
 
-import type {
-  CategoryCircleFormData,
-} from "../types/categoryCircle";
-
-export const CATEGORY_CIRCLES_QUERY_KEY = [
-  "category-circles",
-];
+export const CATEGORY_CIRCLES_QUERY_KEY = ["category-circles"];
 
 export function useCategoryCircles() {
   return useQuery({
@@ -30,15 +21,10 @@ export function useCreateCategoryCircle() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (
-      data: CategoryCircleFormData,
-    ) => createCategoryCircle(data),
+    mutationFn: (input: CategoryCircleInput) => createCategoryCircle(input),
 
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: CATEGORY_CIRCLES_QUERY_KEY,
-      });
-    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: CATEGORY_CIRCLES_QUERY_KEY }),
   });
 }
 
@@ -46,20 +32,11 @@ export function useUpdateCategoryCircle() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: CategoryCircleFormData;
-    }) =>
-      updateCategoryCircle(id, data),
+    mutationFn: ({ id, input }: { id: string; input: CategoryCircleInput }) =>
+      updateCategoryCircle(id, input),
 
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: CATEGORY_CIRCLES_QUERY_KEY,
-      });
-    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: CATEGORY_CIRCLES_QUERY_KEY }),
   });
 }
 
@@ -67,13 +44,9 @@ export function useDeleteCategoryCircle() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) =>
-      deleteCategoryCircle(id),
+    mutationFn: (id: string) => deleteCategoryCircle(id),
 
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: CATEGORY_CIRCLES_QUERY_KEY,
-      });
-    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: CATEGORY_CIRCLES_QUERY_KEY }),
   });
 }

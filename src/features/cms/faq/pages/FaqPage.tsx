@@ -1,22 +1,16 @@
-import {
-  Alert,
-  CircularProgress,
-  Stack,
-} from "@mui/material";
-
-import PageContainer from "@/components/common/PageContainer";
-import PageHeader from "@/components/common/PageHeader";
+import { Alert, Box, CircularProgress, Container, Stack, Typography } from "@mui/material";
 
 import { useFaqSettings } from "../hooks/useFaqSettings";
 
 import FaqAccordion from "../components/FaqAccordion";
 
+const accent = "#00BFD6";
+const accentDark = "#087F8C";
+const ink = "#17252B";
+const muted = "#64747A";
+
 export default function FaqPage() {
-  const {
-    faqSettings,
-    isLoading,
-    error,
-  } = useFaqSettings();
+  const { faqSettings, isLoading, error } = useFaqSettings();
 
   if (isLoading) {
     return (
@@ -27,40 +21,85 @@ export default function FaqPage() {
           alignItems: "center",
         }}
       >
-        <CircularProgress />
+        <CircularProgress sx={{ color: accent }} />
       </Stack>
     );
   }
 
   if (error || !faqSettings) {
     return (
-      <PageContainer>
-        <Alert severity="error">
-          Failed to load FAQ.
-        </Alert>
-      </PageContainer>
+      <Container maxWidth="md" sx={{ px: { xs: 2, sm: 3 }, py: 4 }}>
+        <Alert severity="error">Failed to load FAQ.</Alert>
+      </Container>
     );
   }
 
-  return (
-    <PageContainer>
-      <PageHeader
-        title={faqSettings.heroTitle}
-        subtitle={
-          faqSettings.heroSubtitle
-        }
-      />
+  const faqs = (faqSettings.faqs ?? []).filter((faq) => faq.isActive);
 
-      <Stack spacing={2}>
-        {faqSettings.faqs
-          .filter((f) => f.isActive)
-          .map((faq) => (
-            <FaqAccordion
-              key={faq.id}
-              faq={faq}
-            />
-          ))}
+  return (
+    <Container
+      maxWidth="md"
+      sx={{ px: { xs: 2, sm: 3 }, py: { xs: 3, sm: 4, md: 6 } }}
+    >
+      <Stack spacing={{ xs: 3, md: 4 }}>
+        <Stack spacing={1.25}>
+          <Typography
+            variant="overline"
+            sx={{ color: accentDark, fontWeight: 700, letterSpacing: 1.5 }}
+          >
+            FAQ
+          </Typography>
+
+          <Typography
+            component="h1"
+            sx={{
+              color: ink,
+              fontWeight: 750,
+              letterSpacing: "-0.03em",
+              lineHeight: 1.15,
+              fontSize: { xs: "1.9rem", sm: "2.4rem", md: "2.8rem" },
+              overflowWrap: "anywhere",
+            }}
+          >
+            {faqSettings.heroTitle?.trim() || "Frequently asked questions"}
+          </Typography>
+
+          {faqSettings.heroSubtitle?.trim() && (
+            <Typography
+              sx={{
+                color: muted,
+                lineHeight: 1.8,
+                maxWidth: 620,
+                fontSize: { xs: "0.98rem", md: "1.05rem" },
+              }}
+            >
+              {faqSettings.heroSubtitle}
+            </Typography>
+          )}
+
+          <Box
+            sx={{
+              width: 48,
+              height: 3,
+              borderRadius: 2,
+              backgroundColor: accent,
+              mt: 0.5,
+            }}
+          />
+        </Stack>
+
+        {faqs.length === 0 ? (
+          <Typography sx={{ color: muted }}>
+            No questions have been added yet.
+          </Typography>
+        ) : (
+          <Stack spacing={1.5}>
+            {faqs.map((faq) => (
+              <FaqAccordion key={faq.id} faq={faq} />
+            ))}
+          </Stack>
+        )}
       </Stack>
-    </PageContainer>
+    </Container>
   );
 }

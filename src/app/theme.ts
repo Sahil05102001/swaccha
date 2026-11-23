@@ -153,6 +153,18 @@ const theme = createTheme({
   spacing: 8,
 
   components: {
+    MuiCircularProgress: {
+      styleOverrides: {
+        colorPrimary: { color: "#007F89" },
+      },
+    },
+
+    MuiLinearProgress: {
+      styleOverrides: {
+        colorPrimary: { backgroundColor: "#D6F3F6" },
+        bar: { backgroundColor: "#007F89" },
+      },
+    },
     MuiCssBaseline: {
       styleOverrides: {
         html: {

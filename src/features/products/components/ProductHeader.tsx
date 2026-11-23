@@ -32,7 +32,7 @@ export default function ProductHeader({
           variant="overline"
           sx={{
             display: "block",
-            color: "primary.main",
+            color: "#007F89",
             fontWeight: 800,
             fontSize: {
               xs: "0.68rem",

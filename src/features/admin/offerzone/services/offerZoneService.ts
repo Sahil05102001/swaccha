@@ -179,6 +179,13 @@ export async function getGlobalProductStickerSettings(): Promise<
             ?.intervalSeconds
         ) || 3,
     },
+
+    globalBadge: {
+      text:
+        typeof data.globalBadge?.text === "string"
+          ? data.globalBadge.text
+          : "",
+    },
   };
 }
 
@@ -197,6 +204,8 @@ export async function saveGlobalProductStickerSettings(
 
       rotatingSticker:
         settings.rotatingSticker,
+
+      globalBadge: settings.globalBadge,
 
       updatedAt: serverTimestamp(),
     },

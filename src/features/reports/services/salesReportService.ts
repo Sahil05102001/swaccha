@@ -1,203 +1,233 @@
 import {
-    Timestamp,
-    collection,
-    getDocs,
+  Timestamp,
+  collection,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  where,
+  type DocumentData,
+  type QueryConstraint,
 } from "firebase/firestore";
 
 import { db } from "@/firebase/firestore";
+import { isUnpaidRazorpayOrder } from "@/features/orders/services/orderService";
+import type { Order } from "@/features/orders/types/order";
 
-export interface SalesReportFilters {
-    startDate?: Date;
-    endDate?: Date;
-    search?: string;
-    orderStatus?: string;
-    paymentStatus?: string;
+/** Safety limit for one report, so a huge range can't freeze the browser. */
+export const MAX_REPORT_ORDERS = 2000;
+
+/** One extra order is requested, so "there are more" can be detected. */
+export const REPORT_FETCH_LIMIT = MAX_REPORT_ORDERS + 1;
+
+/** Keeps the first `max` items and says whether any were left out. */
+export function applyOrderLimit<T>(items: T[], max = MAX_REPORT_ORDERS) {
+  return { items: items.slice(0, max), truncated: items.length > max };
 }
 
-export interface SalesReportSummary {
-    totalRevenue: number;
-    totalOrders: number;
-    totalProductsSold: number;
-    averageOrderValue: number;
+const NOT_SALES = new Set(["cancelled", "returned"]);
+
+export interface SalesDateRange {
+  startDate?: Date;
+  endDate?: Date;
+}
+
+export interface SalesReportFilters extends SalesDateRange {
+  search?: string;
+  orderStatus?: string;
+  paymentStatus?: string;
 }
 
 export interface SalesReportRow {
-    id: string;
-    orderId: string;
-    customerName: string;
-    customerEmail: string;
-    orderDate: Date | null;
-    orderStatus: string;
-    paymentStatus: string;
-    totalAmount: number;
-    productsSold: number;
+  id: string;
+  orderId: string;
+  customerName: string;
+  customerEmail: string;
+  orderDate: Date | null;
+  orderStatus: string;
+  paymentStatus: string;
+  paymentMethod: string;
+  productsSold: number;
+  /** What the customer was charged. */
+  totalAmount: number;
+  /** Refunded so far (failed refunds are ignored). */
+  refundedAmount: number;
+  /** What counts as sales: 0 for cancelled and returned orders. */
+  netAmount: number;
+  /** GST included in netAmount. */
+  gstAmount: number;
+  countsAsSale: boolean;
+}
+
+export interface SalesReportSummary {
+  netRevenue: number;
+  totalOrders: number;
+  totalProductsSold: number;
+  averageOrderValue: number;
+  gstIncluded: number;
+  refundedAmount: number;
+  cancelledOrders: number;
+}
+
+export interface SalesReportRaw {
+  rows: SalesReportRow[];
+  truncated: boolean;
 }
 
 export interface SalesReport {
-    summary: SalesReportSummary;
-    rows: SalesReportRow[];
+  summary: SalesReportSummary;
+  rows: SalesReportRow[];
+  truncated: boolean;
 }
 
-export async function getSalesReport(
-    filters?: SalesReportFilters
-): Promise<SalesReport> {
-    const ordersSnapshot = await getDocs(
-        collection(db, "orders")
+const paise = (value: unknown) =>
+  Math.round((typeof value === "number" ? value : 0) * 100);
+
+function toRow(id: string, data: DocumentData): SalesReportRow | null {
+  const order = { id, ...data } as Order;
+
+  if (isUnpaidRazorpayOrder(order)) return null;
+
+  const orderStatus = String(order.orderStatus ?? "unknown");
+  const countsAsSale = !NOT_SALES.has(orderStatus.toLowerCase());
+
+  const totalPaise = paise(order.totalAmount);
+  const refunds = (order.refunds ?? []).filter((r) => r.status !== "failed");
+  const refundedPaise = refunds.reduce((t, r) => t + paise(r.amount), 0);
+
+  const netPaise = countsAsSale ? Math.max(0, totalPaise - refundedPaise) : 0;
+
+  let gstPaise = 0;
+  const tax = order.tax;
+  if (countsAsSale && tax?.applied === true) {
+    const credited = refunds.reduce(
+      (t, r) =>
+        t +
+        (r.creditNote
+          ? r.creditNote.cgstPaise + r.creditNote.sgstPaise + r.creditNote.igstPaise
+          : 0),
+      0,
     );
+    gstPaise = Math.max(0, tax.totalTaxPaise - credited);
+  }
 
-    const rows: SalesReportRow[] = [];
+  const productsSold = Array.isArray(order.items)
+    ? order.items.reduce(
+      (total, item) =>
+        total + (typeof item.quantity === "number" ? item.quantity : 0),
+      0,
+    )
+    : 0;
 
-    let totalRevenue = 0;
-    let totalOrders = 0;
-    let totalProductsSold = 0;
+  return {
+    id,
+    orderId: order.orderNumber ?? id,
+    customerName:
+      order.customerName || order.shippingAddress?.fullName || "Unknown customer",
+    customerEmail: order.customerEmail ?? "",
+    orderDate: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : null,
+    orderStatus,
+    paymentStatus: String(order.paymentStatus ?? "unknown"),
+    paymentMethod: String(order.paymentMethod ?? ""),
+    productsSold,
+    totalAmount: totalPaise / 100,
+    refundedAmount: refundedPaise / 100,
+    netAmount: netPaise / 100,
+    gstAmount: gstPaise / 100,
+    countsAsSale,
+  };
+}
 
-    const search =
-        filters?.search?.trim().toLowerCase() ?? "";
+/** One download per date range. Everything else is filtered on screen. */
+export async function fetchSalesReportRows(
+  range: SalesDateRange,
+): Promise<SalesReportRaw> {
+  const constraints: QueryConstraint[] = [];
 
-    ordersSnapshot.forEach((doc) => {
-        const order = doc.data();
+  if (range.startDate) {
+    constraints.push(where("createdAt", ">=", Timestamp.fromDate(range.startDate)));
+  }
+  if (range.endDate) {
+    constraints.push(where("createdAt", "<=", Timestamp.fromDate(range.endDate)));
+  }
 
-        const orderDate =
-            order.createdAt instanceof Timestamp
-                ? order.createdAt.toDate()
-                : null;
+  constraints.push(orderBy("createdAt", "desc"), limit(REPORT_FETCH_LIMIT));
 
-        if (
-            filters?.startDate &&
-            orderDate &&
-            orderDate < filters.startDate
-        ) {
-            return;
-        }
+  const snap = await getDocs(query(collection(db, "orders"), ...constraints));
 
-        if (
-            filters?.endDate &&
-            orderDate &&
-            orderDate > filters.endDate
-        ) {
-            return;
-        }
+  const { items: docs, truncated } = applyOrderLimit(snap.docs);
 
-        const orderId =
-            order.orderNumber ?? doc.id;
+  const rows = docs
+    .map((d) => toRow(d.id, d.data()))
+    .filter((row): row is SalesReportRow => row !== null);
 
-        const customerName =
-            order.shippingAddress?.fullName ??
-            order.userName ??
-            "Unknown Customer";
+  return { rows, truncated };
+}
 
-        const customerEmail =
-            order.userEmail ?? "";
+export function buildSalesReport(
+  raw: SalesReportRaw,
+  filters: SalesReportFilters,
+): SalesReport {
+  const search = filters.search?.trim().toLowerCase() ?? "";
 
-        const orderStatus =
-            order.orderStatus ?? "Unknown";
+  const rows = raw.rows.filter((row) => {
+    if (
+      filters.orderStatus &&
+      row.orderStatus.toLowerCase() !== filters.orderStatus.toLowerCase()
+    ) {
+      return false;
+    }
 
-        const paymentStatus =
-            order.paymentStatus ?? "Unknown";
+    if (
+      filters.paymentStatus &&
+      row.paymentStatus.toLowerCase() !== filters.paymentStatus.toLowerCase()
+    ) {
+      return false;
+    }
 
-        if (
-            filters?.orderStatus &&
-            orderStatus.toLowerCase() !==
-                filters.orderStatus.toLowerCase()
-        ) {
-            return;
-        }
+    if (
+      search &&
+      ![row.orderId, row.customerName, row.customerEmail]
+        .join(" ")
+        .toLowerCase()
+        .includes(search)
+    ) {
+      return false;
+    }
 
-        if (
-            filters?.paymentStatus &&
-            paymentStatus.toLowerCase() !==
-                filters.paymentStatus.toLowerCase()
-        ) {
-            return;
-        }
+    return true;
+  });
 
-        if (search) {
-            const searchableText = [
-                orderId,
-                customerName,
-                customerEmail,
-            ]
-                .join(" ")
-                .toLowerCase();
+  let netPaise = 0;
+  let gstPaise = 0;
+  let refundedPaise = 0;
+  let orders = 0;
+  let units = 0;
+  let cancelled = 0;
 
-            if (
-                !searchableText.includes(search)
-            ) {
-                return;
-            }
-        }
+  for (const row of rows) {
+    if (row.countsAsSale) {
+      orders++;
+      units += row.productsSold;
+      netPaise += Math.round(row.netAmount * 100);
+      gstPaise += Math.round(row.gstAmount * 100);
+      refundedPaise += Math.round(row.refundedAmount * 100);
+    } else {
+      cancelled++;
+    }
+  }
 
-        const totalAmount =
-            typeof order.totalAmount === "number"
-                ? order.totalAmount
-                : 0;
-
-        const productsSold = Array.isArray(order.items)
-            ? order.items.reduce(
-                  (
-                      total: number,
-                      item: {
-                          quantity?: number;
-                      }
-                  ) =>
-                      total +
-                      (typeof item.quantity ===
-                      "number"
-                          ? item.quantity
-                          : 0),
-                  0
-              )
-            : 0;
-
-        totalRevenue += totalAmount;
-        totalOrders++;
-        totalProductsSold += productsSold;
-
-        rows.push({
-            id: doc.id,
-            orderId,
-            customerName,
-            customerEmail,
-            orderDate,
-            orderStatus,
-            paymentStatus,
-            totalAmount,
-            productsSold,
-        });
-    });
-
-    rows.sort((a, b) => {
-        if (!a.orderDate && !b.orderDate) {
-            return 0;
-        }
-
-        if (!a.orderDate) {
-            return 1;
-        }
-
-        if (!b.orderDate) {
-            return -1;
-        }
-
-        return (
-            b.orderDate.getTime() -
-            a.orderDate.getTime()
-        );
-    });
-
-    return {
-        summary: {
-            totalRevenue,
-            totalOrders,
-            totalProductsSold,
-            averageOrderValue:
-                totalOrders > 0
-                    ? Math.round(
-                          totalRevenue /
-                              totalOrders
-                      )
-                    : 0,
-        },
-        rows,
-    };
+  return {
+    rows,
+    truncated: raw.truncated,
+    summary: {
+      netRevenue: netPaise / 100,
+      totalOrders: orders,
+      totalProductsSold: units,
+      averageOrderValue: orders > 0 ? Math.round(netPaise / orders) / 100 : 0,
+      gstIncluded: gstPaise / 100,
+      refundedAmount: refundedPaise / 100,
+      cancelledOrders: cancelled,
+    },
+  };
 }

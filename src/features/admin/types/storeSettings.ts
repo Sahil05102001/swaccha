@@ -11,8 +11,6 @@ export interface StoreSettings {
 
   storeName: string;
 
-  logoUrl: string;
-
   gstNumber: string;
 
   addressLine1: string;
@@ -32,8 +30,6 @@ export interface StoreSettings {
   whatsappNumber: string;
 
   email: string;
-
-  website?: string;
 
   currency: CurrencyCode;
 
@@ -60,8 +56,6 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
 
   storeName: "Swachha",
 
-  logoUrl: "",
-
   gstNumber: "",
 
   addressLine1: "",
@@ -81,8 +75,6 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   whatsappNumber: "",
 
   email: "",
-
-  website: "",
 
   currency: "INR",
 

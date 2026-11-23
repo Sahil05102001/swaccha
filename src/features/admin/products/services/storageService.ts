@@ -1,3 +1,4 @@
+
 export interface CloudinaryVideoUploadResult {
   secureUrl: string;
   publicId: string;
@@ -8,7 +9,12 @@ export interface CloudinaryImageUploadResult {
   publicId: string;
 }
 
-function getCloudinaryConfig() {
+interface CloudinaryUploadConfig {
+  cloudName: string;
+  uploadPreset: string;
+}
+
+function getCloudinaryConfig(): CloudinaryUploadConfig {
   const cloudName =
     import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 
@@ -30,6 +36,28 @@ function getCloudinaryConfig() {
   return { cloudName, uploadPreset };
 }
 
+function getProductCloudinaryConfig(): CloudinaryUploadConfig {
+  const cloudName =
+    import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+
+  const uploadPreset =
+    import.meta.env.VITE_CLOUDINARY_PRODUCT_UPLOAD_PRESET;
+
+  if (!cloudName) {
+    throw new Error(
+      "Cloudinary cloud name is not configured.",
+    );
+  }
+
+  if (!uploadPreset) {
+    throw new Error(
+      "Cloudinary product upload preset is not configured.",
+    );
+  }
+
+  return { cloudName, uploadPreset };
+}
+
 function normalizeFolder(folder: string): string {
   const normalizedFolder = folder
     .trim()
@@ -45,23 +73,20 @@ function normalizeFolder(folder: string): string {
 }
 
 /**
- * Uploads an image and returns its URL and public ID.
- * Used by hero banners so their Cloudinary assets
- * can be deleted reliably later.
+ * Shared image upload implementation.
+ * The supplied preset determines which Cloudinary configuration is used.
  */
-export function uploadImageWithDetails(
+function uploadImageRequest(
   file: File,
   folder: string,
+  config: CloudinaryUploadConfig,
   onProgress?: (progress: number) => void,
 ): Promise<CloudinaryImageUploadResult> {
-  const { cloudName, uploadPreset } =
-    getCloudinaryConfig();
-
   const normalizedFolder = normalizeFolder(folder);
   const formData = new FormData();
 
   formData.append("file", file);
-  formData.append("upload_preset", uploadPreset);
+  formData.append("upload_preset", config.uploadPreset);
   formData.append("asset_folder", normalizedFolder);
 
   const xhr = new XMLHttpRequest();
@@ -138,7 +163,7 @@ export function uploadImageWithDetails(
 
     xhr.open(
       "POST",
-      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      `https://api.cloudinary.com/v1_1/${config.cloudName}/image/upload`,
     );
 
     xhr.send(formData);
@@ -146,8 +171,42 @@ export function uploadImageWithDetails(
 }
 
 /**
- * Backward-compatible image uploader.
- * Existing product/category forms still receive a URL string.
+ * Existing shared image uploader.
+ * Used by hero banners, categories and other media.
+ * Continues using VITE_CLOUDINARY_UPLOAD_PRESET.
+ */
+export function uploadImageWithDetails(
+  file: File,
+  folder: string,
+  onProgress?: (progress: number) => void,
+): Promise<CloudinaryImageUploadResult> {
+  return uploadImageRequest(
+    file,
+    folder,
+    getCloudinaryConfig(),
+    onProgress,
+  );
+}
+
+/**
+ * Dedicated product image uploader.
+ * Uses VITE_CLOUDINARY_PRODUCT_UPLOAD_PRESET.
+ */
+export function uploadProductImageWithDetails(
+  file: File,
+  onProgress?: (progress: number) => void,
+): Promise<CloudinaryImageUploadResult> {
+  return uploadImageRequest(
+    file,
+    "products",
+    getProductCloudinaryConfig(),
+    onProgress,
+  );
+}
+
+/**
+ * Backward-compatible shared image uploader.
+ * Existing callers continue receiving a URL string.
  */
 export async function uploadImage(
   file: File,
@@ -268,6 +327,7 @@ export async function uploadVideo(
 
 /**
  * Backward-compatible product uploader.
+ * Retained for any existing callers.
  */
 export function uploadProductImage(
   file: File,

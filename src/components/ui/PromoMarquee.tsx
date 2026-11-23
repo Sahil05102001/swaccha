@@ -1,9 +1,11 @@
 import { Box, Typography } from "@mui/material";
 
+
 interface PromoMarqueeProps {
   text: string;
   variant?: "announcement" | "benefits";
 }
+
 
 export default function PromoMarquee({
   text,
@@ -14,12 +16,15 @@ export default function PromoMarquee({
     .map((message) => message.trim())
     .filter(Boolean);
 
+
   const repeatedMessages = Array.from(
     { length: 4 },
     () => messages,
   ).flat();
 
+
   const isBenefits = variant === "benefits";
+
 
   const renderSequence = (prefix: string) => (
     <Box
@@ -56,6 +61,7 @@ export default function PromoMarquee({
             />
           )}
 
+
           <Typography
             component="span"
             sx={{
@@ -66,7 +72,9 @@ export default function PromoMarquee({
                   }
                 : 0,
 
+
               fontWeight: isBenefits ? 500 : 700,
+
 
               fontSize: {
                 xs: isBenefits
@@ -80,12 +88,15 @@ export default function PromoMarquee({
                   : "0.92rem",
               },
 
+
               letterSpacing: isBenefits
                 ? "0.01em"
                 : "0.02em",
 
+
               lineHeight: 1.2,
               whiteSpace: "nowrap",
+
 
               color: isBenefits
                 ? "#FFFFFF"
@@ -94,6 +105,7 @@ export default function PromoMarquee({
           >
             {message}
           </Typography>
+
 
           {isBenefits ? (
             <Box
@@ -133,6 +145,7 @@ export default function PromoMarquee({
     </Box>
   );
 
+
   return (
     <Box
       component="section"
@@ -141,21 +154,26 @@ export default function PromoMarquee({
         overflow: "hidden",
         whiteSpace: "nowrap",
 
+
         backgroundColor: isBenefits
           ? "#000000"
           : "#00F0FF",
+
 
         color: isBenefits
           ? "#FFFFFF"
           : "#111111",
 
+
         borderTop: isBenefits
           ? "1px solid rgba(255,255,255,0.08)"
           : "none",
 
+
         borderBottom: isBenefits
           ? "1px solid rgba(255,255,255,0.08)"
           : "none",
+
 
         py: {
           xs: isBenefits ? 1.05 : 0.9,
@@ -169,11 +187,14 @@ export default function PromoMarquee({
           display: "flex",
           width: "max-content",
 
+
           animation: isBenefits
             ? "promoBenefitsMarquee 32s linear infinite"
             : "promoAnnouncementMarquee 28s linear infinite",
 
+
           willChange: "transform",
+
 
           "@keyframes promoAnnouncementMarquee": {
             from: {
@@ -184,6 +205,7 @@ export default function PromoMarquee({
             },
           },
 
+
           "@keyframes promoBenefitsMarquee": {
             from: {
               transform: "translateX(0)",
@@ -193,8 +215,13 @@ export default function PromoMarquee({
             },
           },
 
+
           "&:hover": {
             animationPlayState: "paused",
+          },
+
+          "@media (prefers-reduced-motion: reduce)": {
+            animation: "none",
           },
         }}
       >

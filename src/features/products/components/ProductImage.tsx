@@ -6,7 +6,7 @@ interface ProductImageProps {
 }
 
 const COLORS = {
-  imageBg: "#F7F7F2",
+  imageBg: "#FFFFFF",
   muted: "#68777A",
 };
 

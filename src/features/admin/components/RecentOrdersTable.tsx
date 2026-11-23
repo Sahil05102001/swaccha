@@ -1,7 +1,8 @@
 import {
   Alert,
   Button,
-  CircularProgress,
+  Skeleton,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -25,13 +26,21 @@ export default function RecentOrdersTable() {
     <SectionCard
       title="Recent Orders"
       action={
-        <Button size="small" onClick={() => navigate("/admin/orders")}>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => navigate("/admin/orders")}
+        >
           View all
         </Button>
       }
     >
       {isLoading ? (
-        <CircularProgress size={24} aria-label="Loading recent orders" />
+        <Stack spacing={1} aria-label="Loading recent orders">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} variant="rounded" height={40} />
+          ))}
+        </Stack>
       ) : isError ? (
         <Alert severity="error">Failed to load recent orders.</Alert>
       ) : orders.length === 0 ? (
@@ -51,7 +60,7 @@ export default function RecentOrdersTable() {
 
             <TableBody>
               {orders.map((order) => (
-                <TableRow key={order.id} hover>
+                <TableRow key={order.id}>
                   <TableCell sx={{ whiteSpace: "nowrap" }}>
                     {order.orderNumber}
                   </TableCell>
@@ -65,7 +74,10 @@ export default function RecentOrdersTable() {
                   <TableCell align="right">
                     <Button
                       size="small"
-                      onClick={() => navigate(`/admin/orders/${order.id}`)}
+                      variant="outlined"
+                      onClick={() =>
+                        navigate(`/admin/orders?order=${order.id}`)
+                      }
                     >
                       View
                     </Button>

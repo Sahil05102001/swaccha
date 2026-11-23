@@ -1,3 +1,4 @@
+
 import {
   addDoc,
   collection,
@@ -32,9 +33,7 @@ export async function getCategories(
       )
     : categoriesCollection;
 
-  const snapshot = await getDocs(
-    categoriesQuery
-  );
+  const snapshot = await getDocs(categoriesQuery);
 
   return snapshot.docs.map((document) => ({
     id: document.id,
@@ -45,9 +44,35 @@ export async function getCategories(
 export async function createCategory(
   category: CategoryFormData
 ) {
+  const categoryName = category.name.trim();
+  const normalizedName = categoryName.toLowerCase();
+
+  if (!categoryName) {
+    throw new Error("Category name is required.");
+  }
+
+  // Check existing categories to prevent duplicate names.
+  const snapshot = await getDocs(categoriesCollection);
+
+  const duplicateExists = snapshot.docs.some((document) => {
+    const existingName = String(
+      document.data().name ?? ""
+    )
+      .trim()
+      .toLowerCase();
+
+    return existingName === normalizedName;
+  });
+
+  if (duplicateExists) {
+    throw new Error(
+      `The category "${categoryName}" already exists.`
+    );
+  }
+
   await addDoc(categoriesCollection, {
-    name: category.name,
-    imageUrl: category.imageUrl,
+    name: categoryName,
+    imageUrl: "",
     isActive: category.isActive,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -59,8 +84,8 @@ export async function updateCategory(
   category: CategoryFormData
 ) {
   await updateDoc(doc(db, "categories", id), {
-    name: category.name,
-    imageUrl: category.imageUrl,
+    name: category.name.trim(),
+    imageUrl: "",
     isActive: category.isActive,
     updatedAt: serverTimestamp(),
   });

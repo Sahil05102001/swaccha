@@ -1,7 +1,6 @@
 import {
   Alert,
   Chip,
-  CircularProgress,
   List,
   ListItem,
   ListItemText,
@@ -9,9 +8,9 @@ import {
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
-
 import SectionCard from "@/components/common/SectionCard";
 import { db } from "@/firebase/firestore";
+import CardSkeleton from "./CardSkeleton";
 
 const LOW_STOCK_AT = 5;
 const MAX_SHOWN = 20;
@@ -56,7 +55,7 @@ export default function LowStockProducts() {
   return (
     <SectionCard title="Inventory Alerts">
       {isLoading ? (
-        <CircularProgress size={24} aria-label="Loading inventory alerts" />
+        <CardSkeleton label="Loading inventory alerts" />
       ) : isError ? (
         <Alert severity="error">Failed to load inventory alerts.</Alert>
       ) : items.length === 0 ? (

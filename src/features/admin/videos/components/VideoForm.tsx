@@ -1,31 +1,22 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   Box,
   Button,
-  FormControl,
   FormControlLabel,
-  FormHelperText,
-  InputLabel,
   MenuItem,
-  Select,
   Stack,
   Switch,
   TextField,
   Typography,
 } from "@mui/material";
-
 import LinkIcon from "@mui/icons-material/Link";
 import VideoFileIcon from "@mui/icons-material/VideoFile";
 
-import type {
-  VideoCard,
-  VideoCardFormData,
-} from "../types/video";
+import AdminSelect from "@/features/admin/components/AdminSelect";
+
+import type { VideoCard, VideoCardFormData } from "../types/video";
+import { getYouTubeId, youtubeShortLink, youtubeThumb } from "../utils/youtube";
 
 interface VideoFormProps {
   video?: VideoCard | null;
@@ -50,9 +41,7 @@ export default function VideoForm({
   onCancel,
   loading = false,
 }: VideoFormProps) {
-  const [form, setForm] =
-    useState<VideoCardFormData>(defaultForm);
-
+  const [form, setForm] = useState<VideoCardFormData>(defaultForm);
   const [urlError, setUrlError] = useState("");
 
   const usedOrders = useMemo(
@@ -67,13 +56,9 @@ export default function VideoForm({
 
   const availableOrders = useMemo(
     () =>
-      Array.from({ length: 5 }, (_, index) => index + 1)
-        .filter(
-          (order) =>
-            video
-              ? true
-              : !usedOrders.has(order),
-        ),
+      Array.from({ length: 5 }, (_, index) => index + 1).filter((order) =>
+        video ? true : !usedOrders.has(order),
+      ),
     [video, usedOrders],
   );
 
@@ -81,71 +66,49 @@ export default function VideoForm({
     if (video) {
       setForm({
         videoUrl: video.videoUrl,
-        publicId: video.publicId ?? "",
-        thumbnailUrl: video.thumbnailUrl ?? "",
+        publicId: "",
+        thumbnailUrl: "",
         isActive: video.isActive,
         displayOrder: video.displayOrder,
       });
     } else {
-      const firstAvailableOrder = Array.from(
-        { length: 5 },
-        (_, index) => index + 1,
-      ).find((order) => !usedOrders.has(order));
+      const firstAvailableOrder = [1, 2, 3, 4, 5].find(
+        (order) => !usedOrders.has(order),
+      );
 
-      setForm({
-        ...defaultForm,
-        displayOrder: firstAvailableOrder ?? 1,
-      });
+      setForm({ ...defaultForm, displayOrder: firstAvailableOrder ?? 1 });
     }
 
     setUrlError("");
   }, [video, usedOrders]);
 
-  const updateField = <
-    K extends keyof VideoCardFormData,
-  >(
+  const updateField = <K extends keyof VideoCardFormData>(
     field: K,
     value: VideoCardFormData[K],
   ) => {
-    setForm((current) => ({
-      ...current,
-      [field]: value,
-    }));
-
-    if (field === "videoUrl") {
-      setUrlError("");
-    }
+    setForm((current) => ({ ...current, [field]: value }));
+    if (field === "videoUrl") setUrlError("");
   };
 
-  const handleSubmit = () => {
-    const videoUrl = form.videoUrl.trim();
+  const videoId = getYouTubeId(form.videoUrl);
 
-    if (!videoUrl) {
-      setUrlError("Please enter a video URL.");
+  const handleSubmit = () => {
+    if (!form.videoUrl.trim()) {
+      setUrlError("Please paste a YouTube link.");
       return;
     }
 
-    try {
-      const parsedUrl = new URL(videoUrl);
-
-      if (
-        parsedUrl.protocol !== "https:" &&
-        parsedUrl.protocol !== "http:"
-      ) {
-        setUrlError(
-          "Please enter a valid HTTP or HTTPS video URL.",
-        );
-        return;
-      }
-    } catch {
-      setUrlError("Please enter a valid video URL.");
+    if (!videoId) {
+      setUrlError(
+        "This doesn't look like a YouTube link. Use a Shorts or video link from YouTube.",
+      );
       return;
     }
 
     onSubmit({
-      videoUrl,
+      videoUrl: youtubeShortLink(videoId),
       publicId: "",
-      thumbnailUrl: form.thumbnailUrl.trim(),
+      thumbnailUrl: "",
       isActive: form.isActive,
       displayOrder: form.displayOrder,
     });
@@ -162,64 +125,44 @@ export default function VideoForm({
     <Stack spacing={2.5} sx={{ pt: 1 }}>
       <TextField
         fullWidth
-        label="Cloudinary Video URL"
-        placeholder="https://res.cloudinary.com/..."
+        label="YouTube link"
+        placeholder="https://www.youtube.com/shorts/..."
         value={form.videoUrl}
-        onChange={(event) =>
-          updateField("videoUrl", event.target.value)
-        }
+        onChange={(event) => updateField("videoUrl", event.target.value)}
         error={Boolean(urlError)}
         helperText={
           urlError ||
-          "Paste the secure URL of the video uploaded to your Cloudinary folder."
+          "Paste a YouTube Shorts or video link. The video must be Public or Unlisted, with embedding allowed."
         }
         disabled={loading}
         slotProps={{
           input: {
-            startAdornment: (
-              <LinkIcon
-                sx={{ mr: 1, color: "text.secondary" }}
-              />
-            ),
+            startAdornment: <LinkIcon sx={{ mr: 1, color: "text.secondary" }} />,
           },
         }}
       />
 
-      <TextField
-        fullWidth
-        label="Thumbnail URL (optional)"
-        placeholder="https://res.cloudinary.com/..."
-        value={form.thumbnailUrl}
-        onChange={(event) =>
-          updateField("thumbnailUrl", event.target.value)
-        }
-        helperText="Optional image URL for the video thumbnail, if used by your homepage component."
-        disabled={loading}
-      />
-
-      {form.videoUrl.trim() ? (
+      {videoId ? (
         <Box
           sx={{
-            width: "100%",
-            maxWidth: 360,
+            width: 160,
+            aspectRatio: "9 / 16",
             borderRadius: 2,
             overflow: "hidden",
-            backgroundColor: "#000",
+            bgcolor: "#000",
           }}
         >
           <Box
-            component="video"
-            src={form.videoUrl}
-            controls
-            muted
-            playsInline
-            preload="metadata"
-            sx={{
-              display: "block",
-              width: "100%",
-              height: "auto",
-              maxHeight: 420,
+            component="img"
+            src={youtubeThumb(videoId)}
+            alt="Video thumbnail"
+            onError={(event: React.SyntheticEvent<HTMLImageElement>) => {
+              if (!event.currentTarget.dataset.fallback) {
+                event.currentTarget.dataset.fallback = "1";
+                event.currentTarget.src = youtubeThumb(videoId, "hqdefault");
+              }
             }}
+            sx={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }}
           />
         </Box>
       ) : (
@@ -237,80 +180,48 @@ export default function VideoForm({
         >
           <VideoFileIcon />
           <Typography variant="body2">
-            Paste a video URL to preview it here.
+            Paste a YouTube link to preview the thumbnail here.
           </Typography>
         </Box>
       )}
 
-      <FormControl fullWidth disabled={loading}>
-        <InputLabel id="video-display-order-label">
-          Display Order
-        </InputLabel>
-
-        <Select
-          labelId="video-display-order-label"
-          label="Display Order"
-          value={form.displayOrder}
-          onChange={(event) =>
-            updateField(
-              "displayOrder",
-              Number(event.target.value),
-            )
-          }
-        >
-          {availableOrders.map((order) => (
-            <MenuItem key={order} value={order}>
-              Position {order}
-            </MenuItem>
-          ))}
-        </Select>
-
-        <FormHelperText>
-          {availableOrders.length > 0
+      <AdminSelect
+        fullWidth
+        label="Display order"
+        value={form.displayOrder}
+        onChange={(event) => updateField("displayOrder", Number(event.target.value))}
+        disabled={loading}
+        helperText={
+          availableOrders.length > 0
             ? "Only available positions are shown. You can change the order later."
-            : "All five positions are occupied."}
-        </FormHelperText>
-      </FormControl>
+            : "All five positions are occupied."
+        }
+      >
+        {availableOrders.map((order) => (
+          <MenuItem key={order} value={order}>
+            Position {order}
+          </MenuItem>
+        ))}
+      </AdminSelect>
 
       <FormControlLabel
         control={
           <Switch
             checked={form.isActive}
-            onChange={(event) =>
-              updateField("isActive", event.target.checked)
-            }
+            onChange={(event) => updateField("isActive", event.target.checked)}
             disabled={loading}
           />
         }
         label="Show this video on homepage"
       />
 
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 2,
-          pt: 1,
-        }}
-      >
-        <Button
-          variant="outlined"
-          onClick={onCancel}
-          disabled={loading}
-        >
+      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, pt: 1 }}>
+        <Button variant="outlined" onClick={onCancel} disabled={loading}>
           Cancel
         </Button>
 
-        <Button
-          variant="contained"
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-        >
-          {loading
-            ? "Saving..."
-            : video
-              ? "Update Video"
-              : "Add Video"}
+        <Button variant="contained" onClick={handleSubmit} disabled={!canSubmit}>
+          {loading ? "Saving..." : video ? "Update video" : "Add video"}
         </Button>
       </Box>
     </Stack>

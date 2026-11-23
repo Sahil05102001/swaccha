@@ -1,538 +1,208 @@
-
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import {
-    Alert,
-    Box,
-    Button,
-    CircularProgress,
-    Stack,
-    Switch,
-    TextField,
-    FormControlLabel,
-    Typography,
+  Box,
+  Button,
+  FormControlLabel,
+  Stack,
+  Switch,
+  TextField,
+  Typography,
 } from "@mui/material";
 
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import DeleteIcon from "@mui/icons-material/Delete";
-import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
+import DeferredImageField from "@/features/admin/components/DeferredImageField";
+import { checkImageFile, type ImageSpec } from "@/features/admin/utils/imageAdvice";
 
+import type { SaveBrandStatementInput } from "../services/brandStatementService";
 import {
-    DEFAULT_BRAND_STATEMENT,
-    type BrandStatement,
-    type BrandStatementFormData,
+  DEFAULT_BRAND_STATEMENT,
+  type BrandStatement,
 } from "../types/brandStatement";
 
-import { uploadImageWithDetails } from "@/features/admin/products/services/storageService";
+const DESKTOP_SPEC: ImageSpec = {
+  width: 1920,
+  height: 800,
+  kb: 200,
+  warnKb: 300,
+  minWidth: 1400,
+  maxWidth: 2600,
+  shape: "12:5 wide banner",
+  keepSameShape: true,
+};
+
+const MOBILE_SPEC: ImageSpec = {
+  width: 800,
+  height: 1000,
+  kb: 100,
+  warnKb: 150,
+  minWidth: 640,
+  maxWidth: 1300,
+  shape: "4:5 portrait",
+  keepSameShape: true,
+};
 
 interface BrandStatementFormProps {
-    statement?: BrandStatement | null;
-    onSubmit: (data: BrandStatementFormData) => void | Promise<void>;
-    onCancel: () => void;
-    loading?: boolean;
+  statement?: BrandStatement | null;
+  onSubmit: (input: SaveBrandStatementInput) => void | Promise<void>;
+  onCancel: () => void;
+  loading?: boolean;
 }
 
-type BannerType = "desktop" | "mobile";
-
 export default function BrandStatementForm({
-    statement,
-    onSubmit,
-    onCancel,
-    loading = false,
+  statement,
+  onSubmit,
+  onCancel,
+  loading = false,
 }: BrandStatementFormProps) {
-    const [form, setForm] = useState<BrandStatementFormData>({
-        ...DEFAULT_BRAND_STATEMENT,
-    });
+  const start = statement ?? DEFAULT_BRAND_STATEMENT;
 
-    const [uploadingBanner, setUploadingBanner] =
-        useState<BannerType | null>(null);
-    const [uploadProgress, setUploadProgress] = useState(0);
-    const [imageError, setImageError] = useState("");
-    const [formError, setFormError] = useState("");
+  const desktopUrl = statement?.desktopImageUrl || statement?.imageUrl || "";
+  const mobileUrl = statement?.mobileImageUrl || "";
 
-    const desktopFileInputRef = useRef<HTMLInputElement>(null);
-    const mobileFileInputRef = useRef<HTMLInputElement>(null);
+  const [brandName, setBrandName] = useState(start.brandName ?? "");
+  const [title, setTitle] = useState(start.title ?? "");
+  const [description, setDescription] = useState(start.description ?? "");
+  const [tagline, setTagline] = useState(start.tagline ?? "");
+  const [isActive, setIsActive] = useState(start.isActive);
 
-    useEffect(() => {
-        if (statement) {
-            const legacyImageUrl = statement.imageUrl ?? "";
-            const legacyImagePublicId =
-                statement.imagePublicId ?? "";
+  const [desktopFile, setDesktopFile] = useState<File | null>(null);
+  const [mobileFile, setMobileFile] = useState<File | null>(null);
+  const [removeDesktop, setRemoveDesktop] = useState(false);
+  const [removeMobile, setRemoveMobile] = useState(false);
+  const [desktopNotes, setDesktopNotes] = useState<string[]>([]);
+  const [mobileNotes, setMobileNotes] = useState<string[]>([]);
 
-            setForm({
-                brandName: statement.brandName ?? "",
-                title: statement.title ?? "",
-                description: statement.description ?? "",
-                tagline: statement.tagline ?? "",
+  return (
+    <Stack spacing={2.5}>
+      <TextField
+        fullWidth
+        label="Brand name"
+        value={brandName}
+        onChange={(event) => setBrandName(event.target.value)}
+        disabled={loading}
+      />
 
-                imageUrl: legacyImageUrl,
-                imagePublicId: legacyImagePublicId,
+      <TextField
+        fullWidth
+        label="Main quote / title"
+        value={title}
+        onChange={(event) => setTitle(event.target.value)}
+        helperText="Shown as text when no banner image is set."
+        disabled={loading}
+      />
 
-                desktopImageUrl:
-                    statement.desktopImageUrl ||
-                    legacyImageUrl,
-                desktopImagePublicId:
-                    statement.desktopImagePublicId ||
-                    legacyImagePublicId,
+      <TextField
+        fullWidth
+        multiline
+        rows={3}
+        label="Description"
+        value={description}
+        onChange={(event) => setDescription(event.target.value)}
+        disabled={loading}
+      />
 
-                mobileImageUrl:
-                    statement.mobileImageUrl || "",
-                mobileImagePublicId:
-                    statement.mobileImagePublicId || "",
+      <TextField
+        fullWidth
+        label="Tagline"
+        value={tagline}
+        onChange={(event) => setTagline(event.target.value)}
+        disabled={loading}
+      />
 
-                isActive: statement.isActive,
-            });
-        } else {
-            setForm({
-                ...DEFAULT_BRAND_STATEMENT,
-            });
-        }
+      <Box>
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+          Banner images (optional)
+        </Typography>
 
-        setImageError("");
-        setFormError("");
-        setUploadProgress(0);
-        setUploadingBanner(null);
-    }, [statement]);
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          With a desktop image the banner replaces the text above. Without a
+          mobile image, phones show the desktop image. Images are uploaded only
+          when you press Save.
+        </Typography>
 
-    const updateField = <
-        K extends keyof BrandStatementFormData
-    >(
-        field: K,
-        value: BrandStatementFormData[K],
-    ) => {
-        setForm((current) => ({
-            ...current,
-            [field]: value,
-        }));
-    };
+        <Stack spacing={3}>
+          <DeferredImageField
+            title="Desktop banner"
+            guide={`Recommended: ${DESKTOP_SPEC.width} × ${DESKTOP_SPEC.height} px (12:5 wide banner), WebP or JPEG, around ${DESKTOP_SPEC.kb} KB. Shown on screens wider than 767 px. Keep text and logos away from the edges. You can convert images for free at squoosh.app.`}
+            existingUrl={desktopUrl}
+            thumbWidth={960}
+            file={desktopFile}
+            notes={desktopNotes}
+            disabled={loading}
+            removed={removeDesktop}
+            onPick={async (file) => {
+              setDesktopFile(file);
+              setRemoveDesktop(false);
+              setDesktopNotes(await checkImageFile(file, DESKTOP_SPEC));
+            }}
+            onUndoPick={() => {
+              setDesktopFile(null);
+              setDesktopNotes([]);
+            }}
+            onRemove={() => setRemoveDesktop(true)}
+            onUndoRemove={() => setRemoveDesktop(false)}
+          />
 
-    const handleImageSelect = async (
-        event: React.ChangeEvent<HTMLInputElement>,
-        bannerType: BannerType,
-    ) => {
-        const file = event.target.files?.[0];
-
-        // Allow selecting the same file again.
-        event.target.value = "";
-
-        if (!file) {
-            return;
-        }
-
-        setImageError("");
-        setFormError("");
-
-        if (!file.type.startsWith("image/")) {
-            setImageError("Please select a valid image file.");
-            return;
-        }
-
-        if (file.size > 10 * 1024 * 1024) {
-            setImageError("Image size must not exceed 10 MB.");
-            return;
-        }
-
-        setUploadingBanner(bannerType);
-        setUploadProgress(0);
-
-        try {
-            const result = await uploadImageWithDetails(
-                file,
-                "brand-statement",
-                setUploadProgress,
-            );
-
-            if (bannerType === "desktop") {
-                setForm((current) => ({
-                    ...current,
-                    desktopImageUrl: result.secureUrl,
-                    desktopImagePublicId: result.publicId,
-                }));
-            } else {
-                setForm((current) => ({
-                    ...current,
-                    mobileImageUrl: result.secureUrl,
-                    mobileImagePublicId: result.publicId,
-                }));
-            }
-        } catch (error) {
-            console.error(
-                `Failed to upload ${bannerType} Brand Statement image:`,
-                error,
-            );
-
-            setImageError(
-                error instanceof Error
-                    ? error.message
-                    : `Failed to upload the ${bannerType} image. Please try again.`,
-            );
-        } finally {
-            setUploadingBanner(null);
-            setUploadProgress(0);
-        }
-    };
-
-    const handleRemoveImage = (bannerType: BannerType) => {
-        if (bannerType === "desktop") {
-            setForm((current) => ({
-                ...current,
-                desktopImageUrl: "",
-                desktopImagePublicId: "",
-            }));
-        } else {
-            setForm((current) => ({
-                ...current,
-                mobileImageUrl: "",
-                mobileImagePublicId: "",
-            }));
-        }
-
-        setImageError("");
-        setFormError("");
-    };
-
-    const handleSubmit = async () => {
-        setFormError("");
-
-        try {
-            await onSubmit(form);
-        } catch (error) {
-            console.error(
-                "Failed to save brand statement:",
-                error,
-            );
-
-            setFormError(
-                error instanceof Error
-                    ? error.message
-                    : "Failed to save the brand statement. Please try again.",
-            );
-        }
-    };
-
-    const busy = loading || uploadingBanner !== null;
-
-    const renderBannerField = (
-        bannerType: BannerType,
-        imageUrl: string,
-    ) => {
-        const isDesktop = bannerType === "desktop";
-        const fileInputRef = isDesktop
-            ? desktopFileInputRef
-            : mobileFileInputRef;
-
-        const label = isDesktop
-            ? "Desktop Banner"
-            : "Mobile Banner";
-
-        const helperText = isDesktop
-            ? "Upload a wide banner optimized for desktop and laptop screens."
-            : "Upload a separate banner optimized for mobile screens.";
-
-        const isUploading = uploadingBanner === bannerType;
-
-        return (
-            <Box
-                key={bannerType}
-                sx={{
-                    border: 1,
-                    borderColor: "divider",
-                    borderRadius: 2,
-                    p: 2,
-                }}
-            >
-                <Typography
-                    variant="subtitle1"
-                    sx={{ fontWeight: 700, mb: 0.5 }}
-                >
-                    {label}
-                </Typography>
-
-                <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mb: 1.5 }}
-                >
-                    {helperText}
-                </Typography>
-
-                {imageUrl ? (
-                    <Box
-                        sx={{
-                            border: 1,
-                            borderColor: "divider",
-                            borderRadius: 2,
-                            overflow: "hidden",
-                        }}
-                    >
-                        <Box
-                            component="img"
-                            src={imageUrl}
-                            alt={`${label} preview`}
-                            sx={{
-                                display: "block",
-                                width: "100%",
-                                maxHeight: 260,
-                                objectFit: "contain",
-                                bgcolor: "grey.100",
-                            }}
-                        />
-
-                        <Box
-                            sx={{
-                                display: "flex",
-                                flexWrap: "wrap",
-                                gap: 1,
-                                p: 1.5,
-                            }}
-                        >
-                            <Button
-                                variant="outlined"
-                                startIcon={<CloudUploadIcon />}
-                                onClick={() =>
-                                    fileInputRef.current?.click()
-                                }
-                                disabled={busy}
-                                sx={{ textTransform: "none" }}
-                            >
-                                Replace Image
-                            </Button>
-
-                            <Button
-                                variant="outlined"
-                                color="error"
-                                startIcon={<DeleteIcon />}
-                                onClick={() =>
-                                    handleRemoveImage(bannerType)
-                                }
-                                disabled={busy}
-                                sx={{ textTransform: "none" }}
-                            >
-                                Remove Image
-                            </Button>
-                        </Box>
-                    </Box>
-                ) : (
-                    <Box
-                        sx={{
-                            border: "1px dashed",
-                            borderColor: "divider",
-                            borderRadius: 2,
-                            p: 3,
-                            textAlign: "center",
-                        }}
-                    >
-                        <ImageOutlinedIcon
-                            sx={{
-                                fontSize: 42,
-                                color: "text.secondary",
-                                mb: 1,
-                            }}
-                        />
-
-                        <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ mb: 2 }}
-                        >
-                            No {bannerType} banner selected.
-                        </Typography>
-
-                        <Button
-                            variant="contained"
-                            startIcon={<CloudUploadIcon />}
-                            onClick={() =>
-                                fileInputRef.current?.click()
-                            }
-                            disabled={busy}
-                            sx={{
-                                textTransform: "none",
-                                fontWeight: 700,
-                            }}
-                        >
-                            Upload {label}
-                        </Button>
-                    </Box>
-                )}
-
-                <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    onChange={(event) =>
-                        void handleImageSelect(event, bannerType)
-                    }
-                />
-
-                {isUploading && (
-                    <Box sx={{ mt: 2 }}>
-                        <Box
-                            sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 1,
-                            }}
-                        >
-                            <CircularProgress
-                                size={18}
-                                variant={
-                                    uploadProgress > 0
-                                        ? "determinate"
-                                        : "indeterminate"
-                                }
-                                value={uploadProgress}
-                            />
-
-                            <Typography variant="body2">
-                                Uploading {bannerType} banner
-                                {uploadProgress > 0
-                                    ? `: ${uploadProgress}%`
-                                    : "..."}
-                            </Typography>
-                        </Box>
-                    </Box>
-                )}
-            </Box>
-        );
-    };
-
-    return (
-        <Stack spacing={2.5}>
-            <TextField
-                fullWidth
-                label="Brand Name"
-                value={form.brandName}
-                onChange={(event) =>
-                    updateField("brandName", event.target.value)
-                }
-                disabled={busy}
-            />
-
-            <TextField
-                fullWidth
-                label="Main Quote / Title"
-                value={form.title}
-                onChange={(event) =>
-                    updateField("title", event.target.value)
-                }
-                helperText="Main statement displayed when no banner images are configured."
-                disabled={busy}
-            />
-
-            <TextField
-                fullWidth
-                multiline
-                rows={3}
-                label="Description"
-                value={form.description}
-                onChange={(event) =>
-                    updateField("description", event.target.value)
-                }
-                disabled={busy}
-            />
-
-            <TextField
-                fullWidth
-                label="Tagline"
-                value={form.tagline}
-                onChange={(event) =>
-                    updateField("tagline", event.target.value)
-                }
-                disabled={busy}
-            />
-
-            <Box>
-                <Typography
-                    variant="h6"
-                    sx={{ fontWeight: 700, mb: 1 }}
-                >
-                    Responsive Brand Statement Banners
-                </Typography>
-
-                <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mb: 2 }}
-                >
-                    Configure separate images for desktop and mobile.
-                    If a mobile image is not configured, the desktop
-                    image will be used on mobile too.
-                </Typography>
-
-                <Stack spacing={2}>
-                    {renderBannerField(
-                        "desktop",
-                        form.desktopImageUrl,
-                    )}
-
-                    {renderBannerField(
-                        "mobile",
-                        form.mobileImageUrl,
-                    )}
-                </Stack>
-
-                {imageError && (
-                    <Alert severity="error" sx={{ mt: 2 }}>
-                        {imageError}
-                    </Alert>
-                )}
-            </Box>
-
-            {formError && (
-                <Alert severity="error">
-                    {formError}
-                </Alert>
-            )}
-
-            <FormControlLabel
-                control={
-                    <Switch
-                        checked={form.isActive}
-                        onChange={(event) =>
-                            updateField(
-                                "isActive",
-                                event.target.checked,
-                            )
-                        }
-                        disabled={busy}
-                    />
-                }
-                label="Show this section on homepage"
-            />
-
-            <Box
-                sx={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    gap: 2,
-                }}
-            >
-                <Button
-                    variant="outlined"
-                    onClick={onCancel}
-                    disabled={busy}
-                    sx={{ textTransform: "none" }}
-                >
-                    Cancel
-                </Button>
-
-                <Button
-                    variant="contained"
-                    onClick={() => void handleSubmit()}
-                    disabled={busy}
-                    sx={{
-                        textTransform: "none",
-                        fontWeight: 700,
-                    }}
-                >
-                    {loading
-                        ? "Saving..."
-                        : uploadingBanner
-                          ? "Uploading..."
-                          : "Save Changes"}
-                </Button>
-            </Box>
+          <DeferredImageField
+            title="Mobile banner"
+            guide={`Recommended: ${MOBILE_SPEC.width} × ${MOBILE_SPEC.height} px (4:5 portrait), WebP or JPEG, around ${MOBILE_SPEC.kb} KB. Shown on phones (767 px and narrower). Design it separately instead of cropping the desktop banner.`}
+            existingUrl={mobileUrl}
+            thumbWidth={480}
+            file={mobileFile}
+            notes={mobileNotes}
+            disabled={loading}
+            removed={removeMobile}
+            maxPreviewWidth={260}
+            onPick={async (file) => {
+              setMobileFile(file);
+              setRemoveMobile(false);
+              setMobileNotes(await checkImageFile(file, MOBILE_SPEC));
+            }}
+            onUndoPick={() => {
+              setMobileFile(null);
+              setMobileNotes([]);
+            }}
+            onRemove={() => setRemoveMobile(true)}
+            onUndoRemove={() => setRemoveMobile(false)}
+          />
         </Stack>
-    );
+      </Box>
+
+      <FormControlLabel
+        control={
+          <Switch
+            checked={isActive}
+            onChange={(event) => setIsActive(event.target.checked)}
+            disabled={loading}
+          />
+        }
+        label="Show this section on homepage"
+      />
+
+      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+        <Button variant="outlined" onClick={onCancel} disabled={loading}>
+          Cancel
+        </Button>
+
+        <Button
+          variant="contained"
+          disabled={loading}
+          onClick={() =>
+            void onSubmit({
+              brandName,
+              title,
+              description,
+              tagline,
+              isActive,
+              files: { desktop: desktopFile, mobile: mobileFile },
+              removeDesktop: removeDesktop && !desktopFile,
+              removeMobile: removeMobile && !mobileFile,
+            })
+          }
+        >
+          {loading ? "Saving..." : "Save changes"}
+        </Button>
+      </Box>
+    </Stack>
+  );
 }

@@ -1,489 +1,417 @@
 import { useEffect, useState } from "react";
-
+import MenuItem from "@mui/material/MenuItem";
+import AdminSelect from "@/features/admin/components/AdminSelect";
+import { useProducts } from "@/features/products/hooks/useProducts";
 import {
   Alert,
   Box,
   Button,
   Card,
-  CardContent,
-  Divider,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  FormControlLabel,
   IconButton,
+  Skeleton,
   Stack,
   Switch,
   TextField,
   Typography,
 } from "@mui/material";
-
 import AddIcon from "@mui/icons-material/Add";
-import DeleteIcon from "@mui/icons-material/Delete";
+import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import SaveIcon from "@mui/icons-material/Save";
-
+import PageContainer from "@/components/common/PageContainer";
+import PageHeader from "@/components/common/PageHeader";
 import SectionCard from "@/components/common/SectionCard";
-
-import ImageUploadField from "@/features/admin/products/components/ImageUploadField";
-
-import {
-  uploadImageWithDetails,
-} from "@/features/admin/products/services/storageService";
-
+import { useSnackbar } from "@/contexts/SnackbarContext";
+import DeferredImageField from "@/features/admin/components/DeferredImageField";
+import { cloudinaryThumb } from "@/features/admin/products/utils/imageUrl";
+import { checkImageFile, type ImageSpec } from "@/features/admin/utils/imageAdvice";
+import { scrollToTop } from "@/features/admin/utils/scrollToTop";
 import {
   useCategoryCircles,
   useCreateCategoryCircle,
-  useUpdateCategoryCircle,
   useDeleteCategoryCircle,
+  useUpdateCategoryCircle,
 } from "../hooks/useCategoryCircles";
+import type { CategoryCircleInput } from "../services/categoryCircleService";
+import type { CategoryCircle } from "../types/categoryCircle";
 
-import type {
-  CategoryCircle,
-  CategoryCircleFormData,
-} from "../types/categoryCircle";
 
-const CATEGORY_CIRCLE_UPLOAD_FOLDER = "category-circles";
 const MAX_CATEGORY_CIRCLES = 10;
 
-const DEFAULT_FORM: CategoryCircleFormData = {
+
+const IMAGE_SPEC: ImageSpec = {
+  width: 240,
+  height: 240,
+  kb: 20,
+  warnKb: 50,
+  minWidth: 160,
+  maxWidth: 600,
+  shape: "square (1:1)",
+};
+
+
+// The icons the homepage knows how to draw.
+const ICON_OPTIONS = [
+  { value: "Category", label: "Category (default)" },
+  { value: "CleaningServices", label: "Cleaning" },
+  { value: "LocalLaundryService", label: "Laundry" },
+  { value: "ShoppingBag", label: "Shopping bag" },
+  { value: "LocalOffer", label: "Offer tag" },
+  { value: "Business", label: "Business" },
+  { value: "Kitchen", label: "Kitchen" },
+  { value: "LocalFlorist", label: "Flower" },
+  { value: "Inventory2", label: "Boxes" },
+  { value: "Spa", label: "Spa" },
+];
+
+
+interface FormState {
+  label: string;
+  icon: string;
+  href: string;
+  isActive: boolean;
+}
+
+
+const EMPTY_FORM: FormState = {
   label: "",
-  imageUrl: "",
-  imagePublicId: "",
   icon: "Category",
   href: "/products",
-  sortOrder: 1,
   isActive: true,
 };
 
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
   return "Something went wrong. Please try again.";
 }
 
+
 export default function AdminCategoryCirclesPage() {
-  const { data: circles = [], isLoading } = useCategoryCircles();
+  const { showSnackbar } = useSnackbar();
+
+
+  const {
+    data: circles = [],
+    isLoading,
+    isError,
+    refetch,
+    isRefetching,
+  } = useCategoryCircles();
+
 
   const createMutation = useCreateCategoryCircle();
   const updateMutation = useUpdateCategoryCircle();
   const deleteMutation = useDeleteCategoryCircle();
 
+
   const [editingId, setEditingId] = useState<string | null>(null);
-
-  const [form, setForm] =
-    useState<CategoryCircleFormData>(DEFAULT_FORM);
-
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [sortOrderInput, setSortOrderInput] = useState("1");
-
-  const [imageUploading, setImageUploading] = useState(false);
-  const [imageProgress, setImageProgress] = useState(0);
-
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-
+  const [file, setFile] = useState<File | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
+  const [imageNotes, setImageNotes] = useState<string[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<CategoryCircle | null>(null);
   const isAtLimit = circles.length >= MAX_CATEGORY_CIRCLES;
   const isEditing = editingId !== null;
-
-  const isSaving =
-    createMutation.isPending || updateMutation.isPending;
-
+  const editingCircle = circles.find((circle) => circle.id === editingId) ?? null;
+  const existingImageUrl = editingCircle?.imageUrl ?? "";
+  const isSaving = createMutation.isPending || updateMutation.isPending;
   const parsedSortOrder =
     sortOrderInput.trim() === "" ? NaN : Number(sortOrderInput);
+
 
   const invalidSortOrder =
     !Number.isSafeInteger(parsedSortOrder) ||
     parsedSortOrder < 1 ||
     parsedSortOrder > MAX_CATEGORY_CIRCLES;
 
+
+  // New circles default to the next free position.
   useEffect(() => {
-    if (editingId) {
-      return;
-    }
+    if (editingId) return;
 
-    const nextSortOrder = String(
-      Math.min(circles.length + 1, MAX_CATEGORY_CIRCLES),
-    );
 
-    setSortOrderInput(nextSortOrder);
-
-    setForm((current) => ({
-      ...current,
-      sortOrder: Number(nextSortOrder),
-    }));
+    setSortOrderInput(String(Math.min(circles.length + 1, MAX_CATEGORY_CIRCLES)));
   }, [circles.length, editingId]);
 
+
+  const { data: allProducts = [] } = useProducts();
+
+
+  const productCategories = [
+    ...new Set(
+      allProducts
+        .filter((product) => product.isActive)
+        .map((product) => product.category?.trim())
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ].sort((a, b) => a.localeCompare(b));
+
+
+  const categoryLink = (name: string) =>
+    `/products?category=${encodeURIComponent(name)}`;
+
+
+  const linkChoice =
+    form.href === "/products"
+      ? "/products"
+      : productCategories.find((name) => categoryLink(name) === form.href)
+        ? form.href
+        : "custom";
+
+
+  const iconOptions = ICON_OPTIONS.some((option) => option.value === form.icon)
+    ? ICON_OPTIONS
+    : [...ICON_OPTIONS, { value: form.icon, label: form.icon }];
+
+
+  const clearImageState = () => {
+    setFile(null);
+    setRemoveImage(false);
+    setImageNotes([]);
+  };
+
+
   const resetForm = () => {
-    const nextSortOrder = String(
-      Math.min(circles.length + 1, MAX_CATEGORY_CIRCLES),
-    );
-
     setEditingId(null);
-    setImageUploading(false);
-    setImageProgress(0);
-    setSortOrderInput(nextSortOrder);
-
-    setForm({
-      ...DEFAULT_FORM,
-      sortOrder: Number(nextSortOrder),
-    });
+    setForm(EMPTY_FORM);
+    setSortOrderInput(String(Math.min(circles.length + 1, MAX_CATEGORY_CIRCLES)));
+    clearImageState();
   };
 
-  const handleChange = <K extends keyof CategoryCircleFormData>(
-    key: K,
-    value: CategoryCircleFormData[K],
-  ) => {
-    setForm((previous) => ({
-      ...previous,
-      [key]: value,
-    }));
-  };
 
   const handleEdit = (circle: CategoryCircle) => {
-    setErrorMessage("");
-    setSuccessMessage("");
     setEditingId(circle.id);
-    setImageUploading(false);
-    setImageProgress(0);
-    setSortOrderInput(String(circle.sortOrder));
-
     setForm({
       label: circle.label,
-      imageUrl: circle.imageUrl ?? "",
-      imagePublicId: circle.imagePublicId ?? "",
       icon: circle.icon,
       href: circle.href,
-      sortOrder: circle.sortOrder,
       isActive: circle.isActive,
     });
+    setSortOrderInput(String(circle.sortOrder));
+    clearImageState();
+
+
+    // The form is at the top of the page; take the admin there.
+    scrollToTop();
   };
 
-  const handleSelectImage = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
 
-    if (!file) {
-      return;
-    }
-
-    setErrorMessage("");
-    setSuccessMessage("");
-
-    try {
-      setImageUploading(true);
-      setImageProgress(0);
-
-      const result = await uploadImageWithDetails(
-        file,
-        CATEGORY_CIRCLE_UPLOAD_FOLDER,
-        setImageProgress,
-      );
-
-      handleChange("imageUrl", result.secureUrl);
-      handleChange("imagePublicId", result.publicId);
-
-      setSuccessMessage("Category image uploaded successfully.");
-    } catch (error) {
-      console.error("Failed to upload category circle image:", error);
-      setErrorMessage(
-        `Image upload failed: ${getErrorMessage(error)}`,
-      );
-    } finally {
-      setImageUploading(false);
-      event.target.value = "";
-    }
-  };
-
-  const handleSortOrderChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleSortOrderChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = event.target.value;
 
-    setErrorMessage("");
-    setSuccessMessage("");
 
-    // Keep the input genuinely empty while the user edits it.
     if (rawValue === "") {
       setSortOrderInput("");
-      handleChange("sortOrder", 0);
       return;
     }
 
-    if (!/^\d+$/.test(rawValue)) {
-      return;
-    }
 
-    const normalizedValue = rawValue.replace(/^0+(?=\d)/, "");
-    const numericValue = Number(normalizedValue);
+    if (!/^\d+$/.test(rawValue)) return;
 
-    setSortOrderInput(normalizedValue);
-    handleChange("sortOrder", numericValue);
 
-    if (numericValue > MAX_CATEGORY_CIRCLES) {
-      setErrorMessage(
-        `Sort order cannot exceed ${MAX_CATEGORY_CIRCLES}. Enter a number between 1 and ${MAX_CATEGORY_CIRCLES}.`,
-      );
-    } else if (numericValue < 1) {
-      setErrorMessage("Sort order must be at least 1.");
-    }
+    setSortOrderInput(rawValue.replace(/^0+(?=\d)/, ""));
   };
+
 
   const handleSubmit = async () => {
-    setErrorMessage("");
-    setSuccessMessage("");
-
     if (!form.label.trim()) {
-      setErrorMessage("Please enter a category name.");
+      showSnackbar("Please enter a category name.", "error");
       return;
     }
 
-    if (imageUploading) {
-      setErrorMessage("Please wait for the image upload to finish.");
+
+    if (invalidSortOrder) {
+      showSnackbar(
+        `Sort order must be a whole number between 1 and ${MAX_CATEGORY_CIRCLES}.`,
+        "error",
+      );
       return;
     }
 
-    if (isSaving) {
-      return;
-    }
 
     if (!isEditing && isAtLimit) {
-      setErrorMessage(
+      showSnackbar(
         `You already have ${MAX_CATEGORY_CIRCLES} category circles. Delete one before adding another.`,
+        "error",
       );
       return;
     }
 
-    if (
-      !Number.isSafeInteger(parsedSortOrder) ||
-      parsedSortOrder < 1 ||
-      parsedSortOrder > MAX_CATEGORY_CIRCLES
-    ) {
-      setErrorMessage(
-        `Sort order must be a whole number between 1 and ${MAX_CATEGORY_CIRCLES}.`,
-      );
-      return;
-    }
 
-    const data: CategoryCircleFormData = {
-      ...form,
+    const input: CategoryCircleInput = {
       label: form.label.trim(),
+      icon: form.icon,
+      href: form.href,
       sortOrder: parsedSortOrder,
+      isActive: form.isActive,
+      file,
+      remove: removeImage && !file,
     };
 
+
     try {
-      if (editingId) {
-        await updateMutation.mutateAsync({
-          id: editingId,
-          data,
-        });
+      const result = editingId
+        ? await updateMutation.mutateAsync({ id: editingId, input })
+        : await createMutation.mutateAsync(input);
 
-        setSuccessMessage("Category circle updated successfully.");
-      } else {
-        await createMutation.mutateAsync(data);
 
-        setSuccessMessage("Category circle added successfully.");
-      }
+      showSnackbar(
+        result.cleanupFailed
+          ? "Saved, but an old image could not be removed from Cloudinary."
+          : editingId
+            ? "Category circle updated."
+            : "Category circle added.",
+        result.cleanupFailed ? "error" : "success",
+      );
+
 
       resetForm();
-      // resetForm changes the form only; successMessage remains visible.
+      scrollToTop();
     } catch (error) {
-      console.error("Failed to save category circle:", error);
-      setErrorMessage(getErrorMessage(error));
+      showSnackbar(getErrorMessage(error), "error");
     }
   };
 
-  const handleDelete = async (id: string) => {
-    setErrorMessage("");
-    setSuccessMessage("");
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+
 
     try {
-      await deleteMutation.mutateAsync(id);
+      await deleteMutation.mutateAsync(deleteTarget.id);
 
-      if (editingId === id) {
-        resetForm();
-      }
 
-      setSuccessMessage("Category circle and its image deleted successfully.");
+      if (editingId === deleteTarget.id) resetForm();
+
+
+      showSnackbar("Category circle deleted.", "success");
+      setDeleteTarget(null);
     } catch (error) {
-      console.error("Failed to delete category circle:", error);
-      setErrorMessage(getErrorMessage(error));
+      showSnackbar(getErrorMessage(error), "error");
     }
   };
 
-  if (isLoading) {
-    return (
-      <Box sx={{ p: 4 }}>
-        <Typography>Loading category circles...</Typography>
-      </Box>
-    );
-  }
 
   return (
-    <Box
-      sx={{
-        p: {
-          xs: 2,
-          md: 4,
-        },
-      }}
-    >
-      <SectionCard
+    <PageContainer>
+      <PageHeader
         title="Category Circles"
-        subtitle="Manage the category circles displayed below the hero section."
-      >
-        <Stack
-          spacing={3}
-          sx={{
-            py: 2,
-            alignItems: "stretch",
-          }}
+        subtitle={`${circles.length}/${MAX_CATEGORY_CIRCLES} used. Shown below the hero section.`}
+        action={
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={() => void refetch()}
+            disabled={isRefetching}
+          >
+            {isRefetching ? "Refreshing..." : "Refresh"}
+          </Button>
+        }
+      />
+
+
+      <Stack spacing={3}>
+        <SectionCard
+          title={isEditing ? `Edit category: ${editingCircle?.label ?? ""}` : "Add category"}
         >
-          {errorMessage && (
-            <Alert
-              severity="error"
-              onClose={() => setErrorMessage("")}
-            >
-              {errorMessage}
-            </Alert>
-          )}
-
-          {successMessage && (
-            <Alert
-              severity="success"
-              onClose={() => setSuccessMessage("")}
-            >
-              {successMessage}
-            </Alert>
-          )}
-
-          {/* FORM */}
-          <Box>
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 700,
-                mb: 2,
-              }}
-            >
-              {isEditing ? "Edit Category" : "Add Category"}
-            </Typography>
-
+          <Stack spacing={3}>
             {!isEditing && isAtLimit && (
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                You have reached the maximum of {MAX_CATEGORY_CIRCLES}{" "}
-                category circles. Delete an existing circle before adding
-                another.
+              <Alert severity="warning">
+                You have reached the maximum of {MAX_CATEGORY_CIRCLES} category
+                circles. Delete an existing circle before adding another.
               </Alert>
             )}
+
 
             <Box
               sx={{
                 display: "grid",
-                gridTemplateColumns: {
-                  xs: "1fr",
-                  md: "1fr 1fr",
-                },
+                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
                 gap: 2,
               }}
             >
               <TextField
                 fullWidth
-                label="Category Name"
+                label="Category name"
                 value={form.label}
-                onChange={(event) => {
-                  handleChange("label", event.target.value);
-                  setErrorMessage("");
-                  setSuccessMessage("");
-                }}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, label: event.target.value }))
+                }
+                disabled={isSaving}
               />
 
-              <TextField
+
+              <AdminSelect
                 fullWidth
-                label="Icon Name"
+                label="Icon"
                 value={form.icon}
                 onChange={(event) =>
-                  handleChange("icon", event.target.value)
+                  setForm((current) => ({ ...current, icon: event.target.value }))
                 }
-                helperText="Example: Category, CleaningServices, LocalLaundryService"
-              />
+                helperText="Shown only when the category has no image."
+                disabled={isSaving}
+              >
+                {iconOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </AdminSelect>
 
-              {/* CATEGORY IMAGE */}
-              <Box
-                sx={{
-                  gridColumn: {
-                    xs: "auto",
-                    md: "1 / -1",
-                  },
+
+              <AdminSelect
+                fullWidth
+                label="When clicked, show"
+                value={linkChoice}
+                onChange={(event) => {
+                  const value = String(event.target.value);
+                  setForm((current) => ({
+                    ...current,
+                    href: value === "custom" ? "" : value,
+                  }));
                 }}
               >
-                <Stack spacing={1.5}>
-                  <Typography
-                    variant="subtitle2"
-                    sx={{ fontWeight: 700 }}
-                  >
-                    Category Image
-                  </Typography>
+                <MenuItem value="/products">All products (Shop All)</MenuItem>
+                {productCategories.map((name) => (
+                  <MenuItem key={name} value={categoryLink(name)}>
+                    Category: {name}
+                  </MenuItem>
+                ))}
+                <MenuItem value="custom">Custom link…</MenuItem>
+              </AdminSelect>
 
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                  >
-                    Upload the circular category image to Cloudinary.
-                  </Typography>
 
-                  <ImageUploadField
-                    uploading={imageUploading}
-                    progress={imageProgress}
-                    onSelectFile={handleSelectImage}
-                  />
+              {linkChoice === "custom" && (
+                <TextField
+                  fullWidth
+                  label="Custom link"
+                  placeholder="/offer-zone or https://…"
+                  value={form.href}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setForm((current) => ({ ...current, href: value }));
+                  }}
+                />
+              )}
 
-                  {form.imageUrl && (
-                    <Box
-                      sx={{
-                        width: 120,
-                        height: 120,
-                        borderRadius: "50%",
-                        overflow: "hidden",
-                        border: "1px solid",
-                        borderColor: "divider",
-                        bgcolor: "grey.100",
-                      }}
-                    >
-                      <Box
-                        component="img"
-                        src={form.imageUrl}
-                        alt="Category preview"
-                        sx={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                      />
-                    </Box>
-                  )}
-                </Stack>
-              </Box>
-
-              <TextField
-                fullWidth
-                label="Link"
-                value={form.href}
-                onChange={(event) =>
-                  handleChange("href", event.target.value)
-                }
-              />
 
               <TextField
                 fullWidth
                 type="number"
-                label="Sort Order"
+                label="Sort order"
                 value={sortOrderInput}
                 onChange={handleSortOrderChange}
                 slotProps={{
-                  htmlInput: {
-                    min: 1,
-                    max: MAX_CATEGORY_CIRCLES,
-                    step: 1,
-                  },
+                  htmlInput: { min: 1, max: MAX_CATEGORY_CIRCLES, step: 1 },
                 }}
                 error={invalidSortOrder}
                 helperText={
@@ -491,40 +419,59 @@ export default function AdminCategoryCirclesPage() {
                     ? `Enter a whole number between 1 and ${MAX_CATEGORY_CIRCLES}.`
                     : "Lower numbers appear first."
                 }
+                disabled={isSaving}
               />
 
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                }}
-              >
-                <Switch
-                  checked={form.isActive}
-                  onChange={(event) =>
-                    handleChange("isActive", event.target.checked)
-                  }
-                />
 
-                <Typography>Active</Typography>
+              <Box sx={{ gridColumn: { xs: "auto", md: "1 / -1" } }}>
+                <DeferredImageField
+                  title="Category image (optional)"
+                  guide={`Recommended: ${IMAGE_SPEC.width} × ${IMAGE_SPEC.height} px square (1:1), WebP or JPEG, around ${IMAGE_SPEC.kb} KB. It is shown as a small circle (up to about 104 px), so a bigger file adds nothing. Centre the subject, because the corners are cropped by the circle. Without an image, the icon above is shown. You can convert images for free at squoosh.app.`}
+                  existingUrl={existingImageUrl}
+                  thumbWidth={240}
+                  file={file}
+                  notes={imageNotes}
+                  disabled={isSaving}
+                  shape="circle"
+                  maxPreviewWidth={120}
+                  removed={removeImage}
+                  onPick={async (picked) => {
+                    setFile(picked);
+                    setRemoveImage(false);
+                    setImageNotes(await checkImageFile(picked, IMAGE_SPEC));
+                  }}
+                  onUndoPick={() => {
+                    setFile(null);
+                    setImageNotes([]);
+                  }}
+                  onRemove={() => setRemoveImage(true)}
+                  onUndoRemove={() => setRemoveImage(false)}
+                />
               </Box>
+
+
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={form.isActive}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, isActive: event.target.checked }))
+                    }
+                    disabled={isSaving}
+                  />
+                }
+                label="Active"
+              />
             </Box>
 
-            <Box
-              sx={{
-                display: "flex",
-                gap: 2,
-                mt: 3,
-              }}
-            >
+
+            <Stack direction="row" spacing={2}>
               <Button
                 variant="contained"
                 startIcon={isEditing ? <SaveIcon /> : <AddIcon />}
-                onClick={handleSubmit}
+                onClick={() => void handleSubmit()}
                 disabled={
                   isSaving ||
-                  imageUploading ||
                   !form.label.trim() ||
                   invalidSortOrder ||
                   (!isEditing && isAtLimit)
@@ -533,154 +480,156 @@ export default function AdminCategoryCirclesPage() {
                 {isSaving
                   ? "Saving..."
                   : isEditing
-                    ? "Update Category"
-                    : "Add Category"}
+                    ? "Update category"
+                    : "Add category"}
               </Button>
 
+
               {isEditing && (
-                <Button
-                  variant="outlined"
-                  onClick={resetForm}
-                  disabled={isSaving || imageUploading}
-                >
+                <Button variant="outlined" onClick={resetForm} disabled={isSaving}>
                   Cancel
                 </Button>
               )}
-            </Box>
-          </Box>
+            </Stack>
+          </Stack>
+        </SectionCard>
 
-          <Divider />
 
-          {/* EXISTING CATEGORIES */}
-          <Box>
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 700,
-                mb: 2,
-              }}
-            >
-              Existing Categories ({circles.length}/{MAX_CATEGORY_CIRCLES})
+        <SectionCard title={`Existing categories (${circles.length}/${MAX_CATEGORY_CIRCLES})`}>
+          {isLoading ? (
+            <Stack spacing={1.5}>
+              {[0, 1, 2].map((item) => (
+                <Skeleton key={item} variant="rounded" height={84} />
+              ))}
+            </Stack>
+          ) : isError ? (
+            <Alert severity="error">Failed to load category circles.</Alert>
+          ) : circles.length === 0 ? (
+            <Typography color="text.secondary" sx={{ py: 3, textAlign: "center" }}>
+              No category circles have been added yet.
             </Typography>
-
-            {circles.length === 0 ? (
-              <Box
-                sx={{
-                  py: 5,
-                  textAlign: "center",
-                }}
-              >
-                <Typography sx={{ color: "text.secondary" }}>
-                  No category circles have been added yet.
-                </Typography>
-              </Box>
-            ) : (
-              <Stack spacing={2}>
-                {circles.map((circle) => (
-                  <Card key={circle.id} variant="outlined">
-                    <CardContent>
+          ) : (
+            <Stack spacing={1.5}>
+              {circles.map((circle) => (
+                <Card
+                  key={circle.id}
+                  variant="outlined"
+                  sx={{
+                    p: 1.5,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                    flexWrap: "wrap",
+                    borderColor: circle.id === editingId ? "text.primary" : undefined,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: "50%",
+                      bgcolor: "grey.100",
+                      overflow: "hidden",
+                      flexShrink: 0,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {circle.imageUrl ? (
                       <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 2,
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        {/* IMAGE PREVIEW */}
-                        <Box
-                          sx={{
-                            width: 64,
-                            height: 64,
-                            borderRadius: "50%",
-                            bgcolor: "grey.100",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            overflow: "hidden",
-                            flexShrink: 0,
-                            border: "1px solid",
-                            borderColor: "divider",
-                          }}
-                        >
-                          {circle.imageUrl ? (
-                            <Box
-                              component="img"
-                              src={circle.imageUrl}
-                              alt={circle.label}
-                              sx={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                              }}
-                            />
-                          ) : (
-                            <Typography sx={{ fontSize: "1.5rem" }}>
-                              🧹
-                            </Typography>
-                          )}
-                        </Box>
+                        component="img"
+                        src={cloudinaryThumb(circle.imageUrl, 112)}
+                        alt={circle.label}
+                        loading="lazy"
+                        sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">
+                        Icon
+                      </Typography>
+                    )}
+                  </Box>
 
-                        {/* DETAILS */}
-                        <Box
-                          sx={{
-                            flex: 1,
-                            minWidth: 180,
-                          }}
-                        >
-                          <Typography sx={{ fontWeight: 700 }}>
-                            {circle.label}
-                          </Typography>
 
-                          <Typography
-                            variant="body2"
-                            sx={{ color: "text.secondary" }}
-                          >
-                            {circle.href}
-                          </Typography>
+                  <Box sx={{ flex: 1, minWidth: 160 }}>
+                    <Typography sx={{ fontWeight: 700 }}>{circle.label}</Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ wordBreak: "break-all" }}
+                    >
+                      {circle.href}
+                    </Typography>
+                    <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
+                      <Chip size="small" variant="outlined" label={`Order ${circle.sortOrder}`} />
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={circle.isActive ? "Active" : "Inactive"}
+                        color={circle.isActive ? "success" : "default"}
+                      />
+                    </Stack>
+                  </Box>
 
-                          <Typography
-                            variant="caption"
-                            sx={{ color: "text.secondary" }}
-                          >
-                            Order: {circle.sortOrder} •{" "}
-                            {circle.isActive ? "Active" : "Inactive"}
-                          </Typography>
-                        </Box>
 
-                        {/* ACTIONS */}
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 1,
-                          }}
-                        >
-                          <Button
-                            variant="outlined"
-                            onClick={() => handleEdit(circle)}
-                          >
-                            Edit
-                          </Button>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => handleEdit(circle)}
+                      disabled={isSaving}
+                    >
+                      Edit
+                    </Button>
 
-                          <IconButton
-                            color="error"
-                            onClick={() => handleDelete(circle.id)}
-                            disabled={deleteMutation.isPending}
-                            aria-label={`Delete ${circle.label}`}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Box>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                ))}
-              </Stack>
-            )}
-          </Box>
-        </Stack>
-      </SectionCard>
-    </Box>
+
+                    <IconButton
+                      color="error"
+                      onClick={() => setDeleteTarget(circle)}
+                      disabled={deleteMutation.isPending}
+                      aria-label={`Delete ${circle.label}`}
+                    >
+                      <DeleteOutlinedIcon />
+                    </IconButton>
+                  </Stack>
+                </Card>
+              ))}
+            </Stack>
+          )}
+        </SectionCard>
+      </Stack>
+
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => !deleteMutation.isPending && setDeleteTarget(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Delete category circle?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This removes "{deleteTarget?.label}" from the homepage and deletes
+            its image from Cloudinary, if it has one.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleteMutation.isPending}>
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => void confirmDelete()}
+            disabled={deleteMutation.isPending}
+          >
+            {deleteMutation.isPending ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </PageContainer>
   );
 }

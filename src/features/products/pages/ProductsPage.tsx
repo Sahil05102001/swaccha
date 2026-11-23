@@ -436,8 +436,28 @@ export default function ProductsPage() {
     setSearchParams(next, { replace: true });
   };
 
-  const [category, setCategory] = useState("");
-  const [subcategory, setSubcategory] = useState("");
+  // Category and subcategory live in the address (?category=Mops) so the
+  // homepage circles can link straight to a filtered list, and refresh/back work.
+  const rawCategory = searchParams.get("category") ?? "";
+  const subcategory = searchParams.get("subcategory") ?? "";
+
+  // One call per change: react-router calls in the same tick overwrite each other.
+  const patchParams = (patch: Record<string, string>) =>
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        for (const [key, value] of Object.entries(patch)) {
+          if (value) next.set(key, value);
+          else next.delete(key);
+        }
+        return next;
+      },
+      { replace: true },
+    );
+
+  const setSubcategory = (value: string) => patchParams({ subcategory: value });
+  const setCategoryFilter = (value: string, sub = "") =>
+    patchParams({ category: value, subcategory: sub });
   const [brand, setBrand] = useState("");
 
   // null = the full price range (nothing chosen yet).
@@ -455,7 +475,7 @@ export default function ProductsPage() {
   // A new search always starts from the first page of results.
   useEffect(() => {
     setPage(1);
-  }, [search]);
+  }, [search, rawCategory, subcategory]);
 
   const activeProducts = useMemo(
     () => products.filter((product) => product.isActive),
@@ -473,6 +493,12 @@ export default function ProductsPage() {
       ].sort((a, b) => a.localeCompare(b)),
     [activeProducts],
   );
+
+  // Match the address value to a real category, ignoring upper/lower case.
+  const category =
+    categories.find(
+      (item) => item.toLowerCase() === rawCategory.trim().toLowerCase(),
+    ) ?? rawCategory;
 
   const subcategories = useMemo(
     () =>
@@ -643,8 +669,7 @@ export default function ProductsPage() {
   const resetPage = () => setPage(1);
 
   const handleCategoryChange = (value: string) => {
-    setCategory(value);
-    setSubcategory("");
+    setCategoryFilter(value);
     resetPage();
   };
 
@@ -664,9 +689,7 @@ export default function ProductsPage() {
   };
 
   const clearFilters = () => {
-    clearSearch();
-    setCategory("");
-    setSubcategory("");
+    patchParams({ search: "", category: "", subcategory: "" });
     setBrand("");
     setPriceRange(null);
     setDiscountMinimum(0);
@@ -696,7 +719,7 @@ export default function ProductsPage() {
             <Button
               onClick={clearFilters}
               size="small"
-              sx={{ textTransform: "none" }}
+              sx={{ textTransform: "none", color: "#00B8D9" }}
             >
               Clear all
             </Button>
@@ -1054,9 +1077,7 @@ export default function ProductsPage() {
                 <Chip
                   label={`Category: ${category}`}
                   onDelete={() => {
-                    setCategory("");
-                    setSubcategory("");
-                    resetPage();
+                    setCategoryFilter("");
                   }}
                 />
               )}
@@ -1124,7 +1145,7 @@ export default function ProductsPage() {
               <Button
                 size="small"
                 onClick={clearFilters}
-                sx={{ textTransform: "none" }}
+                sx={{ textTransform: "none", color: "#00B8D9" }}
               >
                 Clear all
               </Button>
@@ -1190,7 +1211,8 @@ export default function ProductsPage() {
 
                   <Button
                     onClick={clearFilters}
-                    sx={{ mt: 2, textTransform: "none" }}
+                    sx={{ mt: 2, textTransform: "none", color: "#00B8D9" }}
+
                   >
                     Clear all filters
                   </Button>
@@ -1227,118 +1249,119 @@ export default function ProductsPage() {
                 </>
               )}
             </Box>
-        </Box>
-      </Stack>
-    </Container>
+          </Box>
+        </Stack>
+      </Container>
 
       {/* Mobile filter drawer: fixed top bar and bottom button,
           only the filters in between scroll. */}
-  <Drawer
-    anchor="left"
-    open={mobileFiltersOpen}
-    onClose={() => setMobileFiltersOpen(false)}
-    slotProps={{
-      paper: {
-        sx: {
-          display: "flex",
-          flexDirection: "column",
-          width: { xs: "88vw", sm: 340 },
-          maxWidth: "100%",
-          p: 0,
-          overflowY: "hidden",
-          boxShadow: "none",
-          backgroundColor: "#080B12",
-          color: "#F5F7FA",
-        },
-      },
-    }}
-  >
-    {/* Fixed top bar */}
-    <Stack
-      direction="row"
-      sx={{
-        flexShrink: 0,
-        alignItems: "center",
-        justifyContent: "space-between",
-        px: 2,
-        py: 1.25,
-        borderBottom: "1px solid #273344",
-      }}
-    >
-      <Typography
-        variant="h6"
-        sx={{ fontWeight: 700, color: "#F5F7FA" }}
-      >
-        Filters
-      </Typography>
-
-      <Stack
-        direction="row"
-        spacing={0.5}
-        sx={{ alignItems: "center" }}
-      >
-        <Button
-          onClick={clearFilters}
-          size="small"
-          sx={{ textTransform: "none", color: "#00D9FF" }}
-        >
-          Clear all
-        </Button>
-
-        <IconButton
-          aria-label="Close filters"
-          onClick={() => setMobileFiltersOpen(false)}
-          sx={{ color: "#F5F7FA" }}
-        >
-          <CloseIcon />
-        </IconButton>
-      </Stack>
-    </Stack>
-
-    {/* Scrollable filters */}
-    <Box
-      sx={{
-        flex: 1,
-        minHeight: 0,
-        overflowY: "auto",
-        overscrollBehavior: "contain",
-        p: 2,
-        ...filterPanelSx,
-      }}
-    >
-      {renderFilters(false)}
-    </Box>
-
-    {/* Fixed bottom button */}
-    <Box
-      sx={{
-        flexShrink: 0,
-        p: 2,
-        borderTop: "1px solid #273344",
-      }}
-    >
-      <Button
-        fullWidth
-        variant="contained"
-        onClick={() => setMobileFiltersOpen(false)}
-        sx={{
-          minHeight: 46,
-          borderRadius: 999,
-          textTransform: "none",
-          fontWeight: 600,
-          boxShadow: "none",
-          backgroundColor: "#00D9FF",
-          color: "#04121A",
-          "&:hover": {
-            backgroundColor: "#00D9FF",
-            boxShadow: "none",
+      <Drawer
+        anchor="left"
+        open={mobileFiltersOpen}
+        onClose={() => setMobileFiltersOpen(false)}
+        slotProps={{
+          paper: {
+            sx: {
+              display: "flex",
+              flexDirection: "column",
+              width: { xs: "88vw", sm: 340 },
+              maxWidth: "100%",
+              p: 0,
+              borderRadius: 0,
+              overflowY: "hidden",
+              boxShadow: "none",
+              backgroundColor: "#080B12",
+              color: "#F5F7FA",
+            },
           },
         }}
       >
-        Show {filteredProducts.length} products
-      </Button>
-    </Box>
-  </Drawer>
+        {/* Fixed top bar */}
+        <Stack
+          direction="row"
+          sx={{
+            flexShrink: 0,
+            alignItems: "center",
+            justifyContent: "space-between",
+            px: 2,
+            py: 1.25,
+            borderBottom: "1px solid #273344",
+          }}
+        >
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 700, color: "#F5F7FA" }}
+          >
+            Filters
+          </Typography>
+
+          <Stack
+            direction="row"
+            spacing={0.5}
+            sx={{ alignItems: "center" }}
+          >
+            <Button
+              onClick={clearFilters}
+              size="small"
+              sx={{ textTransform: "none", color: "#00D9FF" }}
+            >
+              Clear all
+            </Button>
+
+            <IconButton
+              aria-label="Close filters"
+              onClick={() => setMobileFiltersOpen(false)}
+              sx={{ color: "#F5F7FA", borderRadius: 0 }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+        </Stack>
+
+        {/* Scrollable filters */}
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            overscrollBehavior: "contain",
+            p: 2,
+            ...filterPanelSx,
+          }}
+        >
+          {renderFilters(false)}
+        </Box>
+
+        {/* Fixed bottom button */}
+        <Box
+          sx={{
+            flexShrink: 0,
+            p: 2,
+            borderTop: "1px solid #273344",
+          }}
+        >
+          <Button
+            fullWidth
+            variant="contained"
+            onClick={() => setMobileFiltersOpen(false)}
+            sx={{
+              minHeight: 46,
+              borderRadius: 0,
+              textTransform: "none",
+              fontWeight: 600,
+              boxShadow: "none",
+              backgroundColor: "#00D9FF",
+              color: "#04121A",
+              "&:hover": {
+                backgroundColor: "#00D9FF",
+                boxShadow: "none",
+              },
+            }}
+          >
+            Show {filteredProducts.length} products
+          </Button>
+        </Box>
+      </Drawer>
     </Box >
   );
 }

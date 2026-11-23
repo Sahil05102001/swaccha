@@ -1,102 +1,42 @@
-import {
-    Card,
-    CardContent,
-    Grid,
-    Typography,
-} from "@mui/material";
+import { Stack } from "@mui/material";
 
-import type {
-    InventoryReportSummary,
+import ReportStat from "@/features/reports/components/ReportStat";
+import { money } from "@/features/reports/utils/reportUtils";
+
+import {
+  LOW_STOCK_AT,
+  type InventoryReportSummary,
 } from "../services/inventoryReportService";
 
-interface Props {
-    summary: InventoryReportSummary;
-}
-
-interface SummaryCardProps {
-    title: string;
-    value: string | number;
-}
-
-function SummaryCard({
-    title,
-    value,
-}: SummaryCardProps) {
-    return (
-        <Grid
-            size={{
-                xs: 12,
-                sm: 6,
-                md: 2.4,
-            }}
-        >
-            <Card
-                sx={{
-                    height: "100%",
-                }}
-            >
-                <CardContent>
-                    <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        gutterBottom
-                    >
-                        {title}
-                    </Typography>
-
-                    <Typography
-                        variant="h5"
-                        sx={{
-                            fontWeight: 700,
-                        }}
-                    >
-                        {value}
-                    </Typography>
-                </CardContent>
-            </Card>
-        </Grid>
-    );
-}
-
 export default function InventorySummaryCards({
-    summary,
-}: Props) {
-    return (
-        <Grid
-            container
-            spacing={2}
-            sx={{
-                mb: 3,
-            }}
-        >
-            <SummaryCard
-                title="Total Products"
-                value={summary.totalProducts}
-            />
-
-            <SummaryCard
-                title="Total Stock"
-                value={summary.totalStockQuantity}
-            />
-
-            <SummaryCard
-                title="Inventory Value"
-                value={`₹${summary.totalInventoryValue.toLocaleString(
-                    "en-IN"
-                )}`}
-            />
-
-            <SummaryCard
-                title="Low Stock"
-                value={summary.lowStockProducts}
-            />
-
-            <SummaryCard
-                title="Out of Stock"
-                value={
-                    summary.outOfStockProducts
-                }
-            />
-        </Grid>
-    );
+  summary,
+}: {
+  summary: InventoryReportSummary;
+}) {
+  return (
+    <Stack direction="row" useFlexGap sx={{ flexWrap: "wrap", gap: 1.5 }}>
+      <ReportStat label="Products" value={summary.totalProducts} />
+      <ReportStat label="Units in stock" value={summary.totalStockQuantity} />
+      <ReportStat
+        label="Stock value at cost"
+        value={money(summary.totalCostValue)}
+        hint={
+          summary.missingCostProducts > 0
+            ? `${summary.missingCostProducts} in-stock product${summary.missingCostProducts === 1 ? " has" : "s have"} no purchase price`
+            : "At purchase price"
+        }
+      />
+      <ReportStat
+        label="Stock value at selling price"
+        value={money(summary.totalRetailValue)}
+        hint="If all stock sold at full price"
+      />
+      <ReportStat
+        label="Low stock"
+        value={summary.lowStockProducts}
+        hint={`${LOW_STOCK_AT} or fewer left`}
+      />
+      <ReportStat label="Out of stock" value={summary.outOfStockProducts} />
+    </Stack>
+  );
 }

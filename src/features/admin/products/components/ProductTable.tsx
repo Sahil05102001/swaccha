@@ -1,12 +1,13 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 import {
-  Avatar,
   Box,
   Chip,
-  CircularProgress,
   IconButton,
-  Paper,
+  InputAdornment,
+  MenuItem,
+  Skeleton,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -18,17 +19,22 @@ import {
   Typography,
 } from "@mui/material";
 
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import SearchIcon from "@mui/icons-material/Search";
 
-import EditProductDialog from "./EditProductDialog";
+import AdminSelect from "@/features/admin/components/AdminSelect";
+
 import DeleteProductDialog from "./DeleteProductDialog";
+import EditProductDialog from "./EditProductDialog";
 
 import { useProducts } from "../hooks/useProducts";
-
 import type { Product } from "../types/product";
+import { cloudinaryThumb } from "../utils/imageUrl";
 
 const PAGE_SIZE = 10;
+
+const inr = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
 
 interface ProductRowProps {
   product: Product;
@@ -42,51 +48,108 @@ const ProductRow = memo(function ProductRow({
   onEdit,
   onDelete,
 }: ProductRowProps) {
+  const image = product.images?.[0];
+  const hasDiscount = product.mrp > product.price && product.price > 0;
+
   return (
-    <TableRow hover>
-      <TableCell>
-        <Avatar
-          src={product.images?.[0] || ""}
-          variant="rounded"
-          slotProps={{ img: { loading: "lazy" } }}
-        >
-          {product.name.charAt(0)}
-        </Avatar>
+    <TableRow>
+      <TableCell sx={{ minWidth: 220 }}>
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              flexShrink: 0,
+              borderRadius: 1.5,
+              border: "1px solid",
+              borderColor: "divider",
+              bgcolor: "#F9FAFB",
+              overflow: "hidden",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {image ? (
+              <Box
+                component="img"
+                src={cloudinaryThumb(image, 96)}
+                alt=""
+                loading="lazy"
+                sx={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                {product.name.charAt(0)}
+              </Typography>
+            )}
+          </Box>
+
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              {product.name}
+            </Typography>
+
+            <Typography variant="caption" color="text.secondary">
+              {product.sku ? `SKU ${product.sku}` : "No SKU"}
+              <Box component="span" sx={{ display: { md: "none" } }}>
+                {` · ${product.category}`}
+              </Box>
+            </Typography>
+          </Box>
+        </Stack>
       </TableCell>
 
-      <TableCell>{product.name}</TableCell>
+      <TableCell sx={{ display: { xs: "none", md: "table-cell" } }}>
+        {product.category}
+      </TableCell>
 
-      <TableCell>{product.category}</TableCell>
+      <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {inr(product.price)}
+        </Typography>
 
-      <TableCell align="right">₹{product.price}</TableCell>
-
-      <TableCell align="right">{product.stock}</TableCell>
-
-      <TableCell>
-        {product.stock === 0 ? (
-          <Chip label="Out of Stock" color="error" size="small" />
-        ) : product.stock <= 5 ? (
-          <Chip label="Low Stock" color="warning" size="small" />
-        ) : (
-          <Chip label="In Stock" color="success" size="small" />
+        {hasDiscount && (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ textDecoration: "line-through" }}
+          >
+            {inr(product.mrp)}
+          </Typography>
         )}
       </TableCell>
 
       <TableCell>
+        <Stack spacing={0.5} sx={{ alignItems: "flex-start" }}>
+          <Typography variant="body2">{product.stock}</Typography>
+
+          {product.stock === 0 ? (
+            <Chip label="Out of stock" color="error" size="small" variant="outlined" />
+          ) : product.stock <= 5 ? (
+            <Chip label="Low stock" color="warning" size="small" variant="outlined" />
+          ) : (
+            <Chip label="In stock" color="success" size="small" variant="outlined" />
+          )}
+        </Stack>
+      </TableCell>
+
+      <TableCell sx={{ display: { xs: "none", md: "table-cell" } }}>
         <Chip
           label={product.isActive ? "Active" : "Inactive"}
           color={product.isActive ? "success" : "default"}
           size="small"
+          variant="outlined"
         />
       </TableCell>
 
-      <TableCell align="center">
+      <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
         <IconButton
           size="small"
           aria-label={`Edit ${product.name}`}
           onClick={() => onEdit(product)}
         >
-          <EditIcon />
+          <EditOutlinedIcon fontSize="small" />
         </IconButton>
 
         <IconButton
@@ -95,7 +158,7 @@ const ProductRow = memo(function ProductRow({
           aria-label={`Delete ${product.name}`}
           onClick={() => onDelete(product)}
         >
-          <DeleteIcon />
+          <DeleteOutlineIcon fontSize="small" />
         </IconButton>
       </TableCell>
     </TableRow>
@@ -107,6 +170,8 @@ export default function ProductTable() {
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [status, setStatus] = useState("");
   const [page, setPage] = useState(0);
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -123,17 +188,32 @@ export default function ProductTable() {
     return () => window.clearTimeout(timer);
   }, [searchInput]);
 
+  // Categories that actually have products (no extra database read).
+  const categoryOptions = useMemo(
+    () =>
+      [...new Set(products.map((product) => product.category).filter(Boolean))].sort(
+        (a, b) => a.localeCompare(b),
+      ),
+    [products],
+  );
+
   const filteredProducts = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
-    if (!keyword) return products;
+    return products.filter((product) => {
+      if (category && product.category !== category) return false;
+      if (status === "active" && !product.isActive) return false;
+      if (status === "inactive" && product.isActive) return false;
 
-    return products.filter(
-      (product) =>
+      if (!keyword) return true;
+
+      return (
         product.name.toLowerCase().includes(keyword) ||
-        product.category.toLowerCase().includes(keyword),
-    );
-  }, [products, search]);
+        product.category.toLowerCase().includes(keyword) ||
+        (product.sku ?? "").toLowerCase().includes(keyword)
+      );
+    });
+  }, [products, search, category, status]);
 
   const lastPage = Math.max(
     0,
@@ -170,46 +250,106 @@ export default function ProductTable() {
     setSelectedProduct(null);
   };
 
-  if (isLoading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-        <CircularProgress aria-label="Loading products" />
-      </Box>
-    );
-  }
-
   return (
     <>
-      <TextField
-        fullWidth
-        label="Search products"
-        placeholder="Search by name or category..."
-        value={searchInput}
-        onChange={(e) => setSearchInput(e.target.value)}
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        spacing={2}
         sx={{ mb: 2 }}
-      />
+      >
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Search by name, SKU or category"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            },
+          }}
+        />
 
-      <TableContainer component={Paper}>
-        <Table>
+        <AdminSelect
+          size="small"
+          label="Category"
+          value={category}
+          onChange={(e) => {
+            setCategory(e.target.value);
+            setPage(0);
+          }}
+          sx={{ minWidth: { md: 200 } }}
+        >
+          <MenuItem value="">All categories</MenuItem>
+          {categoryOptions.map((name) => (
+            <MenuItem key={name} value={name}>
+              {name}
+            </MenuItem>
+          ))}
+        </AdminSelect>
+
+        <AdminSelect
+          size="small"
+          label="Status"
+          value={status}
+          onChange={(e) => {
+            setStatus(e.target.value);
+            setPage(0);
+          }}
+          sx={{ minWidth: { md: 160 } }}
+        >
+          <MenuItem value="">All</MenuItem>
+          <MenuItem value="active">Active</MenuItem>
+          <MenuItem value="inactive">Inactive</MenuItem>
+        </AdminSelect>
+      </Stack>
+
+      <TableContainer>
+        <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Image</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Category</TableCell>
+              <TableCell>Product</TableCell>
+              <TableCell sx={{ display: { xs: "none", md: "table-cell" } }}>
+                Category
+              </TableCell>
               <TableCell align="right">Price</TableCell>
-              <TableCell align="right">Stock</TableCell>
-              <TableCell>Inventory</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="center">Actions</TableCell>
+              <TableCell>Stock</TableCell>
+              <TableCell sx={{ display: { xs: "none", md: "table-cell" } }}>
+                Status
+              </TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
-            {visibleProducts.length === 0 ? (
+            {isLoading ? (
+              [0, 1, 2, 3, 4].map((row) => (
+                <TableRow key={row}>
+                  {[0, 1, 2, 3, 4, 5].map((cell) => (
+                    <TableCell
+                      key={cell}
+                      sx={
+                        cell === 1 || cell === 4
+                          ? { display: { xs: "none", md: "table-cell" } }
+                          : undefined
+                      }
+                    >
+                      <Skeleton height={32} />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : visibleProducts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} align="center">
+                <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
                   <Typography color="text.secondary">
-                    No products found.
+                    {products.length === 0
+                      ? "No products yet. Use “Add product” to create one."
+                      : "No products match your search or filters."}
                   </Typography>
                 </TableCell>
               </TableRow>
@@ -225,16 +365,18 @@ export default function ProductTable() {
             )}
           </TableBody>
         </Table>
+      </TableContainer>
 
+      {filteredProducts.length > PAGE_SIZE && (
         <TablePagination
           component="div"
           count={filteredProducts.length}
           page={currentPage}
           onPageChange={(_, next) => setPage(next)}
           rowsPerPage={PAGE_SIZE}
-          rowsPerPageOptions={[PAGE_SIZE]}
+          rowsPerPageOptions={[]}
         />
-      </TableContainer>
+      )}
 
       <EditProductDialog
         open={editOpen}
@@ -246,6 +388,7 @@ export default function ProductTable() {
         open={deleteOpen}
         productId={selectedProduct?.id ?? null}
         productName={selectedProduct?.name ?? ""}
+        imagePublicId={selectedProduct?.imagePublicId}
         onClose={handleCloseDelete}
       />
     </>

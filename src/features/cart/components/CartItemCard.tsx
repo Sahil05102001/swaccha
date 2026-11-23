@@ -19,6 +19,9 @@ import type { CartItem } from "../types/cart";
 import QuantityControl from "./QuantityControl";
 import { useDeleteCart, useUpdateCart } from "../hooks/useCart";
 
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/features/auth/AuthContext";
+
 const COLORS = {
   white: "#FFFFFF",
   surface: "#F9FAFB",
@@ -34,6 +37,8 @@ interface CartItemCardProps {
 }
 
 export default function CartItemCard({ item }: CartItemCardProps) {
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const updateCart = useUpdateCart();
   const deleteCart = useDeleteCart();
   const addToWishlist = useAddToWishlist();
@@ -62,8 +67,18 @@ export default function CartItemCard({ item }: CartItemCardProps) {
 
   // Save to the wishlist first, then remove only this cart line.
   // If saving fails, the item stays in the cart.
+
   const handleMoveToWishlist = async () => {
-    if (moving) return;
+    if (loading || moving) return;
+
+    if (!user) {
+      navigate("/login", {
+        state: {
+          from: "/cart",
+        },
+      });
+      return;
+    }
 
     setMoving(true);
 
@@ -93,6 +108,7 @@ export default function CartItemCard({ item }: CartItemCardProps) {
     }
   };
 
+
   const lineTotal = item.product.price * item.quantity;
 
   return (
@@ -106,22 +122,24 @@ export default function CartItemCard({ item }: CartItemCardProps) {
         backgroundImage: "none",
         color: COLORS.text,
         border: `1px solid ${COLORS.border}`,
-        borderRadius: 2,
+        borderRadius: "12px",
         boxShadow: "none",
         overflow: "hidden",
       }}
     >
       <CardMedia
         component="img"
-        image={item.product.images[0]}
+        image={item.product.images?.[0] || ""}
         alt={item.product.name}
+        loading="lazy"
         sx={{
           flexShrink: 0,
           width: { xs: 88, sm: 128 },
           height: { xs: 88, sm: 128 },
-          objectFit: "cover",
+          objectFit: "contain",
           borderRadius: 1.5,
-          bgcolor: COLORS.surface,
+          bgcolor: "#FFFFFF",
+          border: `1px solid ${COLORS.border}`,
         }}
       />
 
@@ -221,6 +239,39 @@ export default function CartItemCard({ item }: CartItemCardProps) {
               ₹{lineTotal.toLocaleString("en-IN")}
             </Typography>
 
+            {item.product.mrp > item.product.price && (
+              <Typography
+                component="div"
+                sx={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}
+              >
+                <Box
+                  component="span"
+                  sx={{
+                    color: COLORS.muted,
+                    textDecoration: "line-through",
+                    mr: 0.75,
+                  }}
+                >
+                  ₹
+                  {(item.product.mrp * item.quantity).toLocaleString(
+                    "en-IN",
+                  )}
+                </Box>
+
+                <Box
+                  component="span"
+                  sx={{ color: "#0891B2", fontWeight: 700 }}
+                >
+                  {Math.round(
+                    ((item.product.mrp - item.product.price) /
+                      item.product.mrp) *
+                    100,
+                  )}
+                  % off
+                </Box>
+              </Typography>
+            )}
+
             {item.quantity > 1 && (
               <Typography
                 sx={{
@@ -235,12 +286,22 @@ export default function CartItemCard({ item }: CartItemCardProps) {
           </Box>
         </Stack>
 
+        {item.product.stock <= 0 ? (
+          <Typography sx={{ fontSize: "0.8rem", fontWeight: 600, color: COLORS.danger }}>
+            Out of stock. Remove it to continue.
+          </Typography>
+        ) : item.quantity > item.product.stock ? (
+          <Typography sx={{ fontSize: "0.8rem", fontWeight: 600, color: COLORS.danger }}>
+            Only {item.product.stock} left. Please reduce the quantity.
+          </Typography>
+        ) : null}
+
         <Box>
           <Button
             size="small"
             disableRipple
             onClick={handleMoveToWishlist}
-            disabled={moving || deleteCart.isPending}
+            disabled={loading || moving || deleteCart.isPending}
             startIcon={<FavoriteBorderIcon fontSize="small" />}
             sx={{
               px: 1.5,

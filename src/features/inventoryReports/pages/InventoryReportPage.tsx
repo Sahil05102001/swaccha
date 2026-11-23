@@ -1,137 +1,150 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { Alert, Button, Skeleton, Stack, Typography } from "@mui/material";
+import RefreshIcon from "@mui/icons-material/Refresh";
 
-import {
-    Alert,
-    CircularProgress,
-    Container,
-    Typography,
-} from "@mui/material";
-
-import ExportButtons from "@/features/reports/components/ExportButtons";
+import PageContainer from "@/components/common/PageContainer";
+import PageHeader from "@/components/common/PageHeader";
+import SectionCard from "@/components/common/SectionCard";
+import { useSnackbar } from "@/contexts/SnackbarContext";
+import ReportDownloadMenu from "@/features/reports/components/ReportDownloadMenu";
+import { REPORT_PAGE_SIZE, scrollTop } from "@/features/reports/utils/reportUtils";
 
 import InventoryFilter from "../components/InventoryFilter";
 import InventoryReportTable from "../components/InventoryReportTable";
 import InventorySummaryCards from "../components/InventorySummaryCards";
 import { useInventoryReport } from "../hooks/useInventoryReport";
-import { exportInventoryReportToExcel } from "../services/exportInventoryExcel";
-import { exportInventoryReportToPdf } from "../services/exportInventoryPdf";
-import type {
-    InventoryReportFilters,
-} from "../services/inventoryReportService";
+import type { InventoryReportFilters } from "../services/inventoryReportService";
 
 export default function InventoryReportPage() {
-    const [filters, setFilters] =
-        useState<InventoryReportFilters>({});
+  const { showSnackbar } = useSnackbar();
 
-    const {
-        data,
-        isLoading,
-        isError,
-    } = useInventoryReport(filters);
+  const [filters, setFilters] = useState<InventoryReportFilters>({});
+  const [page, setPage] = useState(0);
+  const [exporting, setExporting] = useState(false);
 
-    const categories = useMemo(() => {
-        if (!data) {
-            return [];
-        }
+  const query = useInventoryReport(filters);
+  const data = query.data;
 
-        return Array.from(
-            new Set(
-                data.rows
-                    .map((row) => row.category)
-                    .filter(Boolean)
-            )
-        ).sort((a, b) =>
-            a.localeCompare(b)
-        );
-    }, [data]);
+  const lastPage = Math.max(0, Math.ceil((data?.rows.length ?? 0) / REPORT_PAGE_SIZE) - 1);
+  const safePage = Math.min(page, lastPage);
 
-    function handleExportExcel() {
-        if (!data) {
-            return;
-        }
+  const changeFilters = (next: InventoryReportFilters) => {
+    setFilters(next);
+    setPage(0);
+  };
 
-        exportInventoryReportToExcel(
-            data.rows,
-            data.summary
-        );
+  const changePage = (next: number) => {
+    setPage(next);
+    scrollTop();
+  };
+
+  const handleRefresh = async () => {
+    setPage(0);
+    await query.refetch();
+  };
+
+  const filterLines = [
+    filters.category ? `Category: ${filters.category}` : "",
+    filters.stockStatus ? `Status: ${filters.stockStatus}` : "",
+    filters.search?.trim() ? `Search: ${filters.search.trim()}` : "",
+  ].filter(Boolean);
+
+  const handleExport = async (kind: "excel" | "pdf") => {
+    if (!data || exporting) return;
+
+    if (data.rows.length === 0) {
+      showSnackbar("There is nothing to download for these filters.", "warning");
+      return;
     }
 
-    function handleExportPdf() {
-        if (!data) {
-            return;
-        }
+    setExporting(true);
 
-        exportInventoryReportToPdf(
-            data.rows,
-            data.summary
-        );
+    try {
+      if (kind === "excel") {
+        const m = await import("../services/exportInventoryExcel");
+        m.exportInventoryReportToExcel(data.rows, data.summary, filterLines);
+      } else {
+        const m = await import("../services/exportInventoryPdf");
+        await m.exportInventoryReportToPdf(data.rows, data.summary, filterLines);
+      }
+      showSnackbar("Report downloaded.", "success");
+    } catch {
+      showSnackbar("The download failed. Please try again.", "error");
+    } finally {
+      setExporting(false);
     }
+  };
 
-    if (isLoading) {
-        return (
-            <Container
-                maxWidth="xl"
-                sx={{
-                    py: 4,
-                    display: "flex",
-                    justifyContent: "center",
-                }}
+  return (
+    <PageContainer>
+      <PageHeader
+        title="Inventory Report"
+        subtitle="Current stock, its value and what needs reordering. Lowest stock is listed first."
+        action={
+          <Stack direction="row" spacing={1.5}>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={() => void handleRefresh()}
+              disabled={query.isFetching}
             >
-                <CircularProgress />
-            </Container>
-        );
-    }
+              {query.isFetching ? "Refreshing..." : "Refresh"}
+            </Button>
+            <ReportDownloadMenu
+              onExcel={() => void handleExport("excel")}
+              onPdf={() => void handleExport("pdf")}
+              busy={exporting}
+              disabled={!data}
+            />
+          </Stack>
+        }
+      />
 
-    if (isError || !data) {
-        return (
-            <Container
-                maxWidth="xl"
-                sx={{
-                    py: 4,
-                }}
+      <SectionCard>
+        <Stack spacing={2}>
+          <InventoryFilter
+            value={filters}
+            categories={data?.categories ?? []}
+            onChange={changeFilters}
+          />
+
+          {query.isLoading ? (
+            <Stack spacing={1} aria-label="Loading inventory report">
+              <Stack direction="row" useFlexGap sx={{ gap: 1.5 }}>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} variant="rounded" height={72} sx={{ flex: 1 }} />
+                ))}
+              </Stack>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} variant="rounded" height={44} />
+              ))}
+            </Stack>
+          ) : query.isError || !data ? (
+            <Alert
+              severity="error"
+              action={
+                <Button color="inherit" size="small" onClick={() => void handleRefresh()}>
+                  Try again
+                </Button>
+              }
             >
-                <Alert severity="error">
-                    Failed to load inventory report.
-                </Alert>
-            </Container>
-        );
-    }
+              Failed to load the inventory report.
+            </Alert>
+          ) : (
+            <>
+              <InventorySummaryCards summary={data.summary} />
 
-    return (
-        <Container
-            maxWidth="xl"
-            sx={{
-                py: 4,
-            }}
-        >
-            <Typography
-                variant="h4"
-                sx={{
-                    mb: 3,
-                    fontWeight: 700,
-                }}
-            >
-                Inventory Report
-            </Typography>
-
-            <InventoryFilter
-                value={filters}
-                categories={categories}
-                onChange={setFilters}
-            />
-
-            <ExportButtons
-                onExportExcel={handleExportExcel}
-                onExportPdf={handleExportPdf}
-            />
-
-            <InventorySummaryCards
-                summary={data.summary}
-            />
-
-            <InventoryReportTable
-                rows={data.rows}
-            />
-        </Container>
-    );
+              {data.rows.length === 0 ? (
+                <Typography color="text.secondary" sx={{ py: 2 }}>
+                  No products match these filters.
+                </Typography>
+              ) : (
+                <InventoryReportTable rows={data.rows} page={safePage} onPageChange={changePage} />
+              )}
+            </>
+          )}
+        </Stack>
+      </SectionCard>
+    </PageContainer>
+  );
 }

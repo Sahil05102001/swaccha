@@ -1,136 +1,62 @@
-
-import {
-    Alert,
-    Box,
-    Button,
-    Card,
-    CardContent,
-    CircularProgress,
-    Typography,
-} from "@mui/material";
+import { Alert, Button, Stack, Typography } from "@mui/material";
+import Grid from "@mui/material/Grid";
 import InboxOutlinedIcon from "@mui/icons-material/InboxOutlined";
 import TodayOutlinedIcon from "@mui/icons-material/TodayOutlined";
-import RefreshIcon from "@mui/icons-material/Refresh";
 
 import { useB2BEnquiryCounts } from "../hooks/useB2BEnquiryCounts";
 
-export default function B2BEnquiryStats() {
-    const {
-        data,
-        isLoading,
-        isError,
-        error,
-        refetch,
-        isFetching,
-    } = useB2BEnquiryCounts();
+import StatCard from "./StatCard";
 
-    return (
-        <Box>
-            <Box
-                sx={{
-                    mb: 2,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                }}
-            >
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    B2B Enquiries
-                </Typography>
+export default function B2BEnquiryStats({ compact = false }: { compact?: boolean }) {
+  const { data, isError, error, refetch } = useB2BEnquiryCounts();
 
-                <Button
-                    size="small"
-                    startIcon={<RefreshIcon />}
-                    onClick={() => void refetch()}
-                    disabled={isFetching}
-                >
-                    Refresh
-                </Button>
-            </Box>
+  const show = (value?: number) => (isError ? "—" : value);
 
-            {isError && (
-                <Alert
-                    severity="error"
-                    sx={{ mb: 2 }}
-                    action={
-                        <Button
-                            color="inherit"
-                            size="small"
-                            onClick={() => void refetch()}
-                        >
-                            Retry
-                        </Button>
-                    }
-                >
-                    {error instanceof Error
-                        ? error.message
-                        : "Unable to load B2B enquiry counts."}
-                </Alert>
-            )}
+  return (
+    <Stack spacing={2}>
+      <Typography
+        component="h3"
+        sx={{ fontSize: "1.05rem", fontWeight: 700 }}
+      >
+        B2B enquiries
+      </Typography>
 
-            <Box
-                sx={{
-                    display: "flex",
-                    flexDirection: { xs: "column", sm: "row" },
-                    gap: 2,
-                }}
-            >
-                <Card variant="outlined" sx={{ flex: 1 }}>
-                    <CardContent>
-                        <Box
-                            sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 2,
-                            }}
-                        >
-                            <InboxOutlinedIcon color="primary" fontSize="large" />
+      {isError && (
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={() => void refetch()}>
+              Retry
+            </Button>
+          }
+        >
+          {error instanceof Error
+            ? error.message
+            : "Unable to load B2B enquiry counts."}
+        </Alert>
+      )}
 
-                            <Box>
-                                <Typography variant="body2" color="text.secondary">
-                                    Total Enquiries
-                                </Typography>
+      <Grid container spacing={compact ? 1.5 : 3}>
+        <Grid size={{ xs: 6 }}>
+          <StatCard
+            title="Total enquiries"
+            value={show(data?.totalEnquiries)}
+            subtitle="All time"
+            icon={<InboxOutlinedIcon />}
+            compact={compact}
+          />
+        </Grid>
 
-                                {isLoading && !data ? (
-                                    <CircularProgress size={22} />
-                                ) : (
-                                    <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                                        {data?.totalEnquiries ?? "—"}
-                                    </Typography>
-                                )}
-                            </Box>
-                        </Box>
-                    </CardContent>
-                </Card>
-
-                <Card variant="outlined" sx={{ flex: 1 }}>
-                    <CardContent>
-                        <Box
-                            sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 2,
-                            }}
-                        >
-                            <TodayOutlinedIcon color="primary" fontSize="large" />
-
-                            <Box>
-                                <Typography variant="body2" color="text.secondary">
-                                    Received Today
-                                </Typography>
-
-                                {isLoading && !data ? (
-                                    <CircularProgress size={22} />
-                                ) : (
-                                    <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                                        {data?.enquiriesToday ?? "—"}
-                                    </Typography>
-                                )}
-                            </Box>
-                        </Box>
-                    </CardContent>
-                </Card>
-            </Box>
-        </Box>
-    );
+        <Grid size={{ xs: 6 }}>
+          <StatCard
+            title="Received today"
+            value={show(data?.enquiriesToday)}
+            subtitle="Since midnight"
+            icon={<TodayOutlinedIcon />}
+            compact={compact}
+          />
+        </Grid>
+      </Grid>
+    </Stack>
+  );
 }

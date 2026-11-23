@@ -8,8 +8,8 @@ export * from "./services/exportInventoryExcel";
 
 export * from "./services/exportInventoryPdf";
 
-export * from "./components/InventorySummaryCards";
+export { default as InventorySummaryCards } from "./components/InventorySummaryCards";
 
-export * from "./components/InventoryReportTable";
+export { default as InventoryReportTable } from "./components/InventoryReportTable";
 
-export * from "./components/InventoryFilter";
+export { default as InventoryFilter } from "./components/InventoryFilter";

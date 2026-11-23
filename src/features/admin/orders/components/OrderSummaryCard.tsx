@@ -1,49 +1,38 @@
-import {
-  Divider,
-  Paper,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Divider, Stack, Typography } from "@mui/material";
 
 import type { Order } from "@/features/orders/types/order";
 
-interface OrderSummaryCardProps {
-  order: Order;
-}
-
-interface SummaryRowProps {
-  label: string;
-  value: string;
-  bold?: boolean;
-}
+import OrderSection from "./OrderSection";
 
 function SummaryRow({
   label,
   value,
   bold = false,
-}: SummaryRowProps) {
+  muted = false,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+  muted?: boolean;
+}) {
+  const weight = bold ? 700 : 400;
+
   return (
     <Stack
       direction="row"
-      sx={{
-        justifyContent: "space-between",
-        alignItems: "center",
-      }}
+      sx={{ justifyContent: "space-between", alignItems: "center", gap: 2 }}
     >
       <Typography
-        variant={bold ? "subtitle1" : "body1"}
-        sx={{
-          fontWeight: bold ? 700 : 400,
-        }}
+        variant="body2"
+        color={muted ? "text.secondary" : "text.primary"}
+        sx={{ fontWeight: weight }}
       >
         {label}
       </Typography>
-
       <Typography
-        variant={bold ? "subtitle1" : "body1"}
-        sx={{
-          fontWeight: bold ? 700 : 400,
-        }}
+        variant="body2"
+        color={muted ? "text.secondary" : "text.primary"}
+        sx={{ fontWeight: weight, whiteSpace: "nowrap" }}
       >
         {value}
       </Typography>
@@ -51,53 +40,74 @@ function SummaryRow({
   );
 }
 
-export default function OrderSummaryCard({
-  order,
-}: OrderSummaryCardProps) {
+const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+
+const fromPaise = (paise: number) =>
+  `₹${(paise / 100).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
+export default function OrderSummaryCard({ order }: { order: Order }) {
+  const tax = order.tax?.applied === true ? order.tax : null;
+
   return (
-    <Stack spacing={2}>
-      <Typography
-        variant="h6"
-        sx={{
-          fontWeight: 600,
-        }}
-      >
-        Order Summary
-      </Typography>
+    <OrderSection title="Summary">
+      <Stack spacing={1.5} sx={{ maxWidth: 420, ml: { sm: "auto" } }}>
+        <SummaryRow label="Subtotal" value={rupees(order.subtotal)} />
 
-      <Paper
-        variant="outlined"
-        sx={{
-          p: 3,
-        }}
-      >
-        <Stack spacing={2}>
+        <SummaryRow
+          label="Shipping charges"
+          value={rupees(order.shippingCharge)}
+        />
+
+        {!!order.discount && (
           <SummaryRow
-            label="Subtotal"
-            value={`₹${order.subtotal.toLocaleString("en-IN")}`}
+            label={`Discount${order.couponCode ? ` (${order.couponCode})` : ""}`}
+            value={`-${rupees(order.discount)}`}
           />
+        )}
 
-          <SummaryRow
-            label="Shipping Charges"
-            value={`₹${order.shippingCharge.toLocaleString("en-IN")}`}
-          />
+        <Divider />
 
-          {!!order.discount && (
+        <SummaryRow
+          label="Total amount"
+          value={rupees(order.totalAmount)}
+          bold
+        />
+
+        {tax && (
+          <>
+            <Divider />
+
+            <Typography variant="caption" color="text.secondary">
+              GST is already included in the total. Place of supply:{" "}
+              {tax.placeOfSupply}.
+            </Typography>
+
             <SummaryRow
-              label={`Discount${order.couponCode ? ` (${order.couponCode})` : ""}`}
-              value={`-₹${order.discount.toLocaleString("en-IN")}`}
+              muted
+              label="Taxable value"
+              value={fromPaise(tax.taxablePaise)}
             />
-          )}
 
-          <Divider />
+            {tax.intraState ? (
+              <>
+                <SummaryRow muted label="CGST" value={fromPaise(tax.cgstPaise)} />
+                <SummaryRow muted label="SGST" value={fromPaise(tax.sgstPaise)} />
+              </>
+            ) : (
+              <SummaryRow muted label="IGST" value={fromPaise(tax.igstPaise)} />
+            )}
 
-          <SummaryRow
-            label="Total Amount"
-            value={`₹${order.totalAmount.toLocaleString("en-IN")}`}
-            bold
-          />
-        </Stack>
-      </Paper>
-    </Stack>
+            <SummaryRow
+              muted
+              label="Total GST"
+              value={fromPaise(tax.totalTaxPaise)}
+            />
+          </>
+        )}
+      </Stack>
+    </OrderSection>
   );
 }

@@ -4,13 +4,13 @@ import {
   Box,
   Button,
   CircularProgress,
+  Container,
   Divider,
   Grid,
   Stack,
   Typography,
 } from "@mui/material";
-
-import PageContainer from "@/components/common/PageContainer";
+import { Link as RouterLink } from "react-router-dom";
 import { useAboutSettings } from "../hooks/useAboutSettings";
 
 const accent = "#00BFD6";
@@ -42,9 +42,9 @@ export default function AboutPage() {
 
   if (isError || !about) {
     return (
-      <PageContainer>
+      <Container maxWidth="lg" sx={{ px: { xs: 2, sm: 3, md: 4 }, py: 4 }}>
         <Alert severity="error">Failed to load About page.</Alert>
-      </PageContainer>
+      </Container>
     );
   }
 
@@ -80,8 +80,11 @@ export default function AboutPage() {
   const hasBanner = Boolean(fallbackBannerUrl);
 
   return (
-    <PageContainer>
-      <Stack spacing={{ xs: 5, md: 8 }} sx={{ pb: { xs: 3, md: 5 } }}>
+    <Container
+      maxWidth="lg"
+      sx={{ px: { xs: 2, sm: 3, md: 4 }, py: { xs: 2.5, sm: 3.5, md: 5 } }}
+    >
+      <Stack spacing={{ xs: 5, md: 8 }}>
         {/* Hero */}
         <Box
           sx={{
@@ -684,8 +687,8 @@ export default function AboutPage() {
               }}
             >
               <Button
-                component="a"
-                href="/"
+                component={RouterLink}
+                to="/products"
                 variant="contained"
                 size="large"
                 sx={{
@@ -709,7 +712,7 @@ export default function AboutPage() {
 
               <Button
                 component="a"
-                href="https://wa.me/8766911307"
+                href="https://wa.me/918766911307?text=Hi%2C%20I%20want%20to%20place%20a%20bulk%20order."
                 variant="outlined"
                 size="large"
                 sx={{
@@ -733,6 +736,6 @@ export default function AboutPage() {
           </Stack>
         </Box>
       </Stack>
-    </PageContainer>
+    </Container>
   );
 }

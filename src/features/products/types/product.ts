@@ -1,5 +1,7 @@
 import type { Timestamp } from "firebase/firestore";
 
+export type ProductBadgeMode = "none" | "global" | "custom";
+
 export interface Product {
     id: string;
     name: string;
@@ -16,6 +18,8 @@ export interface Product {
     images: string[];
     isActive: boolean;
     isFeatured: boolean;
+    badgeMode?: ProductBadgeMode;
+    badgeText?: string;
 
     // Maintained by the review system. Average = ratingSum / ratingCount.
     ratingSum?: number;

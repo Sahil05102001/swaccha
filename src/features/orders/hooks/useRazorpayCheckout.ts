@@ -76,7 +76,7 @@ export default function useRazorpayCheckout() {
           amount: order.amount,
           currency: order.currency,
           name: "Swachha",
-          description: `Order ${order.orderNumber}`,
+          description: "Swachha order",
           order_id: order.orderId,
           prefill: {
             name: customerName,

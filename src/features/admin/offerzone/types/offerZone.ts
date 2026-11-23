@@ -20,9 +20,14 @@ export const DEFAULT_GLOBAL_ROTATING_STICKER: RotatingProductSticker = {
   intervalSeconds: 3,
 };
 
+export const MAX_BADGE_LENGTH = 16;
+
+export const DEFAULT_GLOBAL_BADGE = { text: "" };
+
 export interface GlobalProductStickerSettings {
   promotionalSticker: ProductSticker;
   rotatingSticker: RotatingProductSticker;
+  globalBadge: { text: string };
 }
 
 export interface OfferZoneProduct {

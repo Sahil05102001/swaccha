@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
+  Alert,
   Button,
   Dialog,
   DialogActions,
@@ -8,14 +9,14 @@ import {
   DialogTitle,
 } from "@mui/material";
 
+import { useSnackbar } from "@/contexts/SnackbarContext";
+import { scrollToTop } from "@/features/admin/utils/scrollToTop";
+
 import CategoryForm from "./CategoryForm";
 
 import { useUpdateCategory } from "../hooks/useUpdateCategory";
 
-import type {
-  Category,
-  CategoryFormData,
-} from "../types/category";
+import type { Category, CategoryFormData } from "../types/category";
 
 interface EditCategoryDialogProps {
   open: boolean;
@@ -34,11 +35,13 @@ export default function EditCategoryDialog({
   category,
   onClose,
 }: EditCategoryDialogProps) {
-  const [formData, setFormData] =
-    useState<CategoryFormData>(initialFormData);
+  const { showSnackbar } = useSnackbar();
+  const contentRef = useRef<HTMLDivElement>(null);
 
-  const updateCategory =
-    useUpdateCategory();
+  const [formData, setFormData] = useState<CategoryFormData>(initialFormData);
+  const [error, setError] = useState("");
+
+  const updateCategory = useUpdateCategory();
 
   useEffect(() => {
     if (category) {
@@ -47,50 +50,62 @@ export default function EditCategoryDialog({
         imageUrl: category.imageUrl,
         isActive: category.isActive,
       });
+      setError("");
     }
   }, [category]);
 
   const handleChange = (
     field: keyof CategoryFormData,
-    value: string | boolean
+    value: string | boolean,
   ) => {
-    setFormData((previous) => ({
-      ...previous,
-      [field]: value,
-    }));
+    setFormData((previous) => ({ ...previous, [field]: value }));
+    setError("");
   };
 
   const handleSave = async () => {
     if (!category) return;
 
-    await updateCategory.mutateAsync({
-      id: category.id,
-      category: formData,
-    });
+    if (!formData.name.trim()) {
+      setError("Please enter a category name.");
+      scrollToTop(contentRef.current);
+      return;
+    }
 
-    onClose();
+    try {
+      await updateCategory.mutateAsync({
+        id: category.id,
+        category: { ...formData, name: formData.name.trim() },
+      });
+
+      showSnackbar("Category updated.", "success");
+      onClose();
+      scrollToTop();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to update category. Please try again.",
+      );
+      scrollToTop(contentRef.current);
+    }
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="sm"
-    >
-      <DialogTitle>
-        Edit Category
-      </DialogTitle>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle>Edit category</DialogTitle>
 
-      <DialogContent>
-        <CategoryForm
-          formData={formData}
-          onChange={handleChange}
-        />
+      <DialogContent ref={contentRef}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <CategoryForm formData={formData} onChange={handleChange} />
       </DialogContent>
 
-      <DialogActions>
-        <Button onClick={onClose}>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onClose} disabled={updateCategory.isPending}>
           Cancel
         </Button>
 
@@ -99,7 +114,7 @@ export default function EditCategoryDialog({
           onClick={handleSave}
           disabled={updateCategory.isPending}
         >
-          Save Changes
+          {updateCategory.isPending ? "Saving..." : "Save changes"}
         </Button>
       </DialogActions>
     </Dialog>

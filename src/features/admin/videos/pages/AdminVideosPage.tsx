@@ -4,67 +4,57 @@ import {
   Box,
   Button,
   Card,
-  CardContent,
   Chip,
-  CircularProgress,
   Dialog,
+  DialogActions,
   DialogContent,
+  DialogContentText,
   DialogTitle,
   IconButton,
+  Skeleton,
   Stack,
   Typography,
 } from "@mui/material";
-
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
+import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import VideoLibraryOutlinedIcon from "@mui/icons-material/VideoLibraryOutlined";
-import DeleteIcon from "@mui/icons-material/Delete";
 
 import PageContainer from "@/components/common/PageContainer";
 import PageHeader from "@/components/common/PageHeader";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 
+import VideoForm from "../components/VideoForm";
 import {
   useAddVideo,
   useDeleteVideo,
   useUpdateVideo,
   useVideos,
 } from "../hooks/useVideos";
-
-import VideoForm from "../components/VideoForm";
-
-import type {
-  VideoCard,
-  VideoCardFormData,
-} from "../types/video";
+import type { VideoCard, VideoCardFormData } from "../types/video";
+import { getYouTubeId, youtubeThumb } from "../utils/youtube";
+import { scrollToTop } from "src/features/admin/utils/scrollToTop"
 
 export default function AdminVideosPage() {
-  const {
-    data: videos = [],
-    isLoading,
-  } = useVideos();
+  const { showSnackbar } = useSnackbar();
+
+  const { data: videos = [], isLoading, refetch, isRefetching } = useVideos();
 
   const addMutation = useAddVideo();
   const updateMutation = useUpdateVideo();
   const deleteMutation = useDeleteVideo();
 
-  const [selectedId, setSelectedId] =
-    useState<string | null>(null);
-
   const [formOpen, setFormOpen] = useState(false);
+  const [editingVideo, setEditingVideo] = useState<VideoCard | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<VideoCard | null>(null);
 
-  const [editingVideo, setEditingVideo] =
-    useState<VideoCard | null>(null);
-
-  const activeVideos = videos.filter(
-    (video) => video.isActive,
-  ).length;
+  const activeVideos = videos.filter((video) => video.isActive).length;
+  const formLoading = addMutation.isPending || updateMutation.isPending;
 
   const handleAdd = () => {
-    if (videos.length >= 5) {
-      return;
-    }
-
+    if (videos.length >= 5) return;
     setEditingVideo(null);
     setFormOpen(true);
   };
@@ -75,366 +65,199 @@ export default function AdminVideosPage() {
   };
 
   const handleClose = () => {
-    if (
-      addMutation.isPending ||
-      updateMutation.isPending
-    ) {
-      return;
-    }
-
+    if (formLoading) return;
     setFormOpen(false);
     setEditingVideo(null);
   };
 
-  const handleSubmit = async (
-    data: VideoCardFormData,
-  ) => {
+  const handleSubmit = async (data: VideoCardFormData) => {
     try {
       if (editingVideo) {
-        await updateMutation.mutateAsync({
-          id: editingVideo.id,
-          data,
-        });
+        await updateMutation.mutateAsync({ id: editingVideo.id, data });
+        showSnackbar("Video updated.", "success");
       } else {
         await addMutation.mutateAsync(data);
+        showSnackbar("Video added.", "success");
       }
 
       setFormOpen(false);
       setEditingVideo(null);
+      scrollToTop();
     } catch (error) {
-      console.error("Failed to save video:", error);
+      showSnackbar(
+        error instanceof Error ? error.message : "Failed to save video.",
+        "error",
+      );
     }
   };
 
-  const handleDelete = (video: VideoCard) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this video?",
-      )
-    ) {
-      return;
-    }
-
-    setSelectedId(video.id);
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
 
     deleteMutation.mutate(
+      { id: deleteTarget.id },
       {
-        id: video.id,
-        publicId: video.publicId,
-      },
-      {
-        onSettled: () => {
-          setSelectedId(null);
+        onSuccess: () => {
+          showSnackbar("Video deleted.", "success");
+          setDeleteTarget(null);
+          scrollToTop();
         },
+        onError: () => showSnackbar("Failed to delete video.", "error"),
       },
     );
   };
-
-  const formLoading =
-    addMutation.isPending ||
-    updateMutation.isPending;
 
   return (
     <PageContainer>
       <PageHeader
         title="Homepage Videos"
-        subtitle="Manage the customer videos displayed on the homepage."
+        subtitle={`${activeVideos} active · ${videos.length}/5 videos used. Videos play from YouTube.`}
+        action={
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={() => void refetch()}
+              disabled={isRefetching}
+            >
+              {isRefetching ? "Refreshing..." : "Refresh"}
+            </Button>
+
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleAdd}
+              disabled={isLoading || videos.length >= 5}
+            >
+              {videos.length >= 5 ? "Maximum reached" : "Add video"}
+            </Button>
+          </Stack>
+        }
       />
 
-      <Box sx={{ mt: 3, width: "100%" }}>
-        <Card
+      {isLoading ? (
+        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
+          {[0, 1, 2].map((item) => (
+            <Skeleton key={item} variant="rounded" height={170} />
+          ))}
+        </Box>
+      ) : videos.length === 0 ? (
+        <Card variant="outlined" sx={{ py: 8, textAlign: "center", px: 2 }}>
+          <VideoLibraryOutlinedIcon sx={{ fontSize: 44, color: "text.disabled", mb: 1 }} />
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            No homepage videos yet
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 3 }}>
+            Add a YouTube link to show customer videos on the homepage.
+          </Typography>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleAdd}>
+            Add first video
+          </Button>
+        </Card>
+      ) : (
+        <Box
           sx={{
-            mb: 3,
-            borderRadius: 3,
-            background:
-              "linear-gradient(135deg, #FFFFFF 0%, #F5FBF8 100%)",
+            display: "grid",
+            gap: 2,
+            gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" },
           }}
         >
-          <CardContent
-            sx={{
-              p: { xs: 2, sm: 2.5, md: 3 },
-              "&:last-child": {
-                pb: { xs: 2, sm: 2.5, md: 3 },
-              },
-            }}
-          >
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={2}
-              sx={{
-                alignItems: {
-                  xs: "stretch",
-                  sm: "center",
-                },
-                justifyContent: "space-between",
-              }}
-            >
-              <Stack
-                direction="row"
-                spacing={1.5}
-                sx={{
-                  alignItems: "center",
-                  minWidth: 0,
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 46,
-                    height: 46,
-                    flexShrink: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderRadius: 2,
-                    backgroundColor: "#E8F7F1",
-                    color: "#005B41",
-                  }}
-                >
-                  <VideoLibraryOutlinedIcon />
-                </Box>
+          {videos.map((video) => {
+            const id = getYouTubeId(video.videoUrl);
+            const deleting =
+              deleteMutation.isPending && deleteTarget?.id === video.id;
 
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography
-                    variant="h6"
-                    sx={{ fontWeight: 800, lineHeight: 1.2 }}
-                  >
-                    Customer Videos
-                  </Typography>
-
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mt: 0.5 }}
-                  >
-                    {activeVideos} active
-                    {" · "}
-                    {videos.length}/5 videos used
-                  </Typography>
-                </Box>
-              </Stack>
-
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleAdd}
-                disabled={
-                  isLoading || videos.length >= 5
-                }
-                sx={{
-                  flexShrink: 0,
-                  minWidth: { xs: "100%", sm: 150 },
-                }}
-              >
-                {videos.length >= 5
-                  ? "Maximum Reached"
-                  : "Add Video"}
-              </Button>
-            </Stack>
-          </CardContent>
-        </Card>
-
-        {isLoading ? (
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              py: 8,
-            }}
-          >
-            <CircularProgress />
-          </Box>
-        ) : videos.length === 0 ? (
-          <Card sx={{ borderRadius: 3 }}>
-            <CardContent sx={{ py: 8, textAlign: "center" }}>
-              <VideoLibraryOutlinedIcon
-                sx={{
-                  fontSize: 48,
-                  color: "text.disabled",
-                  mb: 1,
-                }}
-              />
-
-              <Typography
-                variant="h6"
-                sx={{ fontWeight: 700 }}
-              >
-                No homepage videos yet
-              </Typography>
-
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 0.5, mb: 3 }}
-              >
-                Add customer videos to display them on the homepage.
-              </Typography>
-
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleAdd}
-              >
-                Add First Video
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: {
-                xs: "1fr",
-                sm: "repeat(2, minmax(0, 1fr))",
-                lg: "repeat(3, minmax(0, 1fr))",
-              },
-              gap: { xs: 2, md: 2.5 },
-              width: "100%",
-            }}
-          >
-            {videos.map((video) => (
-              <Card
-                key={video.id}
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  height: "100%",
-                  borderRadius: 3,
-                  overflow: "hidden",
-                }}
-              >
-                <Box
-                  sx={{
-                    position: "relative",
-                    width: "100%",
-                    aspectRatio: "16 / 9",
-                    overflow: "hidden",
-                    backgroundColor: "#111111",
-                  }}
-                >
+            return (
+              <Card key={video.id} variant="outlined" sx={{ p: 2 }}>
+                <Stack direction="row" spacing={2}>
                   <Box
-                    component="video"
-                    src={video.videoUrl}
-                    controls
-                    muted
-                    playsInline
-                    preload="metadata"
                     sx={{
-                      display: "block",
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      backgroundColor: "#111111",
+                      width: 96,
+                      flexShrink: 0,
+                      aspectRatio: "9 / 16",
+                      borderRadius: 2,
+                      overflow: "hidden",
+                      bgcolor: "#111111",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      textAlign: "center",
+                      p: id ? 0 : 1,
                     }}
-                  />
-
-                  <Chip
-                    label={video.isActive ? "Active" : "Inactive"}
-                    size="small"
-                    color={video.isActive ? "success" : "default"}
-                    sx={{
-                      position: "absolute",
-                      top: 12,
-                      left: 12,
-                      fontWeight: 700,
-                      backgroundColor: video.isActive
-                        ? "#FFFFFF"
-                        : "#EEEEEE",
-                    }}
-                  />
-
-                  <Chip
-                    label={`Order ${video.displayOrder}`}
-                    size="small"
-                    sx={{
-                      position: "absolute",
-                      top: 12,
-                      right: 12,
-                      fontWeight: 700,
-                      backgroundColor: "rgba(255,255,255,0.94)",
-                    }}
-                  />
-                </Box>
-
-                <CardContent
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    flex: 1,
-                    p: { xs: 2, sm: 2.25 },
-                    "&:last-child": {
-                      pb: { xs: 2, sm: 2.25 },
-                    },
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mb: 2 }}
                   >
-                    Homepage video
-                    {" · "}
-                    Position {video.displayOrder}
-                  </Typography>
+                    {id ? (
+                      <Box
+                        component="img"
+                        src={youtubeThumb(id, "hqdefault")}
+                        alt="Video thumbnail"
+                        loading="lazy"
+                        sx={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    ) : (
+                      <Typography variant="caption" sx={{ color: "#FFFFFF" }}>
+                        Cloudinary video
+                      </Typography>
+                    )}
+                  </Box>
 
-                  <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={1}
-                    sx={{ mt: "auto" }}
-                  >
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      startIcon={<EditOutlinedIcon />}
-                      onClick={() => handleEdit(video)}
-                    >
-                      Edit
-                    </Button>
+                  <Stack sx={{ minWidth: 0, flex: 1 }} spacing={1}>
+                    <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 1 }}>
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={video.isActive ? "Active" : "Inactive"}
+                        color={video.isActive ? "success" : "default"}
+                      />
+                      <Chip size="small" variant="outlined" label={`Position ${video.displayOrder}`} />
+                      {!id && (
+                        <Chip size="small" variant="outlined" color="warning" label="Replace with YouTube" />
+                      )}
+                    </Stack>
 
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      color="error"
-                      startIcon={<DeleteIcon />}
-                      disabled={
-                        deleteMutation.isPending &&
-                        selectedId === video.id
-                      }
-                      onClick={() => handleDelete(video)}
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ wordBreak: "break-all" }}
                     >
-                      {deleteMutation.isPending &&
-                      selectedId === video.id
-                        ? "Deleting..."
-                        : "Delete"}
-                    </Button>
+                      {id ? video.videoUrl : "Edit this video to switch it to a YouTube link."}
+                    </Typography>
+
+                    <Stack direction="row" spacing={1} sx={{ mt: "auto !important", pt: 1 }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<EditOutlinedIcon />}
+                        onClick={() => handleEdit(video)}
+                      >
+                        Edit
+                      </Button>
+
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        startIcon={<DeleteOutlinedIcon />}
+                        disabled={deleting}
+                        onClick={() => setDeleteTarget(video)}
+                      >
+                        Delete
+                      </Button>
+                    </Stack>
                   </Stack>
-                </CardContent>
+                </Stack>
               </Card>
-            ))}
-          </Box>
-        )}
-      </Box>
+            );
+          })}
+        </Box>
+      )}
 
-      <Dialog
-        open={formOpen}
-        onClose={handleClose}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle
-          sx={{ fontWeight: 700, pr: 6 }}
-        >
-          {editingVideo
-            ? "Edit Homepage Video"
-            : "Add Homepage Video"}
-
+      <Dialog open={formOpen} onClose={handleClose} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ fontWeight: 700, pr: 6 }}>
+          {editingVideo ? "Edit homepage video" : "Add homepage video"}
           <IconButton
             onClick={handleClose}
             disabled={formLoading}
-            sx={{
-              position: "absolute",
-              right: 12,
-              top: 12,
-            }}
+            sx={{ position: "absolute", right: 12, top: 12 }}
           >
             <CloseIcon />
           </IconButton>
@@ -449,6 +272,33 @@ export default function AdminVideosPage() {
             loading={formLoading}
           />
         </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => !deleteMutation.isPending && setDeleteTarget(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Delete video?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This removes the video from the homepage. The video on YouTube is not affected.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleteMutation.isPending}>
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={confirmDelete}
+            disabled={deleteMutation.isPending}
+          >
+            {deleteMutation.isPending ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
       </Dialog>
     </PageContainer>
   );

@@ -1,88 +1,29 @@
-import {
-  Grid,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Grid } from "@mui/material";
 
 import type { Order } from "@/features/orders/types/order";
 
-interface CustomerInformationProps {
-  order: Order;
-}
+import OrderSection, { InfoField } from "./OrderSection";
 
-export default function CustomerInformation({
-  order,
-}: CustomerInformationProps) {
+export default function CustomerInformation({ order }: { order: Order }) {
   return (
-    <Stack spacing={2}>
-      <Typography
-        variant="h6"
-        sx={{
-          fontWeight: 600,
-        }}
-      >
-        Customer Information
-      </Typography>
-
+    <OrderSection title="Customer">
       <Grid container spacing={2}>
-        <Grid
-          size={{
-            xs: 12,
-            sm: 6,
-          }}
-        >
-          <Typography
-            variant="caption"
-            color="text.secondary"
-          >
-            Customer Name
-          </Typography>
-
-          <Typography variant="body1">
-            {order.customerName}
-          </Typography>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <InfoField label="Name">{order.customerName}</InfoField>
         </Grid>
 
-        <Grid
-          size={{
-            xs: 12,
-            sm: 6,
-          }}
-        >
-          <Typography
-            variant="caption"
-            color="text.secondary"
-          >
-            Customer Email
-          </Typography>
-
-          <Typography variant="body1">
-            {order.customerEmail}
-          </Typography>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <InfoField label="Phone">{order.shippingAddress.phoneNumber}</InfoField>
         </Grid>
 
-        <Grid
-          size={{
-            xs: 12,
-          }}
-        >
-          <Typography
-            variant="caption"
-            color="text.secondary"
-          >
-            User ID
-          </Typography>
+        <Grid size={12}>
+          <InfoField label="Email">{order.customerEmail}</InfoField>
+        </Grid>
 
-          <Typography
-            variant="body2"
-            sx={{
-              wordBreak: "break-all",
-            }}
-          >
-            {order.userId}
-          </Typography>
+        <Grid size={12}>
+          <InfoField label="User ID">{order.userId}</InfoField>
         </Grid>
       </Grid>
-    </Stack>
+    </OrderSection>
   );
 }

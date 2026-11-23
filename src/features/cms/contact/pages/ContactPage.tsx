@@ -1,11 +1,9 @@
-// D:\Projects\swaccha\src\features\cms\contact\pages\ContactPage.tsx
-
 import type { ReactNode } from "react";
-
 import {
   Alert,
   Box,
   CircularProgress,
+  Container,
   Grid,
   Stack,
   Typography,
@@ -19,10 +17,8 @@ import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
 import TwitterIcon from "@mui/icons-material/Twitter";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import YouTubeIcon from "@mui/icons-material/YouTube";
-
-import PageContainer from "@/components/common/PageContainer";
-
 import { useContactSettings } from "../hooks/useContactSettings";
+
 
 const accent = "#00BFD6";
 const accentDark = "#087F8C";
@@ -30,12 +26,15 @@ const ink = "#17252B";
 const border = "#E5ECEE";
 const softBackground = "#F7FAFA";
 
+
 // Fallbacks, used only if the CMS fields are empty
 const FALLBACK_WHATSAPP = "8766911307";
 const FALLBACK_EMAIL = "swachha.business@gmail.com";
 
+
 function getSocialIcon(platform: string): ReactNode {
   const key = platform.toLowerCase();
+
 
   if (key.includes("insta")) return <InstagramIcon />;
   if (key.includes("face")) return <FacebookIcon />;
@@ -44,15 +43,19 @@ function getSocialIcon(platform: string): ReactNode {
   if (key.includes("twitter") || key === "x") return <TwitterIcon />;
   if (key.includes("whatsapp")) return <WhatsAppIcon />;
 
+
   return <LanguageIcon />;
 }
+
 
 function toWhatsAppNumber(value: string) {
   const digits = value.replace(/\D/g, "");
 
+
   // Bare 10-digit Indian numbers need the country code for wa.me
   return digits.length === 10 ? `91${digits}` : digits;
 }
+
 
 type InfoCardProps = {
   icon: ReactNode;
@@ -62,6 +65,7 @@ type InfoCardProps = {
   children: ReactNode;
 };
 
+
 function InfoCard({
   icon,
   label,
@@ -70,6 +74,7 @@ function InfoCard({
   children,
 }: InfoCardProps) {
   const clickable = Boolean(href);
+
 
   return (
     <Box
@@ -85,12 +90,11 @@ function InfoCard({
       sx={{
         display: "block",
         height: "100%",
-        p: { xs: 2.5, md: 3.5 },
+        p: { xs: 2, sm: 2.5, md: 3 },
         textDecoration: "none",
         border: `1px solid ${border}`,
         borderRadius: 3,
         backgroundColor: "#FFFFFF",
-        transition: "border-color 0.25s ease",
         ...(clickable && {
           "&:hover": {
             borderColor: accent,
@@ -100,9 +104,9 @@ function InfoCard({
     >
       <Box
         sx={{
-          width: 52,
-          height: 52,
-          mb: 2.5,
+          width: { xs: 44, md: 52 },
+          height: { xs: 44, md: 52 },
+          mb: { xs: 1.5, md: 2.5 },
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -113,6 +117,7 @@ function InfoCard({
       >
         {icon}
       </Box>
+
 
       <Typography
         variant="overline"
@@ -127,6 +132,7 @@ function InfoCard({
       >
         {label}
       </Typography>
+
 
       <Typography
         component="div"
@@ -144,8 +150,10 @@ function InfoCard({
   );
 }
 
+
 export default function ContactPage() {
   const { contactSettings, isLoading, error } = useContactSettings();
+
 
   if (isLoading) {
     return (
@@ -161,15 +169,18 @@ export default function ContactPage() {
     );
   }
 
+
   if (error || !contactSettings) {
     return (
-      <PageContainer>
+      <Container maxWidth="lg" sx={{ px: { xs: 2, sm: 3, md: 4 }, py: 4 }}>
         <Alert severity="error">Failed to load contact information.</Alert>
-      </PageContainer>
+      </Container>
     );
   }
 
+
   const businessName = contactSettings.businessName?.trim() || "Swachha";
+
 
   const addressLines = [
     contactSettings.addressLine1,
@@ -182,16 +193,22 @@ export default function ContactPage() {
     .map((line) => line?.trim())
     .filter(Boolean) as string[];
 
+
   const whatsapp = contactSettings.whatsapp?.trim() || FALLBACK_WHATSAPP;
   const email = contactSettings.email?.trim() || FALLBACK_EMAIL;
+
 
   const socialLinks = (contactSettings.socialLinks ?? []).filter((link) =>
     link.url?.trim(),
   );
 
+
   return (
-    <PageContainer>
-      <Stack spacing={{ xs: 4, md: 6 }} sx={{ pb: { xs: 3, md: 5 } }}>
+    <Container
+      maxWidth="lg"
+      sx={{ px: { xs: 2, sm: 3, md: 4 }, py: { xs: 2.5, sm: 3.5, md: 5 } }}
+    >
+      <Stack spacing={{ xs: 3, md: 5 }}>
         {/* Hero */}
         <Box
           sx={{
@@ -200,7 +217,7 @@ export default function ContactPage() {
             borderRadius: { xs: 2, md: 3 },
             border: `1px solid ${border}`,
             px: { xs: 3, sm: 5, md: 8 },
-            py: { xs: 5, md: 8 },
+            py: { xs: 4, sm: 6, md: 8 },
             textAlign: "center",
             background: `linear-gradient(135deg, #FFFFFF 0%, ${softBackground} 55%, rgba(0, 191, 214, 0.12) 100%)`,
           }}
@@ -229,6 +246,7 @@ export default function ContactPage() {
             }}
           />
 
+
           <Stack
             spacing={2}
             sx={{ position: "relative", alignItems: "center" }}
@@ -244,6 +262,7 @@ export default function ContactPage() {
               CONTACT US
             </Typography>
 
+
             <Typography
               variant="h2"
               sx={{
@@ -258,6 +277,7 @@ export default function ContactPage() {
               {businessName}
             </Typography>
 
+
             <Box
               sx={{
                 width: 56,
@@ -268,6 +288,7 @@ export default function ContactPage() {
             />
           </Stack>
         </Box>
+
 
         {/* Address / WhatsApp / Email */}
         <Grid container spacing={{ xs: 2, md: 3 }}>
@@ -283,6 +304,7 @@ export default function ContactPage() {
             </Grid>
           )}
 
+
           <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <InfoCard
               icon={<WhatsAppIcon />}
@@ -294,6 +316,7 @@ export default function ContactPage() {
             </InfoCard>
           </Grid>
 
+
           <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <InfoCard
               icon={<EmailOutlinedIcon />}
@@ -304,6 +327,7 @@ export default function ContactPage() {
             </InfoCard>
           </Grid>
         </Grid>
+
 
         {/* Follow us */}
         {socialLinks.length > 0 && (
@@ -328,6 +352,7 @@ export default function ContactPage() {
                   FOLLOW US
                 </Typography>
 
+
                 <Box
                   sx={{
                     width: 44,
@@ -337,6 +362,7 @@ export default function ContactPage() {
                   }}
                 />
               </Stack>
+
 
               <Stack
                 direction="row"
@@ -367,7 +393,6 @@ export default function ContactPage() {
                       fontWeight: 600,
                       fontSize: "0.95rem",
                       border: "1px solid rgba(255, 255, 255, 0.18)",
-                      transition: "all 0.25s ease",
                       "& svg": { fontSize: 22 },
                       "&:hover": {
                         backgroundColor: accent,
@@ -385,6 +410,6 @@ export default function ContactPage() {
           </Box>
         )}
       </Stack>
-    </PageContainer>
+    </Container>
   );
 }

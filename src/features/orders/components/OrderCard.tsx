@@ -12,19 +12,17 @@ import {
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
 import { Link, useNavigate } from "react-router-dom";
-
 import OrderStatusChip from "./OrderStatusChip";
-
 import { useAuth } from "@/features/auth/AuthContext";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import ReviewDialog from "@/features/reviews/components/ReviewDialog";
-
 import type { Order, OrderItem } from "../types/order";
 import { generateInvoice } from "../utils/generateInvoice";
-
 import CancelOrderButton from "./CancelOrderButton";
 import RefundNote from "./RefundNote";
 import OrderLiveTracker from "./OrderLiveTracker";
+import { buildInvoiceData } from "../utils/buildInvoiceData";
+import DeliveredHelpNote from "./DeliveredHelpNote";
 
 interface OrderCardProps {
   order: Order;
@@ -76,7 +74,7 @@ function Detail({
           mt: 0.25,
           fontWeight: highlight ? 700 : 500,
           fontSize: highlight ? "1.15rem" : "1rem",
-          color: highlight ? COLORS.blue : COLORS.text,
+          color: highlight ? "#007F89" : COLORS.text,
           wordBreak: "break-word",
         }}
       >
@@ -100,24 +98,7 @@ export default function OrderCard({ order }: OrderCardProps) {
   const canReview = isDelivered && !!user?.emailVerified;
 
   const handleDownloadInvoice = () => {
-    generateInvoice({
-      orderId: order.orderNumber,
-      customerName: order.customerName,
-      customerEmail: order.customerEmail,
-      customerPhone: order.shippingAddress.phoneNumber,
-      paymentMethod: order.paymentMethod.toUpperCase(),
-      paymentStatus: order.paymentStatus,
-      orderDate: orderDate.toLocaleString(),
-      items: order.items.map((item) => ({
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-      })),
-      subtotal: order.subtotal,
-      shippingCharge: order.shippingCharge,
-      discount: order.discount ?? 0,
-      total: order.totalAmount,
-    });
+    generateInvoice(buildInvoiceData(order));
   };
 
   return (
@@ -268,6 +249,10 @@ export default function OrderCard({ order }: OrderCardProps) {
               })}
             </Typography>
           )}
+
+          <RefundNote order={order} />
+
+          {isDelivered && <DeliveredHelpNote orderNumber={order.orderNumber} />}
 
           <RefundNote order={order} />
 

@@ -1,292 +1,193 @@
-import {
-    Button,
-    ButtonGroup,
-    Card,
-    CardContent,
-    Grid,
-    MenuItem,
-    TextField,
-} from "@mui/material";
+import { Button, MenuItem, Stack, TextField } from "@mui/material";
+
+import AdminSelect from "@/features/admin/components/AdminSelect";
 
 export interface DateRangeFilterValue {
-    startDate?: Date;
-    endDate?: Date;
-    search?: string;
-    orderStatus?: string;
-    paymentStatus?: string;
+  startDate?: Date;
+  endDate?: Date;
+  search?: string;
+  orderStatus?: string;
+  paymentStatus?: string;
 }
 
 interface Props {
-    value: DateRangeFilterValue;
-    onChange: (value: DateRangeFilterValue) => void;
+  value: DateRangeFilterValue;
+  onChange: (value: DateRangeFilterValue) => void;
 }
 
-export default function DateRangeFilter({
-    value,
-    onChange,
-}: Props) {
-    function setToday() {
-        const today = new Date();
+const pad = (n: number) => String(n).padStart(2, "0");
 
-        const startDate = new Date(
-            today.getFullYear(),
-            today.getMonth(),
-            today.getDate()
-        );
+const toInput = (d?: Date) =>
+  d ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` : "";
 
-        const endDate = new Date(
-            today.getFullYear(),
-            today.getMonth(),
-            today.getDate(),
-            23,
-            59,
-            59,
-            999
-        );
+function parts(value: string) {
+  const [y, m, d] = value.split("-").map(Number);
+  return { y, m: m - 1, d };
+}
 
-        onChange({
-            ...value,
-            startDate,
-            endDate,
-        });
-    }
+const startOfDay = (value: string) => {
+  const { y, m, d } = parts(value);
+  return new Date(y, m, d, 0, 0, 0, 0);
+};
 
-    function setLast7Days() {
-        const endDate = new Date();
+const endOfDay = (value: string) => {
+  const { y, m, d } = parts(value);
+  return new Date(y, m, d, 23, 59, 59, 999);
+};
 
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 6);
-        startDate.setHours(0, 0, 0, 0);
+const ORDER_STATUSES = [
+  ["pending", "Pending"],
+  ["confirmed", "Confirmed"],
+  ["packed", "Packed"],
+  ["shipped", "Shipped"],
+  ["delivered", "Delivered"],
+  ["cancelled", "Cancelled"],
+  ["returned", "Returned"],
+];
 
-        onChange({
-            ...value,
-            startDate,
-            endDate,
-        });
-    }
+const PAYMENT_STATUSES = [
+  ["pending", "Pending"],
+  ["paid", "Paid"],
+  ["failed", "Failed"],
+  ["partially_refunded", "Partly refunded"],
+  ["refunded", "Refunded"],
+];
 
-    function setLast30Days() {
-        const endDate = new Date();
+export default function DateRangeFilter({ value, onChange }: Props) {
+  const range = (daysBack: number) => {
+    const start = new Date();
+    start.setDate(start.getDate() - daysBack);
+    start.setHours(0, 0, 0, 0);
 
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 29);
-        startDate.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
 
-        onChange({
-            ...value,
-            startDate,
-            endDate,
-        });
-    }
+    onChange({ ...value, startDate: start, endDate: end });
+  };
 
-    function setThisMonth() {
-        const today = new Date();
+  const thisMonth = () => {
+    const now = new Date();
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
 
-        const startDate = new Date(
-            today.getFullYear(),
-            today.getMonth(),
-            1
-        );
+    onChange({
+      ...value,
+      startDate: new Date(now.getFullYear(), now.getMonth(), 1),
+      endDate: end,
+    });
+  };
 
-        onChange({
-            ...value,
-            startDate,
-            endDate: new Date(),
-        });
-    }
+  const invalidRange =
+    !!value.startDate && !!value.endDate && value.startDate > value.endDate;
 
-    function formatDate(date?: Date) {
-        if (!date) {
-            return "";
-        }
+  return (
+    <Stack spacing={1.5}>
+      <Stack direction="row" useFlexGap sx={{ flexWrap: "wrap", gap: 1 }}>
+        <Button variant="outlined" size="small" onClick={() => range(0)}>
+          Today
+        </Button>
+        <Button variant="outlined" size="small" onClick={() => range(6)}>
+          Last 7 days
+        </Button>
+        <Button variant="outlined" size="small" onClick={() => range(29)}>
+          Last 30 days
+        </Button>
+        <Button variant="outlined" size="small" onClick={thisMonth}>
+          This month
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() =>
+            onChange({ ...value, startDate: undefined, endDate: undefined })
+          }
+        >
+          All time
+        </Button>
+      </Stack>
 
-        return date.toISOString().split("T")[0];
-    }
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        useFlexGap
+        sx={{ gap: 1.5, flexWrap: { md: "wrap" }, alignItems: { md: "flex-start" } }}
+      >
+        <TextField
+          size="small"
+          label="Search orders"
+          placeholder="Order no., customer or email"
+          value={value.search ?? ""}
+          onChange={(event) => onChange({ ...value, search: event.target.value })}
+          sx={{ minWidth: 240, flex: { md: "1 1 240px" } }}
+        />
 
-    return (
-        <Card sx={{ mb: 3 }}>
-            <CardContent>
-                <Grid
-                    container
-                    spacing={2}
-                    sx={{
-                        alignItems: "center",
-                    }}
-                >
-                    <Grid size={{ xs: 12 }}>
-                        <ButtonGroup
-                            fullWidth
-                            variant="outlined"
-                        >
-                            <Button onClick={setToday}>
-                                Today
-                            </Button>
+        <AdminSelect
+          size="small"
+          label="Order status"
+          value={value.orderStatus ?? ""}
+          onChange={(event) => onChange({ ...value, orderStatus: event.target.value })}
+          sx={{ minWidth: 170 }}
+        >
+          <MenuItem value="">All</MenuItem>
+          {ORDER_STATUSES.map(([v, label]) => (
+            <MenuItem key={v} value={v}>
+              {label}
+            </MenuItem>
+          ))}
+        </AdminSelect>
 
-                            <Button onClick={setLast7Days}>
-                                Last 7 Days
-                            </Button>
+        <AdminSelect
+          size="small"
+          label="Payment status"
+          value={value.paymentStatus ?? ""}
+          onChange={(event) => onChange({ ...value, paymentStatus: event.target.value })}
+          sx={{ minWidth: 170 }}
+        >
+          <MenuItem value="">All</MenuItem>
+          {PAYMENT_STATUSES.map(([v, label]) => (
+            <MenuItem key={v} value={v}>
+              {label}
+            </MenuItem>
+          ))}
+        </AdminSelect>
 
-                            <Button onClick={setLast30Days}>
-                                Last 30 Days
-                            </Button>
+        <TextField
+          size="small"
+          type="date"
+          label="From"
+          value={toInput(value.startDate)}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              startDate: event.target.value ? startOfDay(event.target.value) : undefined,
+            })
+          }
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
 
-                            <Button onClick={setThisMonth}>
-                                This Month
-                            </Button>
+        <TextField
+          size="small"
+          type="date"
+          label="To"
+          value={toInput(value.endDate)}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              endDate: event.target.value ? endOfDay(event.target.value) : undefined,
+            })
+          }
+          error={invalidRange}
+          helperText={invalidRange ? "Must not be before From." : undefined}
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
 
-                            <Button
-                                onClick={() =>
-                                    onChange({})
-                                }
-                            >
-                                All Time
-                            </Button>
-                        </ButtonGroup>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, md: 4 }}>
-                        <TextField
-                            fullWidth
-                            label="Search Orders"
-                            placeholder="Order ID, Customer or Email"
-                            value={value.search ?? ""}
-                            onChange={(event) =>
-                                onChange({
-                                    ...value,
-                                    search:
-                                        event.target.value,
-                                })
-                            }
-                        />
-                    </Grid>
-
-                    <Grid size={{ xs: 12, md: 4 }}>
-                        <TextField
-                            select
-                            fullWidth
-                            label="Order Status"
-                            value={
-                                value.orderStatus ?? ""
-                            }
-                            onChange={(event) =>
-                                onChange({
-                                    ...value,
-                                    orderStatus:
-                                        event.target.value,
-                                })
-                            }
-                        >
-                            <MenuItem value="">
-                                All
-                            </MenuItem>
-                            <MenuItem value="pending">
-                                Pending
-                            </MenuItem>
-                            <MenuItem value="confirmed">
-                                Confirmed
-                            </MenuItem>
-                            <MenuItem value="shipped">
-                                Shipped
-                            </MenuItem>
-                            <MenuItem value="delivered">
-                                Delivered
-                            </MenuItem>
-                            <MenuItem value="cancelled">
-                                Cancelled
-                            </MenuItem>
-                        </TextField>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, md: 4 }}>
-                        <TextField
-                            select
-                            fullWidth
-                            label="Payment Status"
-                            value={
-                                value.paymentStatus ??
-                                ""
-                            }
-                            onChange={(event) =>
-                                onChange({
-                                    ...value,
-                                    paymentStatus:
-                                        event.target.value,
-                                })
-                            }
-                        >
-                            <MenuItem value="">
-                                All
-                            </MenuItem>
-                            <MenuItem value="pending">
-                                Pending
-                            </MenuItem>
-                            <MenuItem value="paid">
-                                Paid
-                            </MenuItem>
-                            <MenuItem value="failed">
-                                Failed
-                            </MenuItem>
-                            <MenuItem value="refunded">
-                                Refunded
-                            </MenuItem>
-                        </TextField>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, md: 6 }}>
-                        <TextField
-                            label="Start Date"
-                            type="date"
-                            fullWidth
-                            value={formatDate(
-                                value.startDate
-                            )}
-                            onChange={(event) =>
-                                onChange({
-                                    ...value,
-                                    startDate: event.target
-                                        .value
-                                        ? new Date(
-                                              event.target.value
-                                          )
-                                        : undefined,
-                                })
-                            }
-                            slotProps={{
-                                inputLabel: {
-                                    shrink: true,
-                                },
-                            }}
-                        />
-                    </Grid>
-
-                    <Grid size={{ xs: 12, md: 6 }}>
-                        <TextField
-                            label="End Date"
-                            type="date"
-                            fullWidth
-                            value={formatDate(
-                                value.endDate
-                            )}
-                            onChange={(event) =>
-                                onChange({
-                                    ...value,
-                                    endDate: event.target
-                                        .value
-                                        ? new Date(
-                                              event.target.value
-                                          )
-                                        : undefined,
-                                })
-                            }
-                            slotProps={{
-                                inputLabel: {
-                                    shrink: true,
-                                },
-                            }}
-                        />
-                    </Grid>
-                </Grid>
-            </CardContent>
-        </Card>
-    );
+        <Button
+          variant="outlined"
+          onClick={() => onChange({})}
+          sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
+        >
+          Clear filters
+        </Button>
+      </Stack>
+    </Stack>
+  );
 }

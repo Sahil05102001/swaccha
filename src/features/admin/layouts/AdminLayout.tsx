@@ -1,7 +1,17 @@
-import { memo, Suspense, useCallback, useState, type ReactNode } from "react";
+
+import {
+  memo,
+  Suspense,
+  useCallback,
+  useMemo,
+  useState,
+  useEffect,
+  type ReactNode,
+} from "react";
 import {
   Box,
   Button,
+  Chip,
   CircularProgress,
   CssBaseline,
   Drawer,
@@ -16,10 +26,12 @@ import {
   Typography,
   useMediaQuery,
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import {
+  ThemeProvider,
+  useTheme,
+} from "@mui/material/styles";
 import { useQueryClient } from "@tanstack/react-query";
 import { signOut } from "firebase/auth";
-
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import DashboardIcon from "@mui/icons-material/Dashboard";
@@ -51,11 +63,21 @@ import DeliveryDiningOutlinedIcon from "@mui/icons-material/DeliveryDiningOutlin
 import HistoryIcon from "@mui/icons-material/History";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
-
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import { auth } from "@/firebase/auth";
+import { adminTheme } from "../theme/adminTheme";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
+import ConstructionOutlinedIcon from "@mui/icons-material/ConstructionOutlined";
+import HelpCenterOutlinedIcon from "@mui/icons-material/HelpCenterOutlined";
+import { useMaintenance } from "@/features/maintenance/hooks/useMaintenance";
+import { useAuth } from "@/features/auth/AuthContext";
+import {
+  DesktopOnlyNotice,
+  MobileAdvisoryDialog,
+} from "../components/MobileNotices";
+import FlashOnIcon from "@mui/icons-material/FlashOn";
+import RedeemIcon from "@mui/icons-material/Redeem";
 
 const DRAWER_WIDTH = 260;
 const HEADER_HEIGHT = 64;
@@ -124,6 +146,16 @@ const menuSections: MenuSection[] = [
         path: "/admin/best-sellers",
       },
       {
+        text: "Lightning Deals",
+        icon: <FlashOnIcon />,
+        path: "/admin/lightning-deals",
+      },
+      {
+        text: "Exclusive Offers",
+        icon: <RedeemIcon />,
+        path: "/admin/exclusive-offers",
+      },
+      {
         text: "Featured Products",
         icon: <StarIcon />,
         path: "/admin/featured-products",
@@ -157,6 +189,11 @@ const menuSections: MenuSection[] = [
         text: "Shipping",
         icon: <DeliveryDiningOutlinedIcon />,
         path: "/admin/shipping",
+      },
+      {
+        text: "Tax (GST)",
+        icon: <ReceiptLongOutlinedIcon />,
+        path: "/admin/tax",
       },
       {
         text: "B2B Enquiries",
@@ -220,10 +257,58 @@ const menuSections: MenuSection[] = [
         icon: <DescriptionOutlinedIcon />,
         path: "/admin/cms/replacement",
       },
+      {
+        text: "Maintenance Mode",
+        icon: <ConstructionOutlinedIcon />,
+        path: "/admin/maintenance",
+      },
       { text: "Settings", icon: <SettingsIcon />, path: "/admin/settings" },
     ],
   },
+  {
+    title: "Help",
+    items: [
+      {
+        text: "Help & Support",
+        icon: <HelpCenterOutlinedIcon />,
+        path: "/admin/help",
+      },
+    ],
+  },
 ];
+
+// Phones show only the everyday options. Desktop keeps the full menu.
+const MOBILE_PATHS = new Set([
+  "/admin",
+  "/admin/orders",
+  "/admin/customers",
+  "/admin/reviews",
+  "/admin/coupons",
+  "/admin/shipping",
+  "/admin/tax",
+  "/admin/maintenance",
+  "/admin/help",
+]);
+
+const mobileSections: MenuSection[] = menuSections
+  .map((section) => ({
+    ...section,
+    items: section.items.filter((item) => MOBILE_PATHS.has(item.path)),
+  }))
+  .filter((section) => section.items.length > 0);
+
+const ADVISORY_KEY = "admin-mobile-advisory";
+
+/** A page is allowed on phones if it is a phone menu page or opens from one. */
+const isMobilePath = (pathname: string) => {
+  const clean = pathname.replace(/\/+$/, "") || "/";
+
+  return [...MOBILE_PATHS].some((path) =>
+    path === "/admin"
+      ? clean === "/admin"
+      : clean === path || clean.startsWith(`${path}/`),
+  );
+};
 
 const isSelected = (pathname: string, path: string) =>
   path === "/admin"
@@ -233,6 +318,7 @@ const isSelected = (pathname: string, path: string) =>
 interface SidebarProps {
   pathname: string;
   collapsed: boolean;
+  mobileMenu: boolean;
   onNavigate: (path: string) => void;
   onToggle: () => void;
 }
@@ -241,6 +327,7 @@ interface SidebarProps {
 const Sidebar = memo(function Sidebar({
   pathname,
   collapsed,
+  mobileMenu,
   onNavigate,
   onToggle,
 }: SidebarProps) {
@@ -307,7 +394,7 @@ const Sidebar = memo(function Sidebar({
           scrollbarColor: "rgba(255,255,255,0.2) transparent",
         }}
       >
-        {menuSections.map((section) => (
+        {(mobileMenu ? mobileSections : menuSections).map((section) => (
           <Box key={section.title} sx={{ mb: 1 }}>
             {!collapsed && (
               <Typography
@@ -344,8 +431,6 @@ const Sidebar = memo(function Sidebar({
                     borderLeft: "3px solid transparent",
                     justifyContent: collapsed ? "center" : "initial",
                     color: COLORS.sidebarText,
-                    transition: "background-color 120ms, color 120ms",
-                    "&:hover": { bgcolor: COLORS.hover, color: "#fff" },
                     "&.Mui-selected": {
                       bgcolor: COLORS.selectedBg,
                       color: "#fff",
@@ -418,8 +503,6 @@ const headerButtonSx = {
   fontWeight: 600,
   color: "text.primary",
   textTransform: "none",
-  transition: "background-color 120ms",
-  "&:hover": { bgcolor: COLORS.canvas },
 } as const;
 
 export default function AdminLayout() {
@@ -428,8 +511,44 @@ export default function AdminLayout() {
   const theme = useTheme();
   const queryClient = useQueryClient();
   const { showSnackbar } = useSnackbar();
+  const { data: maintenance } = useMaintenance();
 
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  // Build the admin theme on top of the existing store theme.
+  const resolvedAdminTheme = useMemo(() => adminTheme(theme), [theme]);
+
+  // noSsr: read the screen size on the first render, so a phone never
+  // starts loading a desktop-only page before it is blocked.
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"), { noSsr: true });
+  const blocked = isMobile && !isMobilePath(pathname);
+
+  // One warning per sign-in on a phone.
+  const { user } = useAuth();
+  const signInKey = user
+    ? `${user.uid}|${user.metadata.lastSignInTime ?? ""}`
+    : "";
+  const [advisoryOpen, setAdvisoryOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isMobile || !signInKey) return;
+
+    try {
+      if (sessionStorage.getItem(ADVISORY_KEY) === signInKey) return;
+    } catch {
+      // Storage unavailable: show it, it is harmless.
+    }
+
+    setAdvisoryOpen(true);
+  }, [isMobile, signInKey]);
+
+  const closeAdvisory = () => {
+    setAdvisoryOpen(false);
+
+    try {
+      sessionStorage.setItem(ADVISORY_KEY, signInKey);
+    } catch {
+      // Ignore.
+    }
+  };;
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -463,157 +582,196 @@ export default function AdminLayout() {
     <Sidebar
       pathname={pathname}
       collapsed={collapsed && !isMobile}
+      mobileMenu={isMobile}
       onNavigate={handleNavigation}
       onToggle={isMobile ? closeMobile : toggleCollapsed}
     />
   );
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: COLORS.canvas }}>
-      <CssBaseline />
-
-      {/* Top bar */}
+    <ThemeProvider theme={resolvedAdminTheme}>
       <Box
-        component="header"
         sx={{
-          position: "fixed",
-          top: 0,
-          right: 0,
-          left: { xs: 0, md: `${currentDrawerWidth}px` },
-          height: HEADER_HEIGHT,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 1,
-          px: { xs: 2, md: 3 },
-          bgcolor: "#fff",
-          borderBottom: `1px solid ${COLORS.border}`,
-          zIndex: (t) => t.zIndex.appBar,
+          minHeight: "100vh",
+          bgcolor: "background.default",
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
-          {(isMobile || collapsed) && (
-            <IconButton
-              disableRipple
-              onClick={() => (isMobile ? setMobileOpen(true) : setCollapsed(false))}
-              aria-label="Open admin menu"
-              edge="start"
-            >
-              <MenuIcon />
-            </IconButton>
-          )}
+        <CssBaseline />
 
-          <Typography
-            component="h1"
-            sx={{
-              fontSize: { xs: "1.05rem", sm: "1.25rem" },
-              fontWeight: 700,
-              color: "text.primary",
-              whiteSpace: "nowrap",
-            }}
+        {/* Top bar */}
+        <Box
+          component="header"
+          sx={{
+            position: "fixed",
+            top: 0,
+            right: 0,
+            left: { xs: 0, md: `${currentDrawerWidth}px` },
+            height: HEADER_HEIGHT,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 1,
+            px: { xs: 2, md: 3 },
+            bgcolor: "#fff",
+            borderBottom: `1px solid ${COLORS.border}`,
+            zIndex: (t) => t.zIndex.appBar,
+          }}
+        >
+          <Box
+            sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}
           >
-            Admin Panel
-          </Typography>
-        </Box>
+            {(isMobile || collapsed) && (
+              <IconButton
+                disableRipple
+                onClick={() =>
+                  isMobile ? setMobileOpen(true) : setCollapsed(false)
+                }
+                aria-label="Open admin menu"
+                edge="start"
+              >
+                <MenuIcon />
+              </IconButton>
+            )}
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <MuiLink
-            component={Link}
-            to="/"
-            underline="none"
-            aria-label="View store"
-            sx={headerButtonSx}
-          >
-            <StorefrontOutlinedIcon sx={{ fontSize: 18 }} />
-            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-              View store
-            </Box>
-          </MuiLink>
-
-          <Button
-            onClick={handleLogout}
-            disableRipple
-            aria-label="Log out"
-            sx={headerButtonSx}
-          >
-            <LogoutOutlinedIcon sx={{ fontSize: 18 }} />
-            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-              Log out
-            </Box>
-          </Button>
-        </Box>
-      </Box>
-
-      {/* Mobile drawer */}
-      <Drawer
-        open={mobileOpen}
-        onClose={closeMobile}
-        variant="temporary"
-        transitionDuration={0}
-        sx={{
-          display: { xs: "block", md: "none" },
-          "& .MuiDrawer-paper": {
-            width: DRAWER_WIDTH,
-            boxSizing: "border-box",
-            bgcolor: COLORS.sidebar,
-            borderRight: "none",
-            borderRadius: 0,
-          },
-        }}
-      >
-        {sidebar}
-      </Drawer>
-
-      {/* Desktop drawer */}
-      <Drawer
-        variant="permanent"
-        sx={{
-          display: { xs: "none", md: "block" },
-          width: currentDrawerWidth,
-          flexShrink: 0,
-          "& .MuiDrawer-paper": {
-            width: currentDrawerWidth,
-            boxSizing: "border-box",
-            overflow: "hidden",
-            visibility: collapsed ? "hidden" : "visible",
-            bgcolor: COLORS.sidebar,
-            borderRight: "none",
-            borderRadius: 0,
-          },
-        }}
-      >
-        {sidebar}
-      </Drawer>
-
-      {/* Main content. The page changes here; the sidebar never remounts. */}
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          minWidth: 0,
-          p: { xs: 1.5, sm: 2.5, md: 3 },
-          width: { md: `calc(100% - ${currentDrawerWidth}px)` },
-        }}
-      >
-        <Box sx={{ height: HEADER_HEIGHT }} />
-
-        <Suspense
-          fallback={
-            <Box
+            <Typography
+              component="h1"
               sx={{
-                minHeight: "40vh",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                fontSize: { xs: "1.05rem", sm: "1.25rem" },
+                fontWeight: 700,
+                color: "text.primary",
+                whiteSpace: "nowrap",
               }}
             >
-              <CircularProgress size={28} aria-label="Loading page" />
-            </Box>
-          }
+              Swachha Console
+            </Typography>
+
+            {maintenance?.enabled && (
+              <Chip
+                label="Maintenance ON"
+                size="small"
+                color="error"
+                onClick={() => navigate("/admin/maintenance")}
+                sx={{ fontWeight: 700 }}
+              />
+            )}
+          </Box>
+
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <MuiLink
+              component={Link}
+              to="/"
+              underline="none"
+              aria-label="View store"
+              sx={headerButtonSx}
+            >
+              <StorefrontOutlinedIcon sx={{ fontSize: 18 }} />
+              <Box
+                component="span"
+                sx={{ display: { xs: "none", sm: "inline" } }}
+              >
+                View store
+              </Box>
+            </MuiLink>
+
+            <Button
+              onClick={handleLogout}
+              disableRipple
+              aria-label="Log out"
+              sx={headerButtonSx}
+            >
+              <LogoutOutlinedIcon sx={{ fontSize: 18 }} />
+              <Box
+                component="span"
+                sx={{ display: { xs: "none", sm: "inline" } }}
+              >
+                Log out
+              </Box>
+            </Button>
+          </Box>
+        </Box>
+
+        {/* Mobile drawer */}
+        <Drawer
+          open={mobileOpen}
+          onClose={closeMobile}
+          variant="temporary"
+          transitionDuration={0}
+          sx={{
+            display: { xs: "block", md: "none" },
+            "& .MuiDrawer-paper": {
+              width: DRAWER_WIDTH,
+              boxSizing: "border-box",
+              bgcolor: COLORS.sidebar,
+              borderRight: "none",
+              borderRadius: 0,
+            },
+          }}
         >
-          <Outlet />
-        </Suspense>
+          {sidebar}
+        </Drawer>
+
+        {/* Desktop drawer */}
+        <Drawer
+          variant="permanent"
+          sx={{
+            display: { xs: "none", md: "block" },
+            width: currentDrawerWidth,
+            flexShrink: 0,
+            "& .MuiDrawer-paper": {
+              width: currentDrawerWidth,
+              boxSizing: "border-box",
+              overflow: "hidden",
+              visibility: collapsed ? "hidden" : "visible",
+              bgcolor: COLORS.sidebar,
+              borderRight: "none",
+              borderRadius: 0,
+            },
+          }}
+        >
+          {sidebar}
+        </Drawer>
+
+        {/* Main content. The page changes here; the sidebar never remounts. */}
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            minWidth: 0,
+            p: { xs: 1.5, sm: 2.5, md: 3 },
+            width: { md: `calc(100% - ${currentDrawerWidth}px)` },
+            bgcolor: "background.default",
+          }}
+        >
+          <Box sx={{ height: HEADER_HEIGHT }} />
+
+          {blocked ? (
+            <DesktopOnlyNotice onBack={() => navigate("/admin")} />
+          ) : (
+            <Suspense
+              fallback={
+                <Box
+                  sx={{
+                    minHeight: "40vh",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <CircularProgress size={28} aria-label="Loading page" />
+                </Box>
+              }
+            >
+              <Outlet />
+            </Suspense>
+          )}
+        </Box>
+
+        <MobileAdvisoryDialog
+          open={advisoryOpen && isMobile}
+          onClose={closeAdvisory}
+        />
       </Box>
-    </Box>
+    </ThemeProvider>
   );
 }

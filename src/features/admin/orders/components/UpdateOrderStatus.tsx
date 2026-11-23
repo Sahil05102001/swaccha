@@ -1,12 +1,6 @@
-import {
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { MenuItem } from "@mui/material";
 
+import AdminSelect from "@/features/admin/components/AdminSelect";
 import type { OrderStatus } from "@/features/orders/types/order";
 
 import { ORDER_STATUS_OPTIONS } from "../constants/orderStatusOptions";
@@ -26,45 +20,23 @@ export default function UpdateOrderStatus({
   options = ORDER_STATUS_OPTIONS,
 }: UpdateOrderStatusProps) {
   return (
-    <Stack spacing={2}>
-      <Typography
-        variant="h6"
-        sx={{
-          fontWeight: 600,
-        }}
-      >
-        Order Status
-      </Typography>
-
-      <FormControl
-        fullWidth
-        disabled={disabled || options.length <= 1}
-      >
-        <InputLabel id="order-status-label">
-          Order Status
-        </InputLabel>
-
-        <Select<OrderStatus>
-          labelId="order-status-label"
-          value={value}
-          label="Order Status"
-          onChange={(event) =>
-            onChange(
-              event.target.value as OrderStatus
-            )
-          }
-        >
-          {options.map((option) => (
-            <MenuItem
-              key={option}
-              value={option}
-            >
-              {option.charAt(0).toUpperCase() +
-                option.slice(1)}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-    </Stack>
+    <AdminSelect
+      fullWidth
+      label="Order status"
+      value={value}
+      disabled={disabled || options.length <= 1}
+      onChange={(event) => onChange(event.target.value as OrderStatus)}
+      helperText={
+        options.length <= 1
+          ? "This order is final. Its status can no longer be changed."
+          : "Orders move one step at a time."
+      }
+    >
+      {options.map((option) => (
+        <MenuItem key={option} value={option}>
+          {option.charAt(0).toUpperCase() + option.slice(1)}
+        </MenuItem>
+      ))}
+    </AdminSelect>
   );
 }

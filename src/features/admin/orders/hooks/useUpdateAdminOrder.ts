@@ -26,9 +26,11 @@ export function useUpdateAdminOrder() {
       updateAdminOrder(orderId, updates),
 
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ADMIN_ORDERS_QUERY_KEY,
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ADMIN_ORDERS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: ["order"] }),
+        queryClient.invalidateQueries({ queryKey: ["recent-orders"] }),
+      ]);
 
       showSnackbar("Order updated successfully.", "success");
     },

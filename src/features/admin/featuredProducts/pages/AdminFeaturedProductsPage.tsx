@@ -1,326 +1,269 @@
-import {
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   Alert,
   Box,
-  Card,
-  CardContent,
+  Button,
   Checkbox,
-  CircularProgress,
-  Divider,
-  Snackbar,
+  Chip,
+  InputAdornment,
+  MenuItem,
+  Skeleton,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TablePagination,
+  TableRow,
+  TextField,
   Typography,
 } from "@mui/material";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import SearchIcon from "@mui/icons-material/Search";
 
 import PageContainer from "@/components/common/PageContainer";
 import PageHeader from "@/components/common/PageHeader";
-
+import SectionCard from "@/components/common/SectionCard";
+import { useSnackbar } from "@/contexts/SnackbarContext";
+import AdminSelect from "@/features/admin/components/AdminSelect";
+import ProductThumb from "@/features/admin/components/ProductThumb";
 import {
   useProducts,
   useUpdateProductFeatured,
 } from "@/features/products/hooks/useProducts";
-
 import type { Product } from "@/features/products/types/product";
 
 const MAX_FEATURED = 5;
+const PAGE_SIZE = 10;
 
 export default function AdminFeaturedProductsPage() {
-  const {
-    data: products = [],
-    isLoading,
-  } = useProducts();
+  const { showSnackbar } = useSnackbar();
 
-  const updateProductMutation =
-    useUpdateProductFeatured();
+  const { data: products = [], isLoading, isError, refetch, isRefetching } = useProducts();
+  const updateMutation = useUpdateProductFeatured();
 
-  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"all" | "featured">("all");
+  const [page, setPage] = useState(0);
 
-  const featuredProducts = useMemo(
-    () =>
-      products.filter(
-        (product) =>
-          product.isFeatured
-      ),
-    [products]
-  );
+  const featuredCount = products.filter((product) => product.isFeatured).length;
+  const limitReached = featuredCount >= MAX_FEATURED;
 
-  const featuredCount =
-    featuredProducts.length;
+  const rows = useMemo(() => {
+    const term = search.trim().toLowerCase();
 
-  const handleToggle = async (
-    product: Product
-  ) => {
-    const shouldFeature =
-      !product.isFeatured;
+    return products
+      .filter((product) => {
+        if (filter === "featured" && !product.isFeatured) return false;
+        if (!term) return true;
 
-    if (
-      shouldFeature &&
-      featuredCount >= MAX_FEATURED
-    ) {
-      setError(
-        "You can only have 5 featured products."
-      );
+        return (
+          product.name.toLowerCase().includes(term) ||
+          (product.category ?? "").toLowerCase().includes(term)
+        );
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [products, search, filter]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [search, filter]);
+
+  const lastPage = Math.max(0, Math.ceil(rows.length / PAGE_SIZE) - 1);
+  const currentPage = Math.min(page, lastPage);
+  const visible = rows.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+
+  const handleToggle = async (product: Product) => {
+    const shouldFeature = !product.isFeatured;
+
+    if (shouldFeature && limitReached) {
+      showSnackbar("You can only have 5 featured products.", "error");
       return;
     }
 
     try {
-      await updateProductMutation.mutateAsync({
+      await updateMutation.mutateAsync({
         id: product.id,
         isFeatured: shouldFeature,
       });
-    } catch (err) {
-      console.error(
-        "Failed to update featured product:",
-        err
-      );
 
-      setError(
-        "Failed to update featured product."
+      showSnackbar(
+        shouldFeature ? "Added to featured products." : "Removed from featured products.",
+        "success",
       );
+    } catch {
+      showSnackbar("Failed to update the featured product.", "error");
     }
   };
-
-  if (isLoading) {
-    return (
-      <PageContainer>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            py: 8,
-          }}
-        >
-          <CircularProgress />
-        </Box>
-      </PageContainer>
-    );
-  }
 
   return (
     <PageContainer>
       <PageHeader
         title="Featured Products"
-        subtitle="Choose up to 5 products to display in the Featured Products section on the homepage."
+        subtitle="Choose up to 5 products for the New Arrivals section on the homepage. They get the New tag there."
+        action={
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={() => void refetch()}
+            disabled={isRefetching}
+          >
+            {isRefetching ? "Refreshing..." : "Refresh"}
+          </Button>
+        }
       />
 
-      <Card
-        sx={{
-          mt: 3,
-          mb: 3,
-        }}
-      >
-        <CardContent>
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: {
-                xs: "column",
-                sm: "row",
-              },
-              gap: 1,
-              alignItems: "center",
-              justifyContent:
-                "space-between",
-            }}
-          >
-            <Box>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontWeight: 700,
-                }}
-              >
-                Featured Products
-              </Typography>
-
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{
-                  mt: 0.5,
-                }}
-              >
-                Only active products can
-                appear on the homepage.
-              </Typography>
-            </Box>
-
-            <Typography
-              sx={{
-                fontWeight: 700,
-                color:
-                  featuredCount >= MAX_FEATURED
-                    ? "success.main"
-                    : "text.secondary",
+      <Stack spacing={3}>
+        <SectionCard
+          title={`${featuredCount} of ${MAX_FEATURED} selected`}
+          subtitle={
+            limitReached
+              ? "The limit is reached. Untick a product to choose another."
+              : "Only active products appear on the homepage, even if they are ticked."
+          }
+        >
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+            <TextField
+              size="small"
+              fullWidth
+              placeholder="Search by name or category"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                },
               }}
+            />
+
+            <AdminSelect
+              size="small"
+              label="Show"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value as "all" | "featured")}
+              sx={{ minWidth: 180 }}
             >
-              {featuredCount} /{" "}
-              {MAX_FEATURED}
-            </Typography>
-          </Box>
-        </CardContent>
-      </Card>
+              <MenuItem value="all">All products</MenuItem>
+              <MenuItem value="featured">Featured only</MenuItem>
+            </AdminSelect>
+          </Stack>
+        </SectionCard>
 
-      <Card>
-        <CardContent
-          sx={{
-            p: 0,
-            "&:last-child": {
-              pb: 0,
-            },
-          }}
-        >
-          {products.length === 0 ? (
-            <Box sx={{ p: 4 }}>
-              <Typography
-                align="center"
-                color="text.secondary"
-              >
-                No products available.
-              </Typography>
-            </Box>
+        <SectionCard>
+          {isError ? (
+            <Alert severity="error">Failed to load products.</Alert>
           ) : (
-            products.map(
-              (product, index) => {
-                const checked =
-                  product.isFeatured;
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell padding="checkbox" />
+                    <TableCell>Product</TableCell>
+                    <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>
+                      Category
+                    </TableCell>
+                    <TableCell align="right">Price</TableCell>
+                    <TableCell>Status</TableCell>
+                  </TableRow>
+                </TableHead>
 
-                const disabled =
-                  updateProductMutation.isPending ||
-                  (!checked &&
-                    featuredCount >=
-                      MAX_FEATURED);
-
-                return (
-                  <Box
-                    key={product.id}
-                  >
-                    <Box
-                      sx={{
-                        px: 2,
-                        py: 2,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 2,
-                      }}
-                    >
-                      <Checkbox
-                        checked={checked}
-                        disabled={disabled}
-                        onChange={() =>
-                          handleToggle(product)
-                        }
-                      />
-
-                      <Box
-                        component="img"
-                        src={
-                          product.images?.[0] ||
-                          ""
-                        }
-                        alt={product.name}
-                        sx={{
-                          width: 64,
-                          height: 64,
-                          objectFit: "cover",
-                          borderRadius: 2,
-                          bgcolor: "grey.100",
-                          flexShrink: 0,
-                        }}
-                      />
-
-                      <Box
-                        sx={{
-                          flex: 1,
-                          minWidth: 0,
-                        }}
-                      >
-                        <Typography
-                          sx={{
-                            fontWeight: 700,
-                            overflow: "hidden",
-                            textOverflow:
-                              "ellipsis",
-                            whiteSpace:
-                              "nowrap",
-                          }}
-                        >
-                          {product.name}
-                        </Typography>
-
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                        >
-                          {product.category}
-                        </Typography>
-                      </Box>
-
-                      <Box
-                        sx={{
-                          textAlign: "right",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <Typography
-                          sx={{
-                            fontWeight: 600,
-                          }}
-                        >
-                          ₹{product.price}
-                        </Typography>
-
-                        {!product.isActive && (
-                          <Typography
-                            variant="caption"
-                            color="error"
+                <TableBody>
+                  {isLoading ? (
+                    [0, 1, 2, 3, 4].map((row) => (
+                      <TableRow key={row}>
+                        {[0, 1, 2, 3, 4].map((cell) => (
+                          <TableCell
+                            key={cell}
+                            sx={cell === 2 ? { display: { xs: "none", sm: "table-cell" } } : undefined}
                           >
-                            Inactive
-                          </Typography>
-                        )}
+                            <Skeleton />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : visible.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center" sx={{ py: 5 }}>
+                        <Typography color="text.secondary">
+                          {products.length === 0
+                            ? "No products available."
+                            : "No products match this search."}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    visible.map((product) => {
+                      const checked = Boolean(product.isFeatured);
+                      const disabled =
+                        updateMutation.isPending || (!checked && limitReached);
 
-                        {checked && (
-                          <Typography
-                            variant="caption"
-                            color="success.main"
-                            sx={{
-                              display: "block",
-                              fontWeight: 600,
-                            }}
-                          >
-                            Featured
-                          </Typography>
-                        )}
-                      </Box>
-                    </Box>
+                      return (
+                        <TableRow key={product.id}>
+                          <TableCell padding="checkbox">
+                            <Checkbox
+                              checked={checked}
+                              disabled={disabled}
+                              onChange={() => void handleToggle(product)}
+                              slotProps={{
+                                input: { "aria-label": `Feature ${product.name}` },
+                              }}
+                            />
+                          </TableCell>
 
-                    {index <
-                      products.length - 1 && (
-                      <Divider />
-                    )}
-                  </Box>
-                );
-              }
-            )
+                          <TableCell>
+                            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+                              <ProductThumb src={product.images?.[0]} alt={product.name} />
+                              <Box sx={{ minWidth: 0 }}>
+                                <Typography sx={{ fontWeight: 600 }}>{product.name}</Typography>
+                              </Box>
+                            </Stack>
+                          </TableCell>
+
+                          <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>
+                            {product.category}
+                          </TableCell>
+
+                          <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                            ₹{product.price}
+                          </TableCell>
+
+                          <TableCell>
+                            <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", rowGap: 0.5 }}>
+                              {checked && (
+                                <Chip size="small" variant="outlined" color="success" label="Featured" />
+                              )}
+                              {!product.isActive && (
+                                <Chip size="small" variant="outlined" color="error" label="Inactive" />
+                              )}
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
           )}
-        </CardContent>
-      </Card>
 
-      <Snackbar
-        open={!!error}
-        autoHideDuration={3500}
-        onClose={() => setError("")}
-      >
-        <Alert
-          severity="warning"
-          onClose={() => setError("")}
-        >
-          {error}
-        </Alert>
-      </Snackbar>
+          {rows.length > PAGE_SIZE && (
+            <TablePagination
+              component="div"
+              count={rows.length}
+              page={currentPage}
+              onPageChange={(_, next) => setPage(next)}
+              rowsPerPage={PAGE_SIZE}
+              rowsPerPageOptions={[]}
+            />
+          )}
+        </SectionCard>
+      </Stack>
     </PageContainer>
   );
 }

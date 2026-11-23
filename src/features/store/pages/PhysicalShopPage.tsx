@@ -1,15 +1,12 @@
 // D:\Projects\swaccha\src\features\store\pages\PhysicalShopPage.tsx
 
 import type { ReactNode } from "react";
-
-import { Box, Button, Grid, Stack, Typography } from "@mui/material";
+import { Box, Button, Container, Grid, Stack, Typography } from "@mui/material";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import DirectionsIcon from "@mui/icons-material/Directions";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
-
-import PageContainer from "@/components/common/PageContainer";
 
 const accent = "#00BFD6";
 const accentDark = "#087F8C";
@@ -188,8 +185,11 @@ export default function PhysicalShopPage() {
     const { isOpen, today } = getStoreStatus();
 
     return (
-        <PageContainer>
-            <Stack spacing={{ xs: 4, md: 6 }} sx={{ pb: { xs: 3, md: 5 } }}>
+        <Container
+            maxWidth="lg"
+            sx={{ px: { xs: 2, sm: 3, md: 4 }, py: { xs: 2.5, sm: 3.5, md: 5 } }}
+        >
+            <Stack spacing={{ xs: 4, md: 6 }}>
                 {/* Hero */}
                 <Box
                     sx={{
@@ -484,6 +484,6 @@ export default function PhysicalShopPage() {
                     </Grid>
                 </Grid>
             </Stack>
-        </PageContainer>
+        </Container>
     );
 }

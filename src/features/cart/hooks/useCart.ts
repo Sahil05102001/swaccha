@@ -1,8 +1,11 @@
+
 import {
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+
+import { useAuth } from "@/features/auth/AuthContext";
 
 import {
   addCartItem,
@@ -13,9 +16,12 @@ import {
 } from "../services/cartService";
 
 export function useCart() {
+  const { user, loading } = useAuth();
+
   return useQuery({
-    queryKey: ["cart"],
+    queryKey: ["cart", user?.uid ?? "guest"],
     queryFn: getCartItems,
+    enabled: !loading,
   });
 }
 

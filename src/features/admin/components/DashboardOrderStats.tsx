@@ -11,79 +11,27 @@ import type { DashboardStats } from "../services/dashboardService";
 import StatCard from "./StatCard";
 
 interface Props {
-    stats: DashboardStats;
+  /** undefined while loading: the cards keep their size and show placeholders. */
+  stats?: DashboardStats;
 }
 
-export default function DashboardOrderStats({
-    stats,
-}: Props) {
-    return (
-        <Grid
-            container
-            spacing={3}
-            sx={{
-                mb: 3,
-            }}
-        >
-            <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
-                <StatCard
-                    title="Pending"
-                    value={stats.pendingOrders}
-                    subtitle="Awaiting Action"
-                    icon={<PendingActionsIcon />}
-                    color="warning.main"
-                />
-            </Grid>
+export default function DashboardOrderStats({ stats }: Props) {
+  const cards = [
+    { title: "Pending", value: stats?.pendingOrders, subtitle: "Awaiting action", icon: <PendingActionsIcon /> },
+    { title: "Confirmed", value: stats?.confirmedOrders, subtitle: "Confirmed", icon: <CheckCircleIcon /> },
+    { title: "Packed", value: stats?.packedOrders, subtitle: "Ready to ship", icon: <InventoryIcon /> },
+    { title: "Shipped", value: stats?.shippedOrders, subtitle: "In transit", icon: <LocalShippingIcon /> },
+    { title: "Delivered", value: stats?.deliveredOrders, subtitle: "Completed", icon: <TaskAltIcon /> },
+    { title: "Cancelled", value: stats?.cancelledOrders, subtitle: "Cancelled", icon: <CancelOutlinedIcon /> },
+  ];
 
-            <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
-                <StatCard
-                    title="Confirmed"
-                    value={stats.confirmedOrders}
-                    subtitle="Confirmed"
-                    icon={<CheckCircleIcon />}
-                    color="info.main"
-                />
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
-                <StatCard
-                    title="Packed"
-                    value={stats.packedOrders}
-                    subtitle="Ready to Ship"
-                    icon={<InventoryIcon />}
-                    color="primary.main"
-                />
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
-                <StatCard
-                    title="Shipped"
-                    value={stats.shippedOrders}
-                    subtitle="In Transit"
-                    icon={<LocalShippingIcon />}
-                    color="secondary.main"
-                />
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
-                <StatCard
-                    title="Delivered"
-                    value={stats.deliveredOrders}
-                    subtitle="Completed"
-                    icon={<TaskAltIcon />}
-                    color="success.main"
-                />
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6, lg: 2 }}>
-                <StatCard
-                    title="Cancelled"
-                    value={stats.cancelledOrders}
-                    subtitle="Cancelled"
-                    icon={<CancelOutlinedIcon />}
-                    color="error.main"
-                />
-            </Grid>
+  return (
+    <Grid container spacing={3}>
+      {cards.map((card) => (
+        <Grid key={card.title} size={{ xs: 12, sm: 6, lg: 2 }}>
+          <StatCard {...card} />
         </Grid>
-    );
+      ))}
+    </Grid>
+  );
 }

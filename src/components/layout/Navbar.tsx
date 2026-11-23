@@ -56,7 +56,7 @@ import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettin
 const PRODUCTS_PATH = "/products";
 
 // One WhatsApp number for every screen size (country code included).
-const WHATSAPP_URL = "https://wa.me/919284234943";
+const WHATSAPP_URL = "https://wa.me/918766911307";
 
 // While you type on the products page, the list updates after this short pause.
 const SEARCH_URL_DELAY_MS = 250;
@@ -123,21 +123,29 @@ const ringIconSx: SxProps<Theme> = {
 };
 
 // Login pill (filled cyan, matches the store look)
+// Login button: white pill, thick black outline, bold black capitals.
 const getLoginSx = (compact: boolean): SxProps<Theme> => ({
   flexShrink: 0,
   minWidth: 0,
-  height: compact ? 30 : 38,
-  px: compact ? 1.6 : 2.5,
+  height: compact ? 32 : 40,
+  px: compact ? 1.75 : 3,
   borderRadius: 999,
-  bgcolor: CYAN,
-  color: "#000000",
-  fontSize: compact ? "0.75rem" : { md: "0.85rem", lg: "0.92rem" },
-  fontWeight: 700,
+  bgcolor: "transparent",
+  color: CYAN,
+  border: `2px solid ${CYAN}`,
+  fontSize: compact ? "0.72rem" : { md: "0.85rem", lg: "0.92rem" },
+  fontWeight: 800,
+  letterSpacing: "0.06em",
   lineHeight: 1,
-  textTransform: "none",
+  textTransform: "uppercase",
   whiteSpace: "nowrap",
   boxShadow: "none",
-  "&:hover": { bgcolor: "#5CF6FF", boxShadow: "none" },
+  transition: "none",
+  "&:hover": {
+    bgcolor: "rgba(0,240,255,0.1)",
+    borderColor: CYAN,
+    boxShadow: "none",
+  },
   ...focusRing,
 });
 
@@ -482,7 +490,7 @@ export default function Navbar() {
           bgcolor: "#080B12",
           color: "#FFFFFF",
           border: "1px solid rgba(0,240,255,0.45)",
-          borderRadius: 2,
+          borderRadius: 0,
           overflow: "hidden",
           boxShadow: "0 12px 30px rgba(0,0,0,0.4)",
           maxHeight: "min(380px, 60vh)",
@@ -528,7 +536,7 @@ export default function Navbar() {
                   flexShrink: 0,
                   objectFit: "contain",
                   bgcolor: "#FFFFFF",
-                  borderRadius: 1,
+                  borderRadius: 0,
                 }}
               />
 
@@ -782,10 +790,7 @@ export default function Navbar() {
                   to="/login"
                   variant="contained"
                   disableElevation
-                  sx={[
-                    getLoginSx(false) as object,
-                    { mx: { md: 0.5, lg: 1 } },
-                  ]}
+                  sx={[getLoginSx(false) as object, { height: 44 }]}
                 >
                   Login
                 </Button>
@@ -828,7 +833,7 @@ export default function Navbar() {
                   position: "relative",
                   minHeight: 44,
                   px: 2,
-                  borderRadius: 999,
+                  borderRadius: 0,
                   backgroundColor: "rgba(255,255,255,0.1)",
                   border: "1px solid rgba(0,240,255,0.45)",
                 }}
@@ -995,8 +1000,7 @@ export default function Navbar() {
                 <IconButton
                   component={Link}
                   to="/cart"
-                  aria-label={`Shopping cart${totalItems ? `, ${totalItems} items` : ""
-                    }`}
+                  aria-label={`Shopping cart, ${totalItems} items`}
                   sx={ringSx}
                 >
                   <ShoppingCartOutlinedIcon sx={ringIconSx} />
@@ -1015,7 +1019,7 @@ export default function Navbar() {
                   minHeight: 40,
                   position: "relative",
                   px: 1.5,
-                  borderRadius: 999,
+                  borderRadius: 0,
                   backgroundColor: "rgba(255,255,255,0.09)",
                   border: "1px solid rgba(0,240,255,0.45)",
                 }}
@@ -1128,7 +1132,7 @@ export default function Navbar() {
               mt: 1,
               minWidth: 210,
               maxWidth: "calc(100vw - 16px)",
-              borderRadius: 2,
+              borderRadius: 0,
               backgroundColor: "#111111",
               color: "#FFFFFF",
               border: "1px solid rgba(255,255,255,0.12)",
@@ -1184,6 +1188,7 @@ export default function Navbar() {
             sx: {
               width: { xs: "86%", sm: 360 },
               maxWidth: 360,
+              borderRadius: 0,
               backgroundColor: "#000000",
               color: "#FFFFFF",
               pb: "env(safe-area-inset-bottom, 0px)",
@@ -1225,7 +1230,7 @@ export default function Navbar() {
             <IconButton
               onClick={() => setMobileOpen(false)}
               aria-label="Close navigation menu"
-              sx={{ color: CYAN, ...focusRing }}
+              sx={{ color: CYAN, borderRadius: 0, ...focusRing }}
             >
               <CloseIcon />
             </IconButton>
@@ -1242,7 +1247,7 @@ export default function Navbar() {
               overscrollBehavior: "contain",
 
               "& .MuiListItemButton-root": {
-                borderRadius: 1,
+                borderRadius: 0,
                 mb: 0.25,
                 "&:hover": {
                   backgroundColor: "rgba(0,240,255,0.08)",
@@ -1283,55 +1288,11 @@ export default function Navbar() {
             <ListItemButton
               onClick={() => handleMobileNavigation("/bulk-order")}
             >
-              <ListItemText primary="B2B" />
-            </ListItemButton>
-
-            <Divider
-              sx={{ my: 1, borderColor: "rgba(255,255,255,0.12)" }}
-            />
-
-            <ListItemButton
-              onClick={() => handleMobileNavigation(PRODUCTS_PATH)}
-            >
-              <ListItemText primary="Categories" />
-            </ListItemButton>
-
-            <ListItemButton
-              onClick={() => handleMobileNavigation(PRODUCTS_PATH)}
-            >
-              <ListItemText primary="Best Sellers" />
-            </ListItemButton>
-
-            <ListItemButton
-              onClick={() => handleMobileNavigation(PRODUCTS_PATH)}
-            >
-              <ListItemText primary="New Arrivals" />
-            </ListItemButton>
-
-            <ListItemButton onClick={() => handleMobileNavigation("/contact")}>
-              <ListItemText primary="Contact Us" />
-            </ListItemButton>
-
-            <ListItemButton onClick={() => handleMobileNavigation("/faq")}>
-              <ListItemText primary="FAQ" />
-            </ListItemButton>
-
-            <Divider
-              sx={{ my: 1, borderColor: "rgba(255,255,255,0.12)" }}
-            />
-
-            <ListItemButton onClick={() => handleMobileNavigation("/about")}>
-              <ListItemText primary="About Us" />
-            </ListItemButton>
-
-            <ListItemButton onClick={() => handleMobileNavigation("/contact")}>
-              <ListItemText primary="Contact Us" />
-            </ListItemButton>
-
-            <ListItemButton
-              onClick={() => handleMobileNavigation("/bulk-order")}
-            >
               <ListItemText primary="Enterprise & B2B" />
+            </ListItemButton>
+
+            <ListItemButton onClick={() => handleMobileNavigation("/contact")}>
+              <ListItemText primary="Contact Us" />
             </ListItemButton>
 
             <ListItemButton onClick={() => handleMobileNavigation("/faq")}>
@@ -1407,7 +1368,7 @@ export default function Navbar() {
                     <AccountCircleOutlinedIcon />
                   </ListItemIcon>
 
-                  <ListItemText primary={user.displayName ?? "Profile"} />
+                  <ListItemText primary="Account" />
                 </ListItemButton>
 
                 {isAdmin && (

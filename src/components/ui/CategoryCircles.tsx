@@ -1,7 +1,5 @@
-import {
-  Box,
-  Typography,
-} from "@mui/material";
+import { Box, Typography } from "@mui/material";
+import { Link } from "react-router-dom";
 
 import CategoryIcon from "@mui/icons-material/Category";
 import CleaningServicesIcon from "@mui/icons-material/CleaningServices";
@@ -45,13 +43,7 @@ function DefaultIcon({
   const IconComponent = iconMap[icon] ?? CategoryIcon;
 
   return (
-    <IconComponent
-      sx={{
-        width: "48%",
-        height: "48%",
-        color: accentColor,
-      }}
-    />
+    <IconComponent sx={{ width: "48%", height: "48%", color: accentColor }} />
   );
 }
 
@@ -62,214 +54,150 @@ export default function CategoryCircles({
 }: CategoryCirclesProps) {
   const activeCategories = categories
     .filter((category) => category.isActive)
-    .sort((a, b) => a.sortOrder - b.sortOrder);
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .slice(0, 10);
 
-  console.log("[CategoryCircles] Diagnostics:", {
-    totalCategories: categories.length,
-    activeCategories: activeCategories.length,
-    categories: categories.map((category) => ({
-      id: category.id,
-      label: category.label,
-      isActive: category.isActive,
-      sortOrder: category.sortOrder,
-    })),
-  });
+  if (activeCategories.length === 0) {
+    return null;
+  }
 
   return (
     <Box
       component="section"
+      aria-label="Shop by category"
       sx={{
         width: "100%",
         backgroundColor,
         overflow: "hidden",
-        py: {
-          xs: 2.8,
-          sm: 3.5,
-          md: 3,
-          lg: 3.5,
-        },
+        py: { xs: 2.8, sm: 3.5, md: 3, lg: 3.5 },
       }}
     >
       <Box
         sx={{
-          // Mobile: preserve the existing horizontal scrolling layout.
-          // Desktop: display all 10 categories in one row.
-          display: {
-            xs: "flex",
-            sm: "flex",
-            md: "grid",
-          },
+          "--gap": { xs: "22px", sm: "32px", md: "8px", lg: "12px" },
 
-          gridTemplateColumns: {
-            md: "repeat(10, minmax(0, 1fr))",
-          },
+          display: "flex",
+          justifyContent: { md: "center" },
+          alignItems: "flex-start",
+          gap: "var(--gap)",
 
-          alignItems: "start",
-
-          overflowX: {
-            xs: "auto",
-            sm: "auto",
-            md: "hidden",
-          },
-
+          // Phones / tablets: scroll sideways when the row is too wide.
+          overflowX: { xs: "auto", md: "hidden" },
           overflowY: "hidden",
 
-          px: {
-            xs: 2,
-            sm: 3,
-            md: 2,
-            lg: 3,
-          },
-
-          gap: {
-            xs: 2.8,
-            sm: 4,
-            md: 1,
-            lg: 1.5,
-          },
+          px: { xs: 2, sm: 3, md: 2, lg: 3 },
 
           scrollbarWidth: "none",
           msOverflowStyle: "none",
+          "&::-webkit-scrollbar": { display: "none" },
 
-          "&::-webkit-scrollbar": {
-            display: "none",
-          },
+          // Centres the row when it fits, scrolls normally when it doesn't.
+          "& > :first-of-type": { ml: { xs: "auto", md: 0 } },
+          "& > :last-of-type": { mr: { xs: "auto", md: 0 } },
         }}
       >
-        {activeCategories.map((category) => (
-          <Box
-            key={category.id}
-            component="a"
-            href={category.href}
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
+        {activeCategories.map((category) => {
+          const isInternal = category.href?.startsWith("/");
 
-              // Keep fixed widths on mobile; let the desktop grid
-              // determine each category's width.
-              flexShrink: {
-                xs: 0,
-                sm: 0,
-                md: 1,
-              },
-
-              width: {
-                xs: 82,
-                sm: 105,
-                md: "100%",
-              },
-
-              minWidth: 0,
-
-              textDecoration: "none",
-              color: "inherit",
-              cursor: "pointer",
-
-              WebkitTapHighlightColor: "transparent",
-
-              "&:hover": {
-                textDecoration: "none",
-              },
-            }}
-          >
-            {/* Category Image */}
+          return (
             <Box
+              key={category.id}
+              {...(isInternal
+                ? { component: Link, to: category.href }
+                : { component: "a", href: category.href })}
               sx={{
-                width: {
-                  xs: 72,
-                  sm: 88,
-                  md: "min(7.2vw, 92px)",
-                  lg: "min(7.2vw, 104px)",
-                },
-
-                maxWidth: "100%",
-                aspectRatio: "1 / 1",
-                height: "auto",
-
-                flexShrink: 0,
-
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
-                justifyContent: "center",
 
-                overflow: "hidden",
-                borderRadius: "50%",
-
-                border: `2px solid ${accentColor}`,
-                backgroundColor: "#FFFFFF",
-                padding: "2px",
-
-                boxShadow: "none",
-                transform: "none",
-                transition: "none",
-
-                "&:hover": {
-                  transform: "none",
-                  boxShadow: "none",
+                // Every item keeps the width it would have in a full row of 10.
+                flex: {
+                  xs: "0 0 82px",
+                  sm: "0 0 105px",
+                  md: "0 0 calc((100% - 9 * var(--gap)) / 10)",
                 },
+                width: { xs: 82, sm: 105 },
+                minWidth: 0,
+
+                textDecoration: "none",
+                color: "inherit",
+                cursor: "pointer",
+                WebkitTapHighlightColor: "transparent",
+                "&:hover": { textDecoration: "none" },
               }}
             >
-              {category.imageUrl ? (
-                <Box
-                  component="img"
-                  src={category.imageUrl}
-                  alt={category.label}
-                  loading="lazy"
-                  sx={{
-                    display: "block",
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    borderRadius: "50%",
-                    transform: "none",
-                    transition: "none",
-                  }}
-                />
-              ) : (
-                <DefaultIcon
-                  icon={category.icon}
-                  accentColor={accentColor}
-                />
-              )}
+              <Box
+                sx={{
+                  width: {
+                    xs: 72,
+                    sm: 88,
+                    md: "min(7.2vw, 92px)",
+                    lg: "min(7.2vw, 104px)",
+                  },
+                  maxWidth: "100%",
+                  aspectRatio: "1 / 1",
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  overflow: "hidden",
+                  borderRadius: "50%",
+                  border: `2px solid ${accentColor}`,
+                  backgroundColor: "#FFFFFF",
+                  padding: "2px",
+                }}
+              >
+                {category.imageUrl ? (
+                  <Box
+                    component="img"
+                    src={category.imageUrl}
+                    alt={category.label}
+                    loading="lazy"
+                    decoding="async"
+                    sx={{
+                      display: "block",
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      borderRadius: "50%",
+                    }}
+                  />
+                ) : (
+                  <DefaultIcon
+                    icon={category.icon}
+                    accentColor={accentColor}
+                  />
+                )}
+              </Box>
+
+              <Typography
+                component="span"
+                sx={{
+                  width: "100%",
+                  mt: { xs: 1, sm: 1.25, md: 1.2 },
+                  color: "#111111",
+                  fontSize: {
+                    xs: "0.76rem",
+                    sm: "0.92rem",
+                    md: "0.78rem",
+                    lg: "0.88rem",
+                  },
+                  fontWeight: 600,
+                  lineHeight: 1.15,
+                  textAlign: "center",
+                  letterSpacing: "-0.02em",
+                  overflowWrap: "anywhere",
+                  display: "-webkit-box",
+                  WebkitBoxOrient: "vertical",
+                  WebkitLineClamp: 2,
+                  overflow: "hidden",
+                }}
+              >
+                {category.label}
+              </Typography>
             </Box>
-
-            {/* Category Name */}
-            <Typography
-              component="span"
-              sx={{
-                width: "100%",
-                mt: {
-                  xs: 1,
-                  sm: 1.25,
-                  md: 1.2,
-                },
-
-                color: "#111111",
-
-                fontSize: {
-                  xs: "0.76rem",
-                  sm: "0.92rem",
-                  md: "0.78rem",
-                  lg: "0.88rem",
-                },
-
-                fontWeight: 600,
-                lineHeight: 1.15,
-                textAlign: "center",
-                letterSpacing: "-0.02em",
-                overflowWrap: "anywhere",
-
-                display: "-webkit-box",
-                WebkitBoxOrient: "vertical",
-                WebkitLineClamp: 2,
-                overflow: "hidden",
-              }}
-            >
-              {category.label}
-            </Typography>
-          </Box>
-        ))}
+          );
+        })}
       </Box>
     </Box>
   );

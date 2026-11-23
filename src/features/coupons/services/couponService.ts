@@ -72,8 +72,19 @@ export async function previewCoupon(input: {
 }
 
 export async function getAvailableCoupons(): Promise<CheckoutOffer[]> {
-  const r = await authFetch<{ coupons: CheckoutOffer[] }>("/coupons/available");
-  return r.coupons;
+  // Public: no sign-in needed, the list only holds coupons meant to be shown.
+  const response = await fetch(`${API_BASE_URL}/coupons/available`);
+
+  const result = (await response.json().catch(() => null)) as {
+    coupons?: CheckoutOffer[];
+    message?: string;
+  } | null;
+
+  if (!response.ok || !result?.coupons) {
+    throw new Error(result?.message ?? "Could not load coupons.");
+  }
+
+  return result.coupons;
 }
 
 export async function getAdminCoupons(): Promise<AdminCoupon[]> {

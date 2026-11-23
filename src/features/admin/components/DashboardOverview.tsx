@@ -11,89 +11,78 @@ import type { DashboardStats } from "../services/dashboardService";
 
 import StatCard from "./StatCard";
 
+const inr = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
+
 interface Props {
-    stats: DashboardStats;
+  /** undefined while loading: the cards keep their size and show placeholders. */
+  stats?: DashboardStats;
 }
 
-export default function DashboardOverview({
-    stats,
-}: Props) {
-    return (
-        <Grid
-            container
-            spacing={3}
-            sx={{
-                mb: 3,
-            }}
-        >
-            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-                <StatCard
-                    title="Products"
-                    value={stats.totalProducts}
-                    subtitle="Total Products"
-                    icon={<Inventory2Icon />}
-                />
-            </Grid>
+export default function DashboardOverview({ stats }: Props) {
+  return (
+    <Grid container spacing={3}>
+      <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <StatCard
+          title="Products"
+          value={stats?.totalProducts}
+          subtitle="Total products"
+          icon={<Inventory2Icon />}
+        />
+      </Grid>
 
-            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-                <StatCard
-                    title="Orders"
-                    value={stats.totalOrders}
-                    subtitle="Total Orders"
-                    icon={<ShoppingCartIcon />}
-                    color="success.main"
-                />
-            </Grid>
+      <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <StatCard
+          title="Orders"
+          value={stats?.totalOrders}
+          subtitle="Total orders"
+          icon={<ShoppingCartIcon />}
+        />
+      </Grid>
 
-            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-                <StatCard
-                    title="Customers"
-                    value={stats.totalCustomers}
-                    subtitle="Registered Users"
-                    icon={<PeopleIcon />}
-                    color="warning.main"
-                />
-            </Grid>
+      <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <StatCard
+          title="Customers"
+          value={stats?.totalCustomers}
+          subtitle="Registered users"
+          icon={<PeopleIcon />}
+        />
+      </Grid>
 
-            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-                <StatCard
-                    title="Revenue"
-                    value={`₹${stats.totalRevenue.toLocaleString()}`}
-                    subtitle="Total Revenue"
-                    icon={<CurrencyRupeeIcon />}
-                    color="secondary.main"
-                />
-            </Grid>
+      <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+        <StatCard
+          title="Revenue"
+          value={stats ? inr(stats.totalRevenue) : undefined}
+          subtitle="Total revenue"
+          icon={<CurrencyRupeeIcon />}
+        />
+      </Grid>
 
-            <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
-                <StatCard
-                    title="Revenue Today"
-                    value={`₹${stats.revenueToday.toLocaleString()}`}
-                    subtitle="Today's Sales"
-                    icon={<TodayIcon />}
-                    color="info.main"
-                />
-            </Grid>
+      <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
+        <StatCard
+          title="Revenue today"
+          value={stats ? inr(stats.revenueToday) : undefined}
+          subtitle="Today's sales"
+          icon={<TodayIcon />}
+        />
+      </Grid>
 
-            <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
-                <StatCard
-                    title="Revenue This Month"
-                    value={`₹${stats.revenueThisMonth.toLocaleString()}`}
-                    subtitle="Current Month"
-                    icon={<CalendarMonthIcon />}
-                    color="primary.main"
-                />
-            </Grid>
+      <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
+        <StatCard
+          title="Revenue this month"
+          value={stats ? inr(stats.revenueThisMonth) : undefined}
+          subtitle="Current month"
+          icon={<CalendarMonthIcon />}
+        />
+      </Grid>
 
-            <Grid size={{ xs: 12, sm: 12, lg: 4 }}>
-                <StatCard
-                    title="Average Order Value"
-                    value={`₹${stats.averageOrderValue.toLocaleString()}`}
-                    subtitle="Per Order"
-                    icon={<ReceiptLongIcon />}
-                    color="success.dark"
-                />
-            </Grid>
-        </Grid>
-    );
+      <Grid size={{ xs: 12, sm: 12, lg: 4 }}>
+        <StatCard
+          title="Average order value"
+          value={stats ? inr(stats.averageOrderValue) : undefined}
+          subtitle="Per order"
+          icon={<ReceiptLongIcon />}
+        />
+      </Grid>
+    </Grid>
+  );
 }

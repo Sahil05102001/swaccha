@@ -1,21 +1,12 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   getAdBanner,
   saveAdBanner,
+  type SaveAdBannerInput,
 } from "../services/adBannerService";
 
-import type {
-  AdBannerFormData,
-} from "../types/adBanner";
-
-export const AD_BANNER_QUERY_KEY = [
-  "ad-banner",
-];
+export const AD_BANNER_QUERY_KEY = ["ad-banner"];
 
 export function useAdBanner() {
   return useQuery({
@@ -25,19 +16,13 @@ export function useAdBanner() {
 }
 
 export function useSaveAdBanner() {
-  const queryClient =
-    useQueryClient();
+  const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (
-      data: AdBannerFormData
-    ) => saveAdBanner(data),
+    mutationFn: (input: SaveAdBannerInput) => saveAdBanner(input),
 
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey:
-          AD_BANNER_QUERY_KEY,
-      });
-    },
+    // Returned, so the save only finishes once fresh data is loaded.
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: AD_BANNER_QUERY_KEY }),
   });
 }

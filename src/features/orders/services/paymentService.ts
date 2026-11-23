@@ -1,5 +1,5 @@
-
 import { auth } from "@/firebase/auth";
+import { waitForBackend } from "@/lib/backendWarmup";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
@@ -35,7 +35,6 @@ export interface CreatePaymentOrderResponse {
   success: boolean;
   orderId: string;
   firestoreOrderId: string;
-  orderNumber: string;
   amount: number;
   currency: string;
   keyId: string;
@@ -91,6 +90,8 @@ async function readApiResponse<T>(response: Response): Promise<T> {
 export const createPaymentOrder = async (
   data: CreatePaymentOrderRequest,
 ): Promise<CreatePaymentOrderResponse> => {
+  await waitForBackend();
+
   const response = await fetch(`${API_BASE_URL}/payments/create-order`, {
     method: "POST",
     headers: await getAuthHeaders(),
@@ -113,20 +114,55 @@ export const createPaymentOrder = async (
   return result;
 };
 
+const RETRYABLE_STATUS = new Set([502, 503, 504]);
+
+const VERIFY_PENDING_MESSAGE =
+  "We are confirming your payment. If money was deducted, your order will appear in My Orders shortly. Please do not pay again.";
+
 export const verifyPayment = async (
   data: VerifyPaymentRequest,
 ): Promise<VerifyPaymentResponse> => {
-  const response = await fetch(`${API_BASE_URL}/payments/verify`, {
-    method: "POST",
-    headers: await getAuthHeaders(),
-    body: JSON.stringify(data),
-  });
+  await waitForBackend();
 
-  const result = await readApiResponse<VerifyPaymentResponse>(response);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (attempt > 0) {
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, attempt * 3000),
+      );
+    }
 
-  if (result.success !== true) {
-    throw new Error(result.message || "Payment verification failed.");
+    let response: Response;
+
+    try {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 45_000);
+
+      try {
+        response = await fetch(`${API_BASE_URL}/payments/verify`, {
+          method: "POST",
+          headers: await getAuthHeaders(),
+          body: JSON.stringify(data),
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timer);
+      }
+    } catch {
+      // Network error or timeout: the server may be waking up. Try again.
+      continue;
+    }
+
+    if (RETRYABLE_STATUS.has(response.status)) continue;
+
+    const result = await readApiResponse<VerifyPaymentResponse>(response);
+
+    if (result.success !== true) {
+      throw new Error(result.message || "Payment verification failed.");
+    }
+
+    return result;
   }
 
-  return result;
+  // The webhook will still create the order. Do not tell the customer it failed.
+  throw new Error(VERIFY_PENDING_MESSAGE);
 };

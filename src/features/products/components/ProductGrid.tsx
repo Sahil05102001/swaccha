@@ -1,3 +1,4 @@
+
 import {
   Box,
   CircularProgress,
@@ -171,6 +172,7 @@ export default function ProductGrid({
               isOfferZoneProduct={Boolean(
                 offerZoneProduct
               )}
+              globalBadgeText={globalStickerSettings?.globalBadge?.text}
             />
           </Grid>
         );

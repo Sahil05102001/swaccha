@@ -403,7 +403,7 @@ export default function ProductReviews({
             flex: 1,
           }}
         >
-          Customer reviews
+          Customer Reviews
         </Typography>
 
         {ratingCount > 0 ? (

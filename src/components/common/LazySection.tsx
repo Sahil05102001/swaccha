@@ -42,7 +42,7 @@ export default function LazySection({
   }, [visible]);
 
   return (
-    <Box ref={ref} sx={{ minHeight: visible ? undefined : minHeight }}>
+    <Box ref={ref} data-lazy sx={{ minHeight }}>
       {visible && (
         <Suspense
           fallback={

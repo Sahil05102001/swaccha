@@ -1,7 +1,6 @@
 import {
   Button,
   Chip,
-  Paper,
   Table,
   TableBody,
   TableCell,
@@ -10,201 +9,114 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import { useState } from "react";
 
+import OrderStatusChip from "@/features/orders/components/OrderStatusChip";
 import type { Order } from "@/features/orders/types/order";
-
-import OrderDetailsDialog from "./OrderDetailsDialog";
 
 interface OrdersTableProps {
   orders: Order[];
+  onView: (orderId: string) => void;
 }
 
-export default function OrdersTable({
-  orders,
-}: OrdersTableProps) {
-  const [selectedOrderId, setSelectedOrderId] =
-    useState<string | null>(null);
+function paymentColor(status: Order["paymentStatus"]) {
+  if (status === "paid") return "success";
+  if (status === "failed") return "error";
+  if (status === "refunded" || status === "partially_refunded") return "info";
+  return "warning";
+}
 
-  // Always the latest copy from the list, so the dialog updates after a save.
-  const selectedOrder =
-    orders.find((order) => order.id === selectedOrderId) ?? null;
-
-  const handleCloseDialog = () => {
-    setSelectedOrderId(null);
-  };
-
+export default function OrdersTable({ orders, onView }: OrdersTableProps) {
   if (orders.length === 0) {
     return (
-      <Typography
-        variant="body1"
-        color="text.secondary"
-        sx={{
-          py: 4,
-          textAlign: "center",
-        }}
-      >
-        No orders found.
+      <Typography color="text.secondary" sx={{ py: 4, textAlign: "center" }}>
+        No orders on this page. Use Next to continue.
       </Typography>
     );
   }
 
   return (
-    <>
-      <TableContainer
-        component={Paper}
-        elevation={0}
-      >
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>
-                Order No.
+    <TableContainer>
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>Order No.</TableCell>
+            <TableCell>Customer</TableCell>
+            <TableCell align="center">Items</TableCell>
+            <TableCell align="right">Total</TableCell>
+            <TableCell>Payment</TableCell>
+            <TableCell>Status</TableCell>
+            <TableCell>Date</TableCell>
+            <TableCell align="center">Actions</TableCell>
+          </TableRow>
+        </TableHead>
+
+        <TableBody>
+          {orders.map((order) => (
+            <TableRow key={order.id}>
+              <TableCell sx={{ whiteSpace: "nowrap" }}>
+                {order.orderNumber}
               </TableCell>
 
               <TableCell>
-                Customer
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {order.customerName}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ wordBreak: "break-all" }}
+                >
+                  {order.customerEmail}
+                </Typography>
               </TableCell>
 
-              <TableCell align="center">
-                Items
+              <TableCell align="center">{order.items.length}</TableCell>
+
+              <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                ₹{order.totalAmount.toLocaleString("en-IN")}
               </TableCell>
 
-              <TableCell align="right">
-                Total
-              </TableCell>
-
-              <TableCell>
-                Payment
-              </TableCell>
-
-              <TableCell>
-                Status
-              </TableCell>
-
-              <TableCell>
-                Date
-              </TableCell>
-
-              <TableCell align="center">
-                Actions
-              </TableCell>
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {orders.map((order) => (
-              <TableRow
-                key={order.id}
-                hover
-              >
-                <TableCell>
-                  {order.orderNumber}
-                </TableCell>
-
-                <TableCell>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontWeight: 600,
-                    }}
-                  >
-                    {order.customerName}
-                  </Typography>
-
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                  >
-                    {order.customerEmail}
-                  </Typography>
-                </TableCell>
-
-                <TableCell align="center">
-                  {order.items.length}
-                </TableCell>
-
-                <TableCell align="right">
-                  ₹
-                  {order.totalAmount.toLocaleString(
-                    "en-IN"
-                  )}
-                </TableCell>
-
-                <TableCell>
+              <TableCell sx={{ whiteSpace: "nowrap" }}>
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  label={order.paymentStatus.replace("_", " ")}
+                  color={paymentColor(order.paymentStatus)}
+                />
+                {order.refundRequired && (
                   <Chip
-                    size="small"
-                    label={
-                      order.paymentStatus
-                    }
-                    color={
-                      order.paymentStatus ===
-                        "paid"
-                        ? "success"
-                        : order.paymentStatus ===
-                          "failed"
-                          ? "error"
-                          : order.paymentStatus ===
-                            "refunded" ||
-                            order.paymentStatus ===
-                            "partially_refunded"
-                            ? "info"
-                            : "warning"
-                    }
-                  />
-
-
-                  {order.refundRequired && (
-                    <Chip
-                      size="small"
-                      color="error"
-                      label="Refund needed"
-                      sx={{ ml: 0.5 }}
-                    />
-                  )}
-                </TableCell>
-
-                <TableCell>
-                  <Chip
-                    size="small"
-                    label={
-                      order.orderStatus
-                    }
-                  />
-                </TableCell>
-
-                <TableCell>
-                  {order.createdAt
-                    .toDate()
-                    .toLocaleDateString(
-                      "en-IN"
-                    )}
-                </TableCell>
-
-                <TableCell align="center">
-                  <Button
                     size="small"
                     variant="outlined"
-                    onClick={() => setSelectedOrderId(order.id)}
-                  >
-                    View
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                    color="error"
+                    label="Refund needed"
+                    sx={{ ml: 0.5 }}
+                  />
+                )}
+              </TableCell>
 
-      <OrderDetailsDialog
-        open={
-          selectedOrder !== null
-        }
-        order={selectedOrder}
-        onClose={
-          handleCloseDialog
-        }
-      />
-    </>
+              <TableCell>
+                <OrderStatusChip status={order.orderStatus} />
+              </TableCell>
+
+              <TableCell sx={{ whiteSpace: "nowrap" }}>
+                {order.createdAt
+                  ? order.createdAt.toDate().toLocaleDateString("en-IN")
+                  : "-"}
+              </TableCell>
+
+              <TableCell align="center">
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => onView(order.id)}
+                >
+                  View
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 }

@@ -1,4 +1,5 @@
 import {
+  Backdrop,
   Box,
   CircularProgress,
   Container,
@@ -7,7 +8,8 @@ import {
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useShippingSettings } from "@/features/shipping/hooks/useShipping";
 import {
@@ -18,14 +20,17 @@ import {
 import AddressSection from "../components/AddressSection";
 import PaymentSection from "../components/PaymentSection";
 import CheckoutSummary from "../components/CheckoutSummary";
+import CheckoutItems from "../components/CheckoutItems";
 import PlaceOrderButton from "../components/PlaceOrderButton";
 
-import { useCart, useClearCart } from "@/features/cart/hooks/useCart";
+import { useClearCart } from "@/features/cart/hooks/useCart";
+import { useLiveCart } from "@/features/cart/hooks/useLiveCart";
 import { useAddresses } from "@/features/profile/hooks/useAddresses";
 import { useProfile } from "@/features/profile/hooks/useProfile";
 import useRazorpayCheckout from "../hooks/useRazorpayCheckout";
 import { useCreateCodOrder } from "../hooks/useCreateCodOrder";
 import SecurePaymentPartner from "../components/SecurePaymentPartner";
+import { waitForOrder } from "../utils/waitForOrder";
 
 import type { PaymentMethod } from "../types/order";
 
@@ -35,15 +40,21 @@ import { useSnackbar } from "@/contexts/SnackbarContext";
 import AppButton from "@/components/ui/AppButton";
 
 import CouponBox from "../components/CouponBox";
-import { previewCoupon, type AppliedCoupon } from "@/features/coupons/services/couponService";
+import {
+  previewCoupon,
+  type AppliedCoupon,
+} from "@/features/coupons/services/couponService";
+
+import { warmBackend } from "@/lib/backendWarmup";
 
 const COLORS = {
   white: "#FFFFFF",
-  page: "#FFFFFF",
+  page: "#F5F7FA",
   border: "#E0E0E0",
   text: "#212121",
   muted: "#757575",
   blue: "#00D9FF",
+  teal: "#007F89",
 };
 
 // Indian mobile number: 10 digits starting with 6-9.
@@ -67,7 +78,7 @@ function PageShell({
         minHeight: "100vh",
         width: "100%",
         overflowX: "hidden",
-        py: { xs: 3, sm: 4, md: 5 },
+        py: { xs: 2.5, sm: 3.5, md: 4 },
       }}
     >
       <Container
@@ -90,9 +101,10 @@ function PageShell({
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { showSnackbar } = useSnackbar();
 
-  const { data: cartItems = [], isLoading: cartLoading } = useCart();
+  const { data: cartItems = [], isLoading: cartLoading } = useLiveCart();
 
   const { data: addresses = [] } = useAddresses();
   const { data: profile } = useProfile();
@@ -107,11 +119,18 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
     null,
   );
-
   const [paymentMethod, setPaymentMethod] =
     useState<PaymentMethod>("razorpay");
-
   const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
+
+  // True while the order is being created / paid.
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  // True once the order exists and we are waiting for it to show in My Orders.
+  const [confirming, setConfirming] = useState(false);
+
+  useEffect(() => {
+    warmBackend();
+  }, []);
 
   const subtotal = cartItems.reduce(
     (sum, item) => sum + item.product.price * item.quantity,
@@ -133,8 +152,6 @@ export default function CheckoutPage() {
   const shipping = shippingQuote.fee;
   const discount = coupon?.discount ?? 0;
   const total = subtotal + shipping - discount;
-
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   // Pre-select the default address (or the newest one), and keep the
   // selection valid if addresses are added or deleted.
@@ -173,7 +190,8 @@ export default function CheckoutPage() {
         if (cancelled) return;
         setCoupon(null);
         showSnackbar(
-          `Coupon ${coupon.code} was removed: ${error instanceof Error ? error.message : "no longer valid."
+          `Coupon ${coupon.code} was removed: ${
+            error instanceof Error ? error.message : "no longer valid."
           }`,
           "warning",
         );
@@ -201,7 +219,7 @@ export default function CheckoutPage() {
     );
   }
 
-  if (cartItems.length === 0 && !isPlacingOrder) {
+  if (cartItems.length === 0 && !isPlacingOrder && !confirming) {
     return (
       <PageShell>
         <Stack
@@ -239,10 +257,7 @@ export default function CheckoutPage() {
               bgcolor: COLORS.blue,
               border: `1px solid ${COLORS.blue}`,
               boxShadow: "none",
-              "&:hover": {
-                bgcolor: COLORS.blue,
-                boxShadow: "none",
-              },
+              "&:hover": { bgcolor: COLORS.blue, boxShadow: "none" },
             }}
           >
             Continue shopping
@@ -262,8 +277,21 @@ export default function CheckoutPage() {
     }
   };
 
+  // The order exists. Clear the cart and wait until My Orders can show it,
+  // THEN open the success page.
+  const finishOrder = async (orderId?: string, orderNumber?: string) => {
+    setConfirming(true);
+
+    await Promise.all([clearCartSafely(), waitForOrder(queryClient, orderId)]);
+
+    navigate("/orders/success", {
+      replace: true,
+      state: { orderId: orderNumber ?? orderId },
+    });
+  };
+
   const handleCheckout = async () => {
-    if (isPlacingOrder) return;
+    if (isPlacingOrder || confirming) return;
 
     if (cartItems.length === 0) {
       showSnackbar("Your cart is empty.", "warning");
@@ -271,13 +299,13 @@ export default function CheckoutPage() {
     }
 
     if (!selectedAddress) {
-      showSnackbar("Please select a delivery address.", "warning");
+      showSnackbar("Please add or select a delivery address.", "warning");
       return;
     }
 
     if (!isValidPhone(selectedAddress.phoneNumber)) {
       showSnackbar(
-        "This address has no valid phone number. Please edit it in your profile.",
+        "This address has no valid phone number. Tap Edit on the address to fix it.",
         "warning",
       );
       return;
@@ -288,7 +316,7 @@ export default function CheckoutPage() {
       typeof selectedAddress.longitude !== "number"
     ) {
       showSnackbar(
-        "This address has no map pin. Please edit it in your profile and pin the delivery location.",
+        "This address has no map pin. Tap Edit on the address and pin the delivery location.",
         "warning",
       );
       return;
@@ -324,10 +352,13 @@ export default function CheckoutPage() {
 
     try {
       if (paymentMethod === "cod") {
-        await createCodOrderMutation.mutateAsync({ items, shippingAddress, couponCode: coupon?.code, });
+        const created = await createCodOrderMutation.mutateAsync({
+          items,
+          shippingAddress,
+          couponCode: coupon?.code,
+        });
 
-        await clearCartSafely();
-        navigate("/orders/success");
+        await finishOrder(created.orderId, created.orderNumber);
         return;
       }
 
@@ -351,18 +382,18 @@ export default function CheckoutPage() {
           if (result.refundRequired) {
             showSnackbar(
               result.message ||
-              "Payment was received, but this order needs refund resolution. Please contact support before placing another order.",
+                "Payment was received, but this order needs refund resolution. Please contact support before placing another order.",
               "warning",
             );
 
             // Keep the cart so the customer can review the items.
             // Do not show the normal order-success page.
+            await queryClient.invalidateQueries({ queryKey: ["orders"] });
             navigate("/orders");
             return;
           }
 
-          await clearCartSafely();
-          navigate("/orders/success");
+          await finishOrder(result.orderId, result.orderNumber);
         },
       });
     } catch (error) {
@@ -373,39 +404,20 @@ export default function CheckoutPage() {
         "error",
       );
 
+      setConfirming(false);
       setIsPlacingOrder(false);
     }
   };
 
   return (
     <PageShell>
-      {/* Checkout header */}
-      <Box
-        sx={{
-          mb: { xs: 3, md: 4 },
-          pb: { xs: 2, md: 3 },
-          borderBottom: `1px solid ${COLORS.border}`,
-          position: "relative",
-          "&::after": {
-            content: '""',
-            position: "absolute",
-            left: 0,
-            bottom: -1,
-            width: { xs: 48, md: 72 },
-            height: "2px",
-            bgcolor: COLORS.blue,
-          },
-        }}
-      >
+      {/* Header */}
+      <Box sx={{ mb: { xs: 2, md: 3 } }}>
         <Typography
           component="h1"
           sx={{
             fontWeight: 800,
-            fontSize: {
-              xs: "1.75rem",
-              sm: "2rem",
-              md: "2.5rem",
-            },
+            fontSize: { xs: "1.5rem", sm: "1.85rem", md: "2.1rem" },
             lineHeight: 1.15,
             letterSpacing: "-0.02em",
             color: COLORS.text,
@@ -414,32 +426,45 @@ export default function CheckoutPage() {
           Checkout
         </Typography>
 
-        <Typography
-          sx={{
-            mt: 0.75,
-            color: COLORS.muted,
-            fontSize: {
-              xs: "0.875rem",
-              md: "1rem",
-            },
-          }}
+        <Stack
+          direction="row"
+          sx={{ mt: 0.5, alignItems: "center", flexWrap: "wrap", gap: 1.5 }}
         >
-          Review your order and complete your purchase.
-        </Typography>
+          <Typography
+            sx={{ color: COLORS.muted, fontSize: { xs: "0.85rem", md: "0.95rem" } }}
+          >
+            Review your order and complete your purchase.
+          </Typography>
+          <Typography
+            component={RouterLink}
+            to="/cart"
+            sx={{
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              color: COLORS.teal,
+              textDecoration: "none",
+              "&:hover": { textDecoration: "underline" },
+            }}
+          >
+            Back to cart
+          </Typography>
+        </Stack>
       </Box>
 
       <Grid
         container
-        spacing={{ xs: 2.5, md: 3 }}
+        spacing={{ xs: 2, md: 3 }}
         sx={{ alignItems: "flex-start" }}
       >
-        {/* Delivery address and payment method */}
+        {/* Address, items and payment method */}
         <Grid size={{ xs: 12, md: 8 }} sx={{ minWidth: 0 }}>
           <Stack spacing={{ xs: 2, md: 2.5 }}>
             <AddressSection
               selectedAddressId={selectedAddressId}
               onSelectAddress={setSelectedAddressId}
             />
+
+            <CheckoutItems items={cartItems} />
 
             <PaymentSection
               paymentMethod={paymentMethod}
@@ -457,7 +482,6 @@ export default function CheckoutPage() {
               top: { md: 24 },
             }}
           >
-
             <CouponBox
               subtotal={subtotal}
               paymentMethod={paymentMethod}
@@ -470,6 +494,8 @@ export default function CheckoutPage() {
             <CheckoutSummary
               subtotal={subtotal}
               shipping={shipping}
+              discount={discount}
+              couponCode={coupon?.code}
               total={total}
               shippingNote={
                 shipping > 0 && selectedAddress
@@ -482,14 +508,14 @@ export default function CheckoutPage() {
               onClick={handleCheckout}
               loading={
                 isPlacingOrder ||
-                createCodOrderMutation.isPending ||
-                clearCartMutation.isPending
+                confirming ||
+                createCodOrderMutation.isPending
               }
               showPaymentIcons={paymentMethod !== "cod"}
               disabled={!selectedAddress || shippingLoading}
               disabledReason={
                 addresses.length === 0
-                  ? "Add a delivery address in your profile to continue."
+                  ? "Add a delivery address to continue."
                   : "Select a delivery address to continue."
               }
             />
@@ -497,6 +523,26 @@ export default function CheckoutPage() {
           </Stack>
         </Grid>
       </Grid>
+
+      {/* Shown only after the order is placed, while My Orders catches up. */}
+      <Backdrop
+        open={confirming}
+        sx={{
+          zIndex: (theme) => theme.zIndex.modal + 1,
+          color: COLORS.text,
+          bgcolor: "rgba(255,255,255,0.94)",
+          flexDirection: "column",
+          gap: 2,
+        }}
+      >
+        <CircularProgress sx={{ color: COLORS.blue }} />
+        <Typography sx={{ fontWeight: 700, fontSize: "1.05rem" }}>
+          Confirming your order…
+        </Typography>
+        <Typography sx={{ color: COLORS.muted, fontSize: "0.875rem" }}>
+          Please don't close or refresh this page.
+        </Typography>
+      </Backdrop>
     </PageShell>
   );
 }

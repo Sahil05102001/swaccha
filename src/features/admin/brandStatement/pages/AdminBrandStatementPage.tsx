@@ -1,182 +1,212 @@
 import { useState } from "react";
 
 import {
-    Box,
-    Card,
-    CardContent,
-    CircularProgress,
-    Dialog,
-    DialogContent,
-    DialogTitle,
-    IconButton,
-    Typography,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Skeleton,
+  Stack,
+  Typography,
 } from "@mui/material";
-
 import CloseIcon from "@mui/icons-material/Close";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import RefreshIcon from "@mui/icons-material/Refresh";
 
 import PageContainer from "@/components/common/PageContainer";
 import PageHeader from "@/components/common/PageHeader";
-
-import {
-    useBrandStatement,
-    useSaveBrandStatement,
-} from "../hooks/useBrandStatement";
+import SectionCard from "@/components/common/SectionCard";
+import { useSnackbar } from "@/contexts/SnackbarContext";
+import { cloudinaryThumb } from "@/features/admin/products/utils/imageUrl";
+import { scrollToTop } from "@/features/admin/utils/scrollToTop";
 
 import BrandStatementForm from "../components/BrandStatementForm";
-
-import type { BrandStatementFormData } from "../types/brandStatement";
+import {
+  useBrandStatement,
+  useSaveBrandStatement,
+} from "../hooks/useBrandStatement";
+import type { SaveBrandStatementInput } from "../services/brandStatementService";
 
 export default function AdminBrandStatementPage() {
-    const { data: statement, isLoading } =
-        useBrandStatement();
+  const { showSnackbar } = useSnackbar();
 
-    const saveMutation = useSaveBrandStatement();
+  const { data: statement, isLoading, refetch, isRefetching } = useBrandStatement();
+  const saveMutation = useSaveBrandStatement();
 
-    const [formOpen, setFormOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
 
-    const handleSubmit = async (
-        data: BrandStatementFormData
-    ) => {
-        try {
-            await saveMutation.mutateAsync(data);
-            setFormOpen(false);
-        } catch (error) {
-            console.error(
-                "Failed to save brand statement:",
-                error
-            );
-        }
-    };
+  const handleClose = () => {
+    if (!saveMutation.isPending) setFormOpen(false);
+  };
 
-    return (
-        <PageContainer>
-            <PageHeader
-                title="Brand Statement"
-                subtitle="Manage the brand statement section displayed above the footer."
-            />
+  const handleSubmit = async (input: SaveBrandStatementInput) => {
+    try {
+      const result = await saveMutation.mutateAsync(input);
 
-            <Box sx={{ mt: 3 }}>
-                {isLoading ? (
-                    <Box
-                        sx={{
-                            display: "flex",
-                            justifyContent: "center",
-                            py: 6,
-                        }}
-                    >
-                        <CircularProgress />
-                    </Box>
-                ) : (
-                    <Card>
-                        <CardContent>
-                            {statement ? (
-                                <>
-                                    <Typography
-                                        variant="h5"
-                                        sx={{
-                                            fontWeight: 800,
-                                            mb: 1,
-                                        }}
-                                    >
-                                        {statement.title}
-                                    </Typography>
+      showSnackbar(
+        result.cleanupFailed
+          ? "Brand statement saved, but an old image could not be removed from Cloudinary."
+          : "Brand statement saved.",
+        result.cleanupFailed ? "error" : "success",
+      );
 
-                                    <Typography
-                                        color="text.secondary"
-                                        sx={{ mb: 1 }}
-                                    >
-                                        {statement.description}
-                                    </Typography>
+      setFormOpen(false);
+      scrollToTop();
+    } catch (error) {
+      showSnackbar(
+        error instanceof Error ? error.message : "Failed to save the brand statement.",
+        "error",
+      );
+    }
+  };
 
-                                    <Typography
-                                        variant="body2"
-                                        sx={{ mb: 2 }}
-                                    >
-                                        {statement.tagline}
-                                    </Typography>
+  const desktopUrl = statement?.desktopImageUrl || statement?.imageUrl || "";
+  const mobileUrl = statement?.mobileImageUrl || "";
 
-                                    <Typography
-                                        variant="body2"
-                                        color="text.secondary"
-                                    >
-                                        Status:{" "}
-                                        {statement.isActive
-                                            ? "Active"
-                                            : "Inactive"}
-                                    </Typography>
-                                </>
-                            ) : (
-                                <Typography color="text.secondary">
-                                    No brand statement configured yet.
-                                </Typography>
-                            )}
-
-                            <Box sx={{ mt: 3 }}>
-                                <Box
-                                    component="button"
-                                    onClick={() =>
-                                        setFormOpen(true)
-                                    }
-                                    sx={{
-                                        border: 0,
-                                        borderRadius: 1.5,
-                                        px: 3,
-                                        py: 1.25,
-                                        cursor: "pointer",
-                                        fontWeight: 700,
-                                        fontSize: "0.95rem",
-                                    }}
-                                >
-                                    {statement
-                                        ? "Edit Brand Statement"
-                                        : "Add Brand Statement"}
-                                </Box>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                )}
-            </Box>
-
-            <Dialog
-                open={formOpen}
-                onClose={() => {
-                    if (!saveMutation.isPending) {
-                        setFormOpen(false);
-                    }
-                }}
-                fullWidth
-                maxWidth="sm"
+  return (
+    <PageContainer>
+      <PageHeader
+        title="Brand Statement"
+        subtitle="The brand statement section shown above the footer."
+        action={
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={() => void refetch()}
+              disabled={isRefetching}
             >
-                <DialogTitle
-                    sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                    }}
-                >
-                    Brand Statement
+              {isRefetching ? "Refreshing..." : "Refresh"}
+            </Button>
 
-                    <IconButton
-                        onClick={() => setFormOpen(false)}
-                        disabled={saveMutation.isPending}
-                    >
-                        <CloseIcon />
-                    </IconButton>
-                </DialogTitle>
+            <Button
+              variant="contained"
+              startIcon={<EditOutlinedIcon />}
+              onClick={() => setFormOpen(true)}
+              disabled={isLoading}
+            >
+              {statement ? "Edit" : "Add"}
+            </Button>
+          </Stack>
+        }
+      />
 
-                <DialogContent>
-                    <Box sx={{ pt: 1 }}>
-                        <BrandStatementForm
-                            statement={statement}
-                            onSubmit={handleSubmit}
-                            onCancel={() =>
-                                setFormOpen(false)
-                            }
-                            loading={saveMutation.isPending}
-                        />
+      {isLoading ? (
+        <Skeleton variant="rounded" height={240} />
+      ) : (
+        <SectionCard title="Current statement">
+          {statement ? (
+            <Stack spacing={2}>
+              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 1 }}>
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  label={statement.isActive ? "Active" : "Inactive"}
+                  color={statement.isActive ? "success" : "default"}
+                />
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  label={desktopUrl ? "Banner image set" : "Text only"}
+                />
+              </Stack>
+
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  {statement.title}
+                </Typography>
+                <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                  {statement.description}
+                </Typography>
+                {statement.tagline && (
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    {statement.tagline}
+                  </Typography>
+                )}
+              </Box>
+
+              {(desktopUrl || mobileUrl) && (
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                  {desktopUrl && (
+                    <Box sx={{ flex: 1, maxWidth: 420 }}>
+                      <Typography variant="caption" color="text.secondary">
+                        Desktop
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={cloudinaryThumb(desktopUrl, 840)}
+                        alt="Desktop banner"
+                        loading="lazy"
+                        sx={{
+                          display: "block",
+                          width: "100%",
+                          height: "auto",
+                          borderRadius: 1.5,
+                          border: "1px solid",
+                          borderColor: "divider",
+                        }}
+                      />
                     </Box>
-                </DialogContent>
-            </Dialog>
-        </PageContainer>
-    );
+                  )}
+
+                  {mobileUrl && (
+                    <Box sx={{ width: 140 }}>
+                      <Typography variant="caption" color="text.secondary">
+                        Mobile
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={cloudinaryThumb(mobileUrl, 280)}
+                        alt="Mobile banner"
+                        loading="lazy"
+                        sx={{
+                          display: "block",
+                          width: "100%",
+                          height: "auto",
+                          borderRadius: 1.5,
+                          border: "1px solid",
+                          borderColor: "divider",
+                        }}
+                      />
+                    </Box>
+                  )}
+                </Stack>
+              )}
+            </Stack>
+          ) : (
+            <Typography color="text.secondary">
+              No brand statement configured yet.
+            </Typography>
+          )}
+        </SectionCard>
+      )}
+
+      <Dialog open={formOpen} onClose={handleClose} fullWidth maxWidth="md">
+        <DialogTitle sx={{ fontWeight: 700, pr: 6 }}>
+          {statement ? "Edit brand statement" : "Add brand statement"}
+          <IconButton
+            onClick={handleClose}
+            disabled={saveMutation.isPending}
+            sx={{ position: "absolute", right: 12, top: 12 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent sx={{ pt: 2 }}>
+          <Box sx={{ pt: 1 }}>
+            <BrandStatementForm
+              statement={statement}
+              onSubmit={handleSubmit}
+              onCancel={handleClose}
+              loading={saveMutation.isPending}
+            />
+          </Box>
+        </DialogContent>
+      </Dialog>
+    </PageContainer>
+  );
 }

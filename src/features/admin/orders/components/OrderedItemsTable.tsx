@@ -1,100 +1,73 @@
 import {
-  Paper,
+  Box,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Typography,
-  Stack,
 } from "@mui/material";
 
+import { cloudinaryThumb } from "@/features/admin/products/utils/imageUrl";
 import type { Order } from "@/features/orders/types/order";
 
-interface OrderedItemsTableProps {
-  order: Order;
-}
+import OrderSection from "./OrderSection";
 
-export default function OrderedItemsTable({
-  order,
-}: OrderedItemsTableProps) {
+export default function OrderedItemsTable({ order }: { order: Order }) {
   return (
-    <Stack spacing={2}>
-      <Typography
-        variant="h6"
-        sx={{
-          fontWeight: 600,
-        }}
-      >
-        Ordered Items
-      </Typography>
-
+    <OrderSection title="Items">
       <TableContainer
-        component={Paper}
-        elevation={0}
-        variant="outlined"
+        sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}
       >
         <Table size="small">
           <TableHead>
             <TableRow>
               <TableCell>Image</TableCell>
               <TableCell>Product</TableCell>
-              <TableCell align="right">
-                Price
-              </TableCell>
-              <TableCell align="center">
-                Qty
-              </TableCell>
-              <TableCell align="right">
-                Total
-              </TableCell>
+              <TableCell align="right">Price</TableCell>
+              <TableCell align="center">Qty</TableCell>
+              <TableCell align="right">Total</TableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
-            {order.items.map((item) => (
-              <TableRow key={item.productId}>
+            {order.items.map((item, index) => (
+              <TableRow key={`${item.productId}-${index}`}>
                 <TableCell>
-                  <img
-                    src={item.image}
+                  <Box
+                    component="img"
+                    src={item.image ? cloudinaryThumb(item.image, 96) : undefined}
                     alt={item.name}
-                    width={56}
-                    height={56}
-                    style={{
+                    loading="lazy"
+                    sx={{
+                      display: "block",
+                      width: 48,
+                      height: 48,
                       objectFit: "cover",
-                      borderRadius: 8,
+                      borderRadius: 1,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      bgcolor: "#fff",
                     }}
                   />
                 </TableCell>
 
-                <TableCell>
-                  {item.name}
+                <TableCell sx={{ minWidth: 160 }}>{item.name}</TableCell>
+
+                <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                  ₹{item.price.toLocaleString("en-IN")}
                 </TableCell>
 
-                <TableCell align="right">
-                  ₹
-                  {item.price.toLocaleString(
-                    "en-IN"
-                  )}
-                </TableCell>
+                <TableCell align="center">{item.quantity}</TableCell>
 
-                <TableCell align="center">
-                  {item.quantity}
-                </TableCell>
-
-                <TableCell align="right">
-                  ₹
-                  {(
-                    item.price *
-                    item.quantity
-                  ).toLocaleString("en-IN")}
+                <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                  ₹{(item.price * item.quantity).toLocaleString("en-IN")}
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
-    </Stack>
+    </OrderSection>
   );
 }

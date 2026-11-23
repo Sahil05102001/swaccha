@@ -1,53 +1,58 @@
-
+import { Suspense } from "react";
 import {
+  Badge,
   Box,
-  BottomNavigation,
-  BottomNavigationAction,
-  Paper,
+  ButtonBase,
+  LinearProgress,
+  Typography,
 } from "@mui/material";
-
 import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
-import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
-import ContactSupportOutlinedIcon from "@mui/icons-material/ContactSupportOutlined";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
+import FavoriteBorderOutlinedIcon from "@mui/icons-material/FavoriteBorderOutlined";
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
-
 import {
   Outlet,
   useLocation,
   useNavigate,
 } from "react-router-dom";
-
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import PromoMarquee from "@/components/ui/PromoMarquee";
-
 import { useStoreSettings } from "@/features/admin/hooks/useStoreSettings";
+import { useCart } from "@/features/cart/hooks/useCart";
+import ScrollToTop from "@/components/common/ScrollToTop";
 
 export default function CustomerLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
   const { data: settings } = useStoreSettings();
+  const { data: cartItems } = useCart();
 
-  const getActiveValue = () => {
-    if (location.pathname === "/") {
-      return "/";
-    }
+  const cartItemCount = (cartItems ?? []).reduce(
+    (total, item) => total + item.quantity,
+    0,
+  );
 
-    if (location.pathname.startsWith("/products")) {
-      return "/products";
-    }
+  const getActiveValue = (): string | null => {
+    const path = location.pathname;
 
-    if (location.pathname.startsWith("/contact")) {
-      return "/contact";
-    }
+    if (path === "/") return "/";
+    if (path.startsWith("/orders")) return "/orders";
+    if (path.startsWith("/wishlist")) return "/wishlist";
+    if (path.startsWith("/cart")) return "/cart";
 
-    if (location.pathname.startsWith("/cart")) {
-      return "/cart";
-    }
-
-    return "/";
+    return null;
   };
+
+  const activeValue = getActiveValue();
+
+  const navItems = [
+    { label: "Home", path: "/", Icon: HomeOutlinedIcon },
+    { label: "Orders", path: "/orders", Icon: ReceiptLongOutlinedIcon },
+    { label: "Wishlist", path: "/wishlist", Icon: FavoriteBorderOutlinedIcon },
+    { label: "Cart", path: "/cart", Icon: ShoppingCartOutlinedIcon },
+  ];
 
   return (
     <Box
@@ -58,8 +63,19 @@ export default function CustomerLayout() {
         width: "100%",
         maxWidth: "100%",
         overflowX: "clip",
+
+        // Black behind the reserved space for the mobile bottom navigation,
+        // so the gap below the footer matches the footer.
+        bgcolor: "#000000",
+
+        // Reserve space for mobile navigation and device safe area.
+        pb: {
+          xs: "calc(84px + env(safe-area-inset-bottom, 0px))",
+          md: 0,
+        },
       }}
     >
+      <ScrollToTop />
       {/* Announcement bar */}
       <PromoMarquee
         text={
@@ -86,142 +102,126 @@ export default function CustomerLayout() {
           flex: 1,
           width: "100%",
           maxWidth: "100%",
+          minWidth: 0,
+          bgcolor: "#FFFFFF",
         }}
       >
-        <Outlet />
+        <Suspense fallback={<LinearProgress />}>
+          <Outlet />
+        </Suspense>
       </Box>
 
       {/* Footer */}
       <Footer />
 
       {/* Mobile Bottom Navigation */}
-      <Paper
-        elevation={0}
+      <Box
+        component="nav"
+        aria-label="Mobile navigation"
         sx={{
-          display: {
-            xs: "block",
-            md: "none",
-          },
+          display: { xs: "block", md: "none" },
           position: "fixed",
-          left: {
-            xs: 8,
-            sm: 16,
-          },
-          right: {
-            xs: 8,
-            sm: 16,
-          },
-          bottom: {
-            xs: 8,
-            sm: 12,
-          },
+          left: { xs: 10, sm: 16 },
+          right: { xs: 10, sm: 16 },
+          bottom: "calc(8px + env(safe-area-inset-bottom, 0px))",
           zIndex: 1200,
-          borderRadius: "22px",
-          overflow: "hidden",
+          p: "8px",
+          borderRadius: "28px",
 
-          // Transparent electric-blue glass effect
-          background: "rgba(0, 240, 255, 0.16)",
-          border: "1px solid rgba(0, 240, 255, 0.45)",
-          boxShadow: "0 8px 28px rgba(0, 240, 255, 0.12)",
+          // Dark frosted glass.
+          background: "rgba(10, 14, 20, 0.78)",
+          border: "1px solid rgba(255, 255, 255, 0.18)",
           backdropFilter: "blur(18px) saturate(150%)",
           WebkitBackdropFilter: "blur(18px) saturate(150%)",
         }}
       >
-        <BottomNavigation
-          value={getActiveValue()}
-          onChange={(_, value) => {
-            navigate(value);
-          }}
-          showLabels
+        <Box
           sx={{
-            height: {
-              xs: 64,
-              sm: 68,
-            },
-            backgroundColor: "transparent",
-            px: 0.5,
-
-            "& .MuiBottomNavigationAction-root": {
-              minWidth: 0,
-              maxWidth: "none",
-              flex: 1,
-              minHeight: "100%",
-              px: 0.25,
-              py: 0.75,
-              color: "#000000",
-              opacity: 1,
-              borderRadius: "16px",
-              mx: 0.25,
-              backgroundColor: "transparent",
-            },
-
-            "& .MuiBottomNavigationAction-root .MuiSvgIcon-root": {
-              fontSize: {
-                xs: 24,
-                sm: 26,
-              },
-              color: "#000000",
-            },
-
-            "& .MuiBottomNavigationAction-label": {
-              mt: 0.5,
-              fontSize: {
-                xs: "0.68rem",
-                sm: "0.72rem",
-              },
-              lineHeight: 1.1,
-              fontWeight: 500,
-              color: "#000000",
-              opacity: 1,
-              whiteSpace: "nowrap",
-            },
-
-            // Keep selected and unselected items visually identical
-            "& .MuiBottomNavigationAction-root.Mui-selected": {
-              color: "#000000",
-              backgroundColor: "transparent",
-            },
-
-            "& .MuiBottomNavigationAction-root.Mui-selected .MuiSvgIcon-root": {
-              color: "#000000",
-              transform: "none",
-            },
-
-            "& .MuiBottomNavigationAction-root.Mui-selected .MuiBottomNavigationAction-label": {
-              fontSize: {
-                xs: "0.68rem",
-                sm: "0.72rem",
-              },
-              fontWeight: 500,
-              color: "#000000",
-            },
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
           }}
         >
-          <BottomNavigationAction
-            label="Home"
-            value="/"
-            icon={<HomeOutlinedIcon />}
-          />
+          {navItems.map(({ label, path, Icon }) => {
+            const isActive = activeValue === path;
 
-          <BottomNavigationAction
-            label="Category"
-            value="/products"
-            icon={<CategoryOutlinedIcon />}
-          />
+            const icon =
+              path === "/cart" ? (
+                <Badge
+                  badgeContent={cartItemCount}
+                  color="error"
+                  max={99}
+                  invisible={cartItemCount === 0}
+                  sx={{
+                    "& .MuiBadge-badge": {
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      minWidth: 17,
+                      height: 17,
+                      px: 0.4,
+                    },
+                  }}
+                >
+                  <Icon sx={{ fontSize: 24 }} />
+                </Badge>
+              ) : (
+                <Icon sx={{ fontSize: 24 }} />
+              );
 
-          <BottomNavigationAction
-            label="Contact Us"
-            value="/contact"
-            icon={<ContactSupportOutlinedIcon />}
-          />
+            return (
+              <ButtonBase
+                key={path}
+                onClick={() => navigate(path)}
+                aria-label={
+                  path === "/cart"
+                    ? `${label}, ${cartItemCount} ${cartItemCount === 1 ? "item" : "items"}`
+                    : label
+                }
+                aria-current={isActive ? "page" : undefined}
+                disableRipple
+                sx={{
+                  // The active item grows to fit its label.
+                  flex: isActive ? "2.2 1 0" : "1 1 0",
+                  minWidth: 0,
+                  height: 48,
+                  gap: 1,
+                  borderRadius: "20px",
+                  justifyContent: "center",
+                  backgroundColor: isActive ? "#00DDEB" : "transparent",
+                  color: isActive ? "#071207" : "#FFFFFF",
+                  transition: "flex-grow 200ms ease, background-color 200ms ease",
+                  WebkitTapHighlightColor: "transparent",
 
-          <BottomNavigationAction
-            label="Cart"
-            value="/cart"
-            icon={<ShoppingCartOutlinedIcon />}
-          />
-        </BottomNavigation>
-      </Paper>
+                  "@media (prefers-reduced-motion: reduce)": {
+                    transition: "none",
+                  },
+
+                  "&.Mui-focusVisible": {
+                    outline: "2px solid #00DDEB",
+                    outlineOffset: 2,
+                  },
+                }}
+              >
+                {icon}
+
+                {isActive && (
+                  <Typography
+                    component="span"
+                    noWrap
+                    sx={{
+                      fontSize: "0.85rem",
+                      fontWeight: 600,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {label}
+                  </Typography>
+                )}
+              </ButtonBase>
+            );
+          })}
+        </Box>
+      </Box>
     </Box>
   );
 }

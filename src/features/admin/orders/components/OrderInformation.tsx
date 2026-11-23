@@ -1,147 +1,89 @@
-import {
-  Chip,
-  Grid,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Chip, Grid } from "@mui/material";
 
 import type { Order } from "@/features/orders/types/order";
 
-interface OrderInformationProps {
-  order: Order;
+import OrderSection, { InfoField } from "./OrderSection";
+
+function paymentColor(status: Order["paymentStatus"]) {
+  if (status === "paid") return "success";
+  if (status === "failed") return "error";
+  if (status === "refunded" || status === "partially_refunded") return "info";
+  return "warning";
 }
 
-export default function OrderInformation({
-  order,
-}: OrderInformationProps) {
+const dateTime = (ts?: { toDate: () => Date }) =>
+  ts ? ts.toDate().toLocaleString("en-IN") : "-";
+
+export default function OrderInformation({ order }: { order: Order }) {
+  const paymentType = order.paymentMethodType
+    ? ` · ${String(order.paymentMethodType).toUpperCase()}`
+    : "";
+
   return (
-    <Stack spacing={2}>
-      <Typography
-        variant="h6"
-        sx={{
-          fontWeight: 600,
-        }}
-      >
-        Order Information
-      </Typography>
-
+    <OrderSection title="Order information">
       <Grid container spacing={2}>
-        <Grid
-          size={{
-            xs: 12,
-            sm: 6,
-          }}
-        >
-          <Typography
-            variant="caption"
-            color="text.secondary"
-          >
-            Order Number
-          </Typography>
-
-          <Typography variant="body1">
-            {order.orderNumber}
-          </Typography>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <InfoField label="Order number">{order.orderNumber}</InfoField>
         </Grid>
 
-        <Grid
-          size={{
-            xs: 12,
-            sm: 6,
-          }}
-        >
-          <Typography
-            variant="caption"
-            color="text.secondary"
-          >
-            Order Date
-          </Typography>
-
-          <Typography variant="body1">
-            {order.createdAt
-              .toDate()
-              .toLocaleString("en-IN")}
-          </Typography>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <InfoField label="Order date">{dateTime(order.createdAt)}</InfoField>
         </Grid>
 
-        <Grid
-          size={{
-            xs: 12,
-            sm: 6,
-          }}
-        >
-          <Typography
-            variant="caption"
-            color="text.secondary"
-          >
-            Payment Method
-          </Typography>
-
-          <Typography
-            sx={{
-              textTransform: "uppercase",
-            }}
-          >
-            {order.paymentMethod}
-          </Typography>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <InfoField label="Payment method">
+            {order.paymentMethod.toUpperCase()}
+            {paymentType}
+          </InfoField>
         </Grid>
 
-        <Grid
-          size={{
-            xs: 12,
-            sm: 6,
-          }}
-        >
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{
-              mb: 1,
-              display: "block",
-            }}
-          >
-            Payment Status
-          </Typography>
-
-          <Chip
-            size="small"
-            label={order.paymentStatus.replace("_", " ")}
-            color={
-              order.paymentStatus === "paid"
-                ? "success"
-                : order.paymentStatus === "failed"
-                  ? "error"
-                  : order.paymentStatus === "refunded" ||
-                    order.paymentStatus === "partially_refunded"
-                    ? "info"
-                    : "warning"
-            }
-          />
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <InfoField label="Payment status">
+            <Chip
+              size="small"
+              variant="outlined"
+              label={order.paymentStatus.replace(/_/g, " ")}
+              color={paymentColor(order.paymentStatus)}
+              sx={{ mt: 0.5 }}
+            />
+          </InfoField>
         </Grid>
 
-        <Grid
-          size={{
-            xs: 12,
-            sm: 6,
-          }}
-        >
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{
-              mb: 1,
-              display: "block",
-            }}
-          >
-            Order Status
-          </Typography>
+        {order.paymentId && (
+          <Grid size={12}>
+            <InfoField label="Payment ID">{order.paymentId}</InfoField>
+          </Grid>
+        )}
 
-          <Chip
-            size="small"
-            label={order.orderStatus}
-          />
-        </Grid>
+        {order.codCollectedAt && (
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <InfoField label="Cash collected on">
+              {dateTime(order.codCollectedAt)}
+            </InfoField>
+          </Grid>
+        )}
+
+        {order.deliveredAt && (
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <InfoField label="Delivered on">
+              {dateTime(order.deliveredAt)}
+            </InfoField>
+          </Grid>
+        )}
+
+        {order.invoiceNumber && (
+          <>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <InfoField label="Invoice number">{order.invoiceNumber}</InfoField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <InfoField label="Invoice date">
+                {dateTime(order.invoiceDate)}
+              </InfoField>
+            </Grid>
+          </>
+        )}
       </Grid>
-    </Stack>
+    </OrderSection>
   );
 }

@@ -1,164 +1,112 @@
 import {
-    Chip,
-    Paper,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
+  Chip,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TablePagination,
+  TableRow,
+  Typography,
 } from "@mui/material";
 
-import type {
-    InventoryReportRow,
-} from "../services/inventoryReportService";
+import { REPORT_PAGE_SIZE, dmy, money } from "@/features/reports/utils/reportUtils";
+
+import type { InventoryReportRow } from "../services/inventoryReportService";
 
 interface Props {
-    rows: InventoryReportRow[];
+  rows: InventoryReportRow[];
+  page: number;
+  onPageChange: (page: number) => void;
 }
 
-function getStatusColor(
-    status: InventoryReportRow["stockStatus"]
-): "success" | "warning" | "error" {
-    switch (status) {
-        case "In Stock":
-            return "success";
-
-        case "Low Stock":
-            return "warning";
-
-        case "Out of Stock":
-            return "error";
-    }
+function statusColor(status: InventoryReportRow["stockStatus"]) {
+  if (status === "Out of Stock") return "error";
+  if (status === "Low Stock") return "warning";
+  return "success";
 }
 
-export default function InventoryReportTable({
-    rows,
-}: Props) {
-    return (
-        <TableContainer
-            component={Paper}
-            elevation={2}
-        >
-            <Table>
-                <TableHead>
-                    <TableRow>
-                        <TableCell>
-                            Product
-                        </TableCell>
+export default function InventoryReportTable({ rows, page, onPageChange }: Props) {
+  const pageRows = rows.slice(page * REPORT_PAGE_SIZE, (page + 1) * REPORT_PAGE_SIZE);
 
-                        <TableCell>
-                            SKU
-                        </TableCell>
+  return (
+    <>
+      <TableContainer>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Product</TableCell>
+              <TableCell>Category</TableCell>
+              <TableCell align="right">Cost price</TableCell>
+              <TableCell align="right">Selling price</TableCell>
+              <TableCell align="right">Stock</TableCell>
+              <TableCell align="right">Value at cost</TableCell>
+              <TableCell align="right">Value at selling</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Updated</TableCell>
+            </TableRow>
+          </TableHead>
 
-                        <TableCell>
-                            Category
-                        </TableCell>
+          <TableBody>
+            {pageRows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell sx={{ minWidth: 180 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {row.productName}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {row.sku || "-"}
+                  </Typography>
+                </TableCell>
 
-                        <TableCell align="right">
-                            Purchase Price
-                        </TableCell>
+                <TableCell>{row.category}</TableCell>
 
-                        <TableCell align="right">
-                            Selling Price
-                        </TableCell>
+                <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                  {row.purchasePrice > 0 ? money(row.purchasePrice) : "-"}
+                </TableCell>
 
-                        <TableCell align="right">
-                            Stock
-                        </TableCell>
+                <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                  {money(row.sellingPrice)}
+                </TableCell>
 
-                        <TableCell align="right">
-                            Stock Value
-                        </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>
+                  {row.stock}
+                </TableCell>
 
-                        <TableCell>
-                            Status
-                        </TableCell>
+                <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                  {money(row.costValue)}
+                </TableCell>
 
-                        <TableCell>
-                            Last Updated
-                        </TableCell>
-                    </TableRow>
-                </TableHead>
+                <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                  {money(row.retailValue)}
+                </TableCell>
 
-                <TableBody>
-                    {rows.map((row) => (
-                        <TableRow
-                            key={row.id}
-                            hover
-                        >
-                            <TableCell>
-                                {row.productName}
-                            </TableCell>
+                <TableCell>
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    label={row.stockStatus}
+                    color={statusColor(row.stockStatus)}
+                  />
+                </TableCell>
 
-                            <TableCell>
-                                {row.sku}
-                            </TableCell>
+                <TableCell sx={{ whiteSpace: "nowrap" }}>{dmy(row.lastUpdated)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-                            <TableCell>
-                                {row.category}
-                            </TableCell>
-
-                            <TableCell align="right">
-                                ₹
-                                {row.purchasePrice.toLocaleString(
-                                    "en-IN"
-                                )}
-                            </TableCell>
-
-                            <TableCell align="right">
-                                ₹
-                                {row.sellingPrice.toLocaleString(
-                                    "en-IN"
-                                )}
-                            </TableCell>
-
-                            <TableCell align="right">
-                                {row.stock}
-                            </TableCell>
-
-                            <TableCell align="right">
-                                ₹
-                                {row.stockValue.toLocaleString(
-                                    "en-IN"
-                                )}
-                            </TableCell>
-
-                            <TableCell>
-                                <Chip
-                                    label={
-                                        row.stockStatus
-                                    }
-                                    color={getStatusColor(
-                                        row.stockStatus
-                                    )}
-                                    size="small"
-                                />
-                            </TableCell>
-
-                            <TableCell>
-                                {row.lastUpdated
-                                    ? row.lastUpdated.toLocaleDateString(
-                                          "en-IN"
-                                      )
-                                    : "-"}
-                            </TableCell>
-                        </TableRow>
-                    ))}
-
-                    {rows.length === 0 && (
-                        <TableRow>
-                            <TableCell
-                                colSpan={9}
-                                align="center"
-                            >
-                                No inventory data
-                                found.
-                            </TableCell>
-                        </TableRow>
-                    )}
-                </TableBody>
-            </Table>
-        </TableContainer>
-    );
+      {rows.length > REPORT_PAGE_SIZE && (
+        <TablePagination
+          component="div"
+          count={rows.length}
+          page={page}
+          rowsPerPage={REPORT_PAGE_SIZE}
+          rowsPerPageOptions={[]}
+          onPageChange={(_, next) => onPageChange(next)}
+        />
+      )}
+    </>
+  );
 }

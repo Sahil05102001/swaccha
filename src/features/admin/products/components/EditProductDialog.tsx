@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+
+import { useEffect, useRef, useState } from "react";
 
 import {
   Alert,
@@ -19,6 +20,9 @@ import type {
 
 import { useUpdateProduct } from "../hooks/useUpdateProduct";
 import { productSchema } from "../validations/productSchema";
+import { deleteCloudinaryProductImage } from "../services/productImageService";
+import { DuplicateProductError } from "@/features/admin/products/services/productService";
+import { scrollToTop } from "@/features/admin/utils/scrollToTop";
 
 interface EditProductDialogProps {
   open: boolean;
@@ -29,11 +33,21 @@ interface EditProductDialogProps {
 const initialFormData: ProductFormData = {
   name: "",
   description: "",
+  brand: "",
+  sku: "",
   category: "",
+  subcategory: "",
+  productSize: "",
+  unit: "",
   price: 0,
+  mrp: 0,
   stock: 0,
   images: [],
   isActive: true,
+  hsnCode: "",
+  gstRate: "",
+  badgeMode: "none",
+  badgeText: "",
 };
 
 type ProductErrors = Partial<
@@ -57,18 +71,47 @@ export default function EditProductDialog({
   const [errorOpen, setErrorOpen] =
     useState(false);
 
+  const [uploading, setUploading] = useState(false);
+
+  // Tracks only the newly uploaded, unsaved image.
+  const temporaryImagePublicId = useRef<string | null>(null);
+
   const updateProductMutation = useUpdateProduct();
 
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Scrolls the dialog to the first field that has an error.
+  const showFirstError = () => {
+    window.setTimeout(() => {
+      contentRef.current
+        ?.querySelector(".Mui-error")
+        ?.scrollIntoView({ block: "center" });
+    }, 0);
+  };
+
   useEffect(() => {
+    temporaryImagePublicId.current = null;
+
     if (product) {
       setFormData({
         name: product.name,
         description: product.description,
+        brand: product.brand ?? "",
+        sku: product.sku ?? "",
+        subcategory: product.subcategory ?? "",
+        productSize: product.productSize ?? "",
+        unit: product.unit ?? "",
         category: product.category,
         price: product.price,
+        mrp: product.mrp ?? product.price ?? 0,
         stock: product.stock,
-        images: product.images,
+        images: product.images ?? [],
+        imagePublicId: product.imagePublicId ?? "",
         isActive: product.isActive,
+        hsnCode: product.hsnCode ?? "",
+        gstRate: product.gstRate ?? "",
+        badgeMode: product.badgeMode ?? "none",
+        badgeText: product.badgeText ?? "",
       });
 
       setErrors({});
@@ -86,6 +129,30 @@ export default function EditProductDialog({
       | boolean
       | string[]
   ) => {
+    if (field === "imagePublicId") {
+      const newPublicId =
+        typeof value === "string" ? value.trim() : "";
+
+      const previousPublicId = temporaryImagePublicId.current;
+
+      if (
+        previousPublicId &&
+        previousPublicId !== newPublicId
+      ) {
+        void deleteCloudinaryProductImage(previousPublicId).catch(
+          (error) => {
+            console.error(
+              "Previous temporary product image cleanup failed:",
+              error,
+            );
+          },
+        );
+      }
+
+      temporaryImagePublicId.current =
+        newPublicId || null;
+    }
+
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -99,14 +166,37 @@ export default function EditProductDialog({
     }
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
+    if (uploading || updateProductMutation.isPending) {
+      return;
+    }
+
+    const temporaryPublicId =
+      temporaryImagePublicId.current;
+
+    temporaryImagePublicId.current = null;
+
     setFormData(initialFormData);
     setErrors({});
+
+    if (temporaryPublicId) {
+      try {
+        await deleteCloudinaryProductImage(
+          temporaryPublicId,
+        );
+      } catch (error) {
+        console.error(
+          "Temporary product image cleanup failed:",
+          error,
+        );
+      }
+    }
+
     onClose();
   };
 
   const handleSave = async () => {
-    if (!product) return;
+    if (!product || uploading) return;
 
     const result = productSchema.safeParse(formData);
 
@@ -123,24 +213,62 @@ export default function EditProductDialog({
       });
 
       setErrors(fieldErrors);
+      showFirstError();
       return;
     }
 
     try {
       setErrors({});
+      setErrorOpen(false);
+
+      const oldPublicId =
+        product.imagePublicId?.trim() ?? "";
+
+      const newPublicId =
+        formData.imagePublicId?.trim() ?? "";
 
       await updateProductMutation.mutateAsync({
         id: product.id,
         product: formData,
       });
 
+      // The new image is now referenced by the saved product.
+      temporaryImagePublicId.current = null;
+
+      // Only attempt to delete the previous image after
+      // the product update has succeeded.
+      if (
+        oldPublicId &&
+        oldPublicId !== newPublicId
+      ) {
+        try {
+          await deleteCloudinaryProductImage(oldPublicId);
+        } catch (cleanupError) {
+          console.error(
+            "Previous product image cleanup failed:",
+            cleanupError,
+          );
+        }
+      }
+
       setSuccessOpen(true);
 
-      handleClose();
-    } catch (error) {
-      console.error(error);
+      setFormData(initialFormData);
+      setErrors({});
 
-      setErrorOpen(true);
+      onClose();
+      scrollToTop();
+    } catch (error: unknown) {
+      if (error instanceof DuplicateProductError) {
+        setErrors((prev) => ({
+          ...prev,
+          [error.field]: error.message,
+        }));
+        showFirstError();
+      } else {
+        console.error(error);
+        setErrorOpen(true);
+      }
     }
   };
 
@@ -148,25 +276,32 @@ export default function EditProductDialog({
     <>
       <Dialog
         open={open}
-        onClose={handleClose}
+        onClose={() => {
+          void handleClose();
+        }}
         fullWidth
         maxWidth="md"
       >
         <DialogTitle>Edit Product</DialogTitle>
 
-        <DialogContent dividers>
+        <DialogContent dividers ref={contentRef}>
           <ProductForm
             formData={formData}
             onChange={handleChange}
             errors={errors}
             stockLocked
+            onUploadingChange={setUploading}
           />
         </DialogContent>
 
         <DialogActions>
           <Button
-            onClick={handleClose}
-            disabled={updateProductMutation.isPending}
+            onClick={() => {
+              void handleClose();
+            }}
+            disabled={
+              uploading || updateProductMutation.isPending
+            }
           >
             Cancel
           </Button>
@@ -174,11 +309,15 @@ export default function EditProductDialog({
           <Button
             variant="contained"
             onClick={handleSave}
-            disabled={updateProductMutation.isPending}
+            disabled={
+              uploading || updateProductMutation.isPending
+            }
           >
-            {updateProductMutation.isPending
-              ? "Updating..."
-              : "Update Product"}
+            {uploading
+              ? "Uploading image..."
+              : updateProductMutation.isPending
+                ? "Updating..."
+                : "Update Product"}
           </Button>
         </DialogActions>
       </Dialog>

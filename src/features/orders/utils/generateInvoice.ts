@@ -1,4 +1,27 @@
-import type jsPDFType from "jspdf";
+import type { OrderTax } from "@/features/tax/types/tax";
+import { stateWithCode } from "@/features/tax/utils/stateCodes";
+
+import { amountInWords } from "./amountInWords";
+import { loadSellerProfile, type SellerProfile } from "./loadSellerProfile";
+import {
+  drawBlock,
+  drawDocumentTitle,
+  drawFooters,
+  drawMeta,
+  drawNote,
+  drawRule,
+  drawSignature,
+  drawTotals,
+  drawWords,
+  ensureSpace,
+  inr,
+  lastTableY,
+  paymentLabel,
+  rs,
+  tableOptions,
+  type AutoTable,
+  type PdfDoc,
+} from "./pdfLayout";
 
 export interface InvoiceItem {
   name: string;
@@ -11,231 +34,278 @@ export interface InvoiceData {
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
+  customerAddress?: string;
   paymentMethod: string;
   paymentStatus: string;
+  paymentMethodType?: string;
   orderDate: string;
   items: InvoiceItem[];
   subtotal: number;
   shippingCharge?: number;
   discount?: number;
   total: number;
+
+  // Present only for GST orders that have been dispatched.
+  invoiceNumber?: string;
+  invoiceDate?: string;
+  tax?: OrderTax;
 }
 
-type RGB = [number, number, number];
+const toPaise = (rupees: number) => Math.round(rupees * 100);
 
-// Swachha palette
-const BLUE: RGB = [0, 217, 255];
-const BLACK: RGB = [0, 0, 0];
-const DARK: RGB = [33, 33, 33];
-const MUTED: RGB = [117, 117, 117];
-const BORDER: RGB = [224, 224, 224];
+function drawBuyer(
+  doc: PdfDoc,
+  y: number,
+  invoice: InvoiceData,
+  caption: string,
+  meta: [string, string][],
+): number {
+  const left = drawBlock(doc, y, 90, caption, [
+    { text: invoice.customerName, bold: true, size: 10.5 },
+    { text: invoice.customerAddress ?? "" },
+    {
+      text: invoice.customerPhone ? `Phone: ${invoice.customerPhone}` : "",
+    },
+  ]);
+  const right = drawMeta(doc, y + 0.5, meta);
 
-const MARGIN = 16;
+  return Math.max(left, right);
+}
 
-// jsPDF's default fonts can't render the ₹ glyph, so "Rs." is used
-const money = (value: number) =>
-  `Rs.${value.toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+/** A GST tax invoice. */
+function drawTaxInvoice(
+  doc: PdfDoc,
+  autoTable: AutoTable,
+  invoice: InvoiceData,
+  tax: Extract<OrderTax, { applied: true }>,
+  seller: SellerProfile | null,
+) {
+  let y = drawDocumentTitle(doc, "TAX INVOICE");
+
+  // Supplier (left) and invoice numbers (right)
+  const sellerEnd = drawBlock(doc, y, 90, "Sold by", [
+    { text: tax.legalName, bold: true, size: 11 },
+    { text: tax.address },
+    { text: `GSTIN: ${tax.gstin}`, bold: true },
+    { text: `State: ${stateWithCode(tax.sellerState)}` },
+    { text: seller?.contact ?? "", muted: true },
+  ]);
+  const metaEnd = drawMeta(doc, y + 0.5, [
+    ["Invoice no.", invoice.invoiceNumber ?? ""],
+    ["Invoice date", invoice.invoiceDate ?? ""],
+    ["Order no.", invoice.orderId],
+    ["Order date", invoice.orderDate],
+  ]);
+
+  y = Math.max(sellerEnd, metaEnd) + 1;
+  drawRule(doc, y);
+  y += 6;
+
+  // Recipient (left) and place of supply (right)
+  const payment = paymentLabel(
+    invoice.paymentMethod,
+    invoice.paymentStatus,
+    invoice.paymentMethodType,
+  );
+
+  y =
+    drawBuyer(doc, y, invoice, "Billed to / delivered to", [
+      ["Place of supply", stateWithCode(tax.placeOfSupply)],
+      ["Reverse charge", "No"],
+      ["Payment method", payment.mode],
+      ...(payment.type ? [["Payment type", payment.type] as [string, string]] : []),
+      ["Payment status", payment.status],
+    ]) + 1;
+
+  drawRule(doc, y);
+  y += 5;
+
+  // Items
+  const intra = tax.intraState;
+  const rows = tax.shipping ? [...tax.lines, tax.shipping] : tax.lines;
+
+  const head = intra
+    ? ["#", "Description", "HSN", "Qty", "GST", "Taxable value", "CGST", "SGST", "Total"]
+    : ["#", "Description", "HSN", "Qty", "GST", "Taxable value", "IGST", "Total"];
+
+  const body = rows.map((line, index) => {
+    const base = [
+      String(index + 1),
+      line.name,
+      line.hsnCode || "-",
+      String(line.quantity),
+      `${line.ratePercent}%`,
+      inr(line.taxablePaise),
+    ];
+
+    return intra
+      ? [...base, inr(line.cgstPaise), inr(line.sgstPaise), inr(line.grossPaise)]
+      : [...base, inr(line.igstPaise), inr(line.grossPaise)];
+  });
+
+  autoTable(doc, {
+    ...tableOptions(
+      y,
+      intra
+        ? { 0: "center", 1: "left", 2: "left", 3: "center", 4: "right", 5: "right", 6: "right", 7: "right", 8: "right" }
+        : { 0: "center", 1: "left", 2: "left", 3: "center", 4: "right", 5: "right", 6: "right", 7: "right" },
+      intra
+        ? { 0: 8, 2: 17, 3: 10, 4: 12, 5: 22, 6: 20, 7: 20, 8: 24 }
+        : { 0: 8, 2: 17, 3: 10, 4: 12, 5: 24, 6: 24, 7: 26 },
+    ),
+    head: [head],
+    body,
+  });
+
+  y = lastTableY(doc, y) + 6;
+  y = ensureSpace(doc, y, 44);
+
+  // Amount in words (left) level with the totals (right)
+  const totalPaise = toPaise(invoice.total);
+
+  const wordsEnd = drawWords(doc, y, amountInWords(totalPaise));
+  const totalsEnd = drawTotals(doc, y, [
+    { label: "Taxable value", value: rs(tax.taxablePaise) },
+    ...(intra
+      ? [
+        { label: "CGST", value: rs(tax.cgstPaise) },
+        { label: "SGST", value: rs(tax.sgstPaise) },
+      ]
+      : [{ label: "IGST", value: rs(tax.igstPaise) }]),
+    { label: "Invoice total", value: rs(totalPaise), strong: true },
+  ]);
+
+  y = Math.max(wordsEnd, totalsEnd) + 2;
+
+  const discount = toPaise(invoice.discount ?? 0);
+  y = drawNote(
+    doc,
+    y,
+    discount > 0
+      ? `Prices are inclusive of GST. A discount of ${rs(discount)} is already taken off the amounts above.`
+      : "Prices are inclusive of GST.",
+  );
+
+  drawSignature(doc, y + 2, tax.legalName);
+  drawFooters(doc, "This is a computer-generated tax invoice.");
+}
+
+/** A plain invoice, used while GST is off. */
+function drawPlainInvoice(
+  doc: PdfDoc,
+  autoTable: AutoTable,
+  invoice: InvoiceData,
+  seller: SellerProfile | null,
+) {
+  let y = drawDocumentTitle(doc, "INVOICE");
+
+  const sellerEnd = drawBlock(doc, y, 90, "From", [
+    { text: seller?.name ?? "Swachha", bold: true, size: 11 },
+    ...(seller?.addressLines ?? []).map((text) => ({ text })),
+    { text: seller?.contact ?? "", muted: true },
+  ]);
+  const metaEnd = drawMeta(doc, y + 0.5, [
+    ["Bill no.", invoice.orderId],
+    ["Date", invoice.orderDate],
+  ]);
+
+  y = Math.max(sellerEnd, metaEnd) + 1;
+  drawRule(doc, y);
+  y += 6;
+
+  const payment = paymentLabel(
+    invoice.paymentMethod,
+    invoice.paymentStatus,
+    invoice.paymentMethodType,
+  );
+
+  y =
+    drawBuyer(doc, y, invoice, "Billed to / delivered to", [
+      ["Payment method", payment.mode],
+      ...(payment.type ? [["Payment type", payment.type] as [string, string]] : []),
+      ["Payment status", payment.status],
+    ]) + 1;
+
+  drawRule(doc, y);
+  y += 5;
+
+  autoTable(doc, {
+    ...tableOptions(
+      y,
+      { 0: "center", 1: "left", 2: "center", 3: "right", 4: "right" },
+      { 0: 10, 2: 16, 3: 30, 4: 32 },
+    ),
+    head: [["#", "Item", "Qty", "Unit price", "Amount"]],
+    body: invoice.items.map((item, index) => [
+      String(index + 1),
+      item.name,
+      String(item.quantity),
+      inr(toPaise(item.price)),
+      inr(toPaise(item.price) * item.quantity),
+    ]),
+  });
+
+  y = lastTableY(doc, y) + 6;
+  y = ensureSpace(doc, y, 44);
+
+  const shipping = toPaise(invoice.shippingCharge ?? 0);
+  const discount = toPaise(invoice.discount ?? 0);
+  const totalPaise = toPaise(invoice.total);
+
+  const wordsEnd = drawWords(doc, y, amountInWords(totalPaise));
+  const totalsEnd = drawTotals(doc, y, [
+    { label: "Items total", value: rs(toPaise(invoice.subtotal)) },
+    { label: "Delivery", value: shipping > 0 ? rs(shipping) : "Free" },
+    ...(discount > 0
+      ? [{ label: "Discount", value: `- ${rs(discount)}` }]
+      : []),
+    { label: "Total payable", value: rs(totalPaise), strong: true },
+  ]);
+
+  y = Math.max(wordsEnd, totalsEnd) + 2;
+  drawNote(
+    doc,
+    y,
+    "This is a computer-generated invoice and is not a tax invoice. No signature is required.",
+  );
+
+  drawFooters(doc, seller?.footer || "Thank you for shopping with Swachha!");
+}
+
+/** Draws the invoice onto an open document. Separate so it can be tested. */
+export function drawInvoice(
+  doc: PdfDoc,
+  autoTable: AutoTable,
+  invoice: InvoiceData,
+  seller: SellerProfile | null,
+) {
+  const tax =
+    invoice.tax?.applied === true && invoice.invoiceNumber
+      ? invoice.tax
+      : null;
+
+  if (tax) drawTaxInvoice(doc, autoTable, invoice, tax, seller);
+  else drawPlainInvoice(doc, autoTable, invoice, seller);
+}
 
 export async function generateInvoice(invoice: InvoiceData): Promise<void> {
   // Loaded only when someone downloads an invoice.
-  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
-    import("jspdf"),
-    import("jspdf-autotable"),
-  ]);
+  const [{ default: jsPDF }, { default: autoTable }, seller] =
+    await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+      loadSellerProfile(),
+    ]);
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
 
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const rightX = pageWidth - MARGIN;
+  drawInvoice(doc, autoTable as AutoTable, invoice, seller);
 
-  /* ---------- Header ---------- */
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(24);
-  doc.setTextColor(...BLACK);
-  doc.text("Swachha", MARGIN, 22);
+  const isTax = invoice.tax?.applied === true && invoice.invoiceNumber;
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(...MUTED);
-  doc.text("INVOICE", rightX, 22, { align: "right" });
-
-  // Hairline divider with a short electric-blue accent
-  doc.setDrawColor(...BORDER);
-  doc.setLineWidth(0.3);
-  doc.line(MARGIN, 29, rightX, 29);
-  doc.setFillColor(...BLUE);
-  doc.rect(MARGIN, 28.5, 24, 1, "F");
-
-  /* ---------- Billed to (left) ---------- */
-  let leftY = 42;
-
-  doc.setFontSize(8);
-  doc.setTextColor(...MUTED);
-  doc.text("BILLED TO", MARGIN, leftY);
-
-  leftY += 6;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(...DARK);
-  const nameLines = doc.splitTextToSize(invoice.customerName, 85) as string[];
-  doc.text(nameLines, MARGIN, leftY);
-  leftY += nameLines.length * 5;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(...MUTED);
-
-  const emailLines = doc.splitTextToSize(invoice.customerEmail, 85) as string[];
-  doc.text(emailLines, MARGIN, leftY);
-  leftY += emailLines.length * 5;
-
-  if (invoice.customerPhone) {
-    doc.text(invoice.customerPhone, MARGIN, leftY);
-    leftY += 5;
-  }
-
-  /* ---------- Order details (right) ---------- */
-  const labelX = 118;
-  const details: [string, string][] = [
-    ["Order ID", invoice.orderId],
-    ["Order date", invoice.orderDate],
-    ["Payment method", invoice.paymentMethod],
-    ["Payment status", invoice.paymentStatus],
-  ];
-
-  let rightY = 42;
-  doc.setFontSize(10);
-  details.forEach(([label, value]) => {
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...MUTED);
-    doc.text(label, labelX, rightY);
-
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...DARK);
-    doc.text(value, rightX, rightY, { align: "right" });
-
-    rightY += 6.5;
-  });
-
-  /* ---------- Items table ---------- */
-  const tableStartY = Math.max(leftY, rightY) + 10;
-
-  autoTable(doc, {
-    startY: tableStartY,
-    margin: { left: MARGIN, right: MARGIN, bottom: 24 },
-    theme: "plain",
-    head: [["Product", "Qty", "Price", "Total"]],
-    body: invoice.items.map((item) => [
-      item.name,
-      String(item.quantity),
-      money(item.price),
-      money(item.price * item.quantity),
-    ]),
-    styles: {
-      font: "helvetica",
-      fontSize: 10,
-      textColor: DARK,
-      cellPadding: { top: 3.5, bottom: 3.5, left: 3, right: 3 },
-      lineColor: BORDER,
-      lineWidth: 0.1,
-      overflow: "linebreak",
-    },
-    headStyles: {
-      fillColor: BLACK,
-      textColor: [255, 255, 255],
-      fontStyle: "bold",
-      fontSize: 9,
-      lineColor: BLACK,
-    },
-    columnStyles: {
-      0: { cellWidth: "auto" },
-      1: { cellWidth: 16, halign: "center" },
-      2: { cellWidth: 32, halign: "right" },
-      3: { cellWidth: 32, halign: "right" },
-    },
-    didParseCell: (data) => {
-      // Align header labels with their columns
-      if (data.section === "head") {
-        if (data.column.index === 1) data.cell.styles.halign = "center";
-        if (data.column.index >= 2) data.cell.styles.halign = "right";
-      }
-    },
-  });
-
-  const finalY =
-    (doc as jsPDFType & { lastAutoTable?: { finalY: number } }).lastAutoTable
-      ?.finalY ?? tableStartY;
-
-  /* ---------- Totals ---------- */
-  const totalsHeight = 48;
-  let y = finalY + 12;
-
-  if (y + totalsHeight > pageHeight - 24) {
-    doc.addPage();
-    y = 24;
-  }
-
-  const totalsLabelX = rightX - 70;
-  const discount = invoice.discount ?? 0;
-
-  const rows: [string, string][] = [
-    ["Subtotal", money(invoice.subtotal)],
-    ["Shipping", money(invoice.shippingCharge ?? 0)],
-    ["Discount", discount > 0 ? `- ${money(discount)}` : money(0)],
-  ];
-
-  doc.setFontSize(10);
-  rows.forEach(([label, value]) => {
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...MUTED);
-    doc.text(label, totalsLabelX, y);
-
-    doc.setTextColor(...DARK);
-    doc.text(value, rightX, y, { align: "right" });
-
-    y += 7;
-  });
-
-  y += 1;
-  doc.setDrawColor(...BLACK);
-  doc.setLineWidth(0.4);
-  doc.line(totalsLabelX, y, rightX, y);
-
-  y += 8;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.setTextColor(...BLACK);
-  doc.text("Grand total", totalsLabelX, y);
-  doc.text(money(invoice.total), rightX, y, { align: "right" });
-
-  // Small blue accent under the grand total
-  doc.setFillColor(...BLUE);
-  doc.rect(rightX - 24, y + 3, 24, 1, "F");
-
-  /* ---------- Footer (every page) ---------- */
-  const pageCount = doc.getNumberOfPages();
-  for (let page = 1; page <= pageCount; page++) {
-    doc.setPage(page);
-
-    doc.setDrawColor(...BORDER);
-    doc.setLineWidth(0.3);
-    doc.line(MARGIN, pageHeight - 18, rightX, pageHeight - 18);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(...MUTED);
-    doc.text("Thank you for shopping with Swachha!", MARGIN, pageHeight - 11);
-
-    if (pageCount > 1) {
-      doc.text(`Page ${page} of ${pageCount}`, rightX, pageHeight - 11, {
-        align: "right",
-      });
-    }
-  }
-
-  doc.save(`Invoice-${invoice.orderId}.pdf`);
+  doc.save(
+    isTax
+      ? `Invoice-${String(invoice.invoiceNumber).replace(/\//g, "-")}.pdf`
+      : `Invoice-${invoice.orderId}.pdf`,
+  );
 }

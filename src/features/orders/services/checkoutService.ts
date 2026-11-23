@@ -1,6 +1,5 @@
-
+import { waitForBackend } from "@/lib/backendWarmup";
 import { auth } from "@/firebase/auth";
-
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
 
@@ -46,6 +45,8 @@ export async function createCodCheckoutOrder(data: {
   }
 
   const idToken = await user.getIdToken();
+
+  await waitForBackend();
 
   const response = await fetch(`${API_BASE_URL}/orders/cod`, {
     method: "POST",

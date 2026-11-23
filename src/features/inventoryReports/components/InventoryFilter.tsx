@@ -1,158 +1,71 @@
-import {
-    Button,
-    Card,
-    CardContent,
-    Grid,
-    MenuItem,
-    TextField,
-} from "@mui/material";
+import { Button, MenuItem, Stack, TextField } from "@mui/material";
 
-import type {
-    InventoryReportFilters,
+import AdminSelect from "@/features/admin/components/AdminSelect";
+
+import {
+  STOCK_STATUSES,
+  type InventoryReportFilters,
 } from "../services/inventoryReportService";
 
 interface Props {
-    value: InventoryReportFilters;
-    categories: string[];
-    onChange: (
-        value: InventoryReportFilters
-    ) => void;
+  value: InventoryReportFilters;
+  categories: string[];
+  onChange: (value: InventoryReportFilters) => void;
 }
 
-export default function InventoryFilter({
-    value,
-    categories,
-    onChange,
-}: Props) {
-    return (
-        <Card sx={{ mb: 3 }}>
-            <CardContent>
-                <Grid container spacing={2}>
-                    <Grid
-                        size={{
-                            xs: 12,
-                            md: 4,
-                        }}
-                    >
-                        <TextField
-                            fullWidth
-                            label="Search Products"
-                            placeholder="Name, SKU or Category"
-                            value={value.search ?? ""}
-                            onChange={(event) =>
-                                onChange({
-                                    ...value,
-                                    search:
-                                        event.target
-                                            .value,
-                                })
-                            }
-                        />
-                    </Grid>
+export default function InventoryFilter({ value, categories, onChange }: Props) {
+  return (
+    <Stack
+      direction={{ xs: "column", md: "row" }}
+      useFlexGap
+      sx={{ gap: 1.5, flexWrap: { md: "wrap" }, alignItems: { md: "center" } }}
+    >
+      <TextField
+        size="small"
+        label="Search products"
+        placeholder="Name, SKU or category"
+        value={value.search ?? ""}
+        onChange={(event) => onChange({ ...value, search: event.target.value })}
+        sx={{ minWidth: 240, flex: { md: "1 1 240px" } }}
+      />
 
-                    <Grid
-                        size={{
-                            xs: 12,
-                            md: 3,
-                        }}
-                    >
-                        <TextField
-                            select
-                            fullWidth
-                            label="Category"
-                            value={
-                                value.category ?? ""
-                            }
-                            onChange={(event) =>
-                                onChange({
-                                    ...value,
-                                    category:
-                                        event.target
-                                            .value,
-                                })
-                            }
-                        >
-                            <MenuItem value="">
-                                All Categories
-                            </MenuItem>
+      <AdminSelect
+        size="small"
+        label="Category"
+        value={value.category ?? ""}
+        onChange={(event) => onChange({ ...value, category: event.target.value })}
+        sx={{ minWidth: 200 }}
+      >
+        <MenuItem value="">All categories</MenuItem>
+        {categories.map((category) => (
+          <MenuItem key={category} value={category}>
+            {category}
+          </MenuItem>
+        ))}
+      </AdminSelect>
 
-                            {categories.map(
-                                (category) => (
-                                    <MenuItem
-                                        key={category}
-                                        value={
-                                            category
-                                        }
-                                    >
-                                        {category}
-                                    </MenuItem>
-                                )
-                            )}
-                        </TextField>
-                    </Grid>
+      <AdminSelect
+        size="small"
+        label="Stock status"
+        value={value.stockStatus ?? ""}
+        onChange={(event) => onChange({ ...value, stockStatus: event.target.value })}
+        sx={{ minWidth: 170 }}
+      >
+        <MenuItem value="">All</MenuItem>
+        {STOCK_STATUSES.map((status) => (
+          <MenuItem key={status} value={status}>
+            {status}
+          </MenuItem>
+        ))}
+      </AdminSelect>
 
-                    <Grid
-                        size={{
-                            xs: 12,
-                            md: 3,
-                        }}
-                    >
-                        <TextField
-                            select
-                            fullWidth
-                            label="Stock Status"
-                            value={
-                                value.stockStatus ??
-                                ""
-                            }
-                            onChange={(event) =>
-                                onChange({
-                                    ...value,
-                                    stockStatus:
-                                        event.target
-                                            .value,
-                                })
-                            }
-                        >
-                            <MenuItem value="">
-                                All Status
-                            </MenuItem>
-
-                            <MenuItem value="In Stock">
-                                In Stock
-                            </MenuItem>
-
-                            <MenuItem value="Low Stock">
-                                Low Stock
-                            </MenuItem>
-
-                            <MenuItem value="Out Of Stock">
-                                Out of Stock
-                            </MenuItem>
-                        </TextField>
-                    </Grid>
-
-                    <Grid
-                        size={{
-                            xs: 12,
-                            md: 2,
-                        }}
-                    >
-                        <Button
-                            fullWidth
-                            variant="outlined"
-                            sx={{
-                                height: "56px",
-                            }}
-                            onClick={() =>
-                                onChange({})
-                            }
-                        >
-                            Clear Filters
-                        </Button>
-                    </Grid>
-                </Grid>
-            </CardContent>
-        </Card>
-    );
+      <Button
+        variant="outlined"
+        onClick={() => onChange({})}
+        sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
+      >
+        Clear filters
+      </Button>
+    </Stack>
+  );
 }

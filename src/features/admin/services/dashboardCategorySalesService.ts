@@ -1,67 +1,36 @@
-import {
-    collection,
-    getDocs,
-} from "firebase/firestore";
-
-import { db } from "@/firebase/firestore";
+import type { Order } from "@/features/orders/types/order";
 
 export interface CategorySales {
-    category: string;
-    totalRevenue: number;
-    totalSold: number;
+  category: string;
+  totalRevenue: number;
+  totalSold: number;
 }
 
-export async function getCategorySales(): Promise<
-    CategorySales[]
-> {
-    const ordersSnapshot = await getDocs(
-        collection(db, "orders")
-    );
+/** The card shows only the best-selling categories, so its height stays predictable. */
+export const TOP_CATEGORIES_LIMIT = 5;
 
-    const categoryMap = new Map<
-        string,
-        CategorySales
-    >();
+export function computeCategorySales(
+  orders: Order[],
+  categoryOf: Map<string, string>,
+): CategorySales[] {
+  const map = new Map<string, CategorySales>();
 
-    ordersSnapshot.forEach((doc) => {
-        const order = doc.data();
+  for (const order of orders) {
+    for (const item of order.items ?? []) {
+      const category = categoryOf.get(item.productId) || "Uncategorized";
+      const entry = map.get(category) ?? {
+        category,
+        totalRevenue: 0,
+        totalSold: 0,
+      };
 
-        if (!Array.isArray(order.items)) {
-            return;
-        }
+      entry.totalRevenue += item.quantity * item.price;
+      entry.totalSold += item.quantity;
+      map.set(category, entry);
+    }
+  }
 
-        order.items.forEach((item: any) => {
-            const category =
-                item.category ??
-                item.categoryName ??
-                "Uncategorized";
-
-            const quantity =
-                typeof item.quantity === "number"
-                    ? item.quantity
-                    : 0;
-
-            const price =
-                typeof item.price === "number"
-                    ? item.price
-                    : 0;
-
-            if (!categoryMap.has(category)) {
-                categoryMap.set(category, {
-                    category,
-                    totalRevenue: 0,
-                    totalSold: 0,
-                });
-            }
-
-            const sales = categoryMap.get(category)!;
-
-            sales.totalRevenue += quantity * price;
-            sales.totalSold += quantity;
-        });
-    });
-
-    return [...categoryMap.values()].sort(
-        (a, b) => b.totalRevenue - a.totalRevenue
-    );
+  return [...map.values()]
+    .sort((a, b) => b.totalRevenue - a.totalRevenue)
+    .slice(0, TOP_CATEGORIES_LIMIT);
 }

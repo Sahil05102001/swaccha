@@ -1,4 +1,3 @@
-
 import {
     Box,
     Container,
@@ -7,7 +6,6 @@ import {
     useMediaQuery,
     useTheme,
 } from "@mui/material";
-
 import ArrowBackIosNewRoundedIcon from "@mui/icons-material/ArrowBackIosNewRounded";
 import ArrowForwardIosRoundedIcon from "@mui/icons-material/ArrowForwardIosRounded";
 import BusinessRoundedIcon from "@mui/icons-material/BusinessRounded";
@@ -15,15 +13,20 @@ import HotelRoundedIcon from "@mui/icons-material/HotelRounded";
 import LocalHospitalRoundedIcon from "@mui/icons-material/LocalHospitalRounded";
 import RestaurantRoundedIcon from "@mui/icons-material/RestaurantRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
-
 import {
     useCallback,
     useEffect,
     useRef,
     useState,
 } from "react";
-
 import { useStoreSettings } from "@/features/admin/hooks/useStoreSettings";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+
+// Asks Cloudinary for a right-sized, modern-format copy instead of the original.
+const optimizeImage = (url: string, width: number) =>
+    url.includes("res.cloudinary.com") && url.includes("/upload/")
+        ? url.replace("/upload/", `/upload/f_auto,q_auto,w_${width}/`)
+        : url;
 
 const supplyTypes = [
     {
@@ -68,28 +71,43 @@ const supplyTypes = [
     },
 ];
 
+
+
 export default function WhoWeSupply() {
     const theme = useTheme();
+
+
 
     const { data: settings, isLoading: settingsLoading } =
         useStoreSettings();
 
+
+
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
     const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
+    const isMedium = useMediaQuery(theme.breakpoints.between("md", "lg"));
     const prefersReducedMotion = useMediaQuery(
         "(prefers-reduced-motion: reduce)",
     );
 
-    const visibleCount = isMobile ? 1 : isTablet ? 2 : 4;
+
+
+    const visibleCount = isMobile ? 1 : isTablet ? 2 : isMedium ? 3 : 5;
+
+
 
     const trackRef = useRef<HTMLDivElement>(null);
     const [activeIndex, setActiveIndex] = useState(0);
     const [paused, setPaused] = useState(false);
 
+
+
     const maxIndex = Math.max(
         0,
         supplyTypes.length - visibleCount,
     );
+
+
 
     const goTo = useCallback(
         (index: number) => {
@@ -98,16 +116,26 @@ export default function WhoWeSupply() {
                 Math.max(0, index),
             );
 
+
+
             setActiveIndex(nextIndex);
+
+
 
             const track = trackRef.current;
             if (!track) return;
+
+
 
             const card = track.children.item(
                 nextIndex,
             ) as HTMLElement | null;
 
+
+
             if (!card) return;
+
+
 
             track.scrollTo({
                 left: card.offsetLeft - track.offsetLeft,
@@ -117,8 +145,12 @@ export default function WhoWeSupply() {
         [maxIndex, prefersReducedMotion],
     );
 
+
+
     useEffect(() => {
         setActiveIndex(0);
+
+
 
         trackRef.current?.scrollTo({
             left: 0,
@@ -126,19 +158,27 @@ export default function WhoWeSupply() {
         });
     }, [visibleCount]);
 
+
+
     useEffect(() => {
         if (paused || prefersReducedMotion || maxIndex === 0) {
             return;
         }
 
+
+
         const timer = window.setInterval(() => {
             setActiveIndex((current) => {
                 const next = current >= maxIndex ? 0 : current + 1;
+
+
 
                 const track = trackRef.current;
                 const card = track?.children.item(
                     next,
                 ) as HTMLElement | null;
+
+
 
                 if (track && card) {
                     track.scrollTo({
@@ -147,33 +187,51 @@ export default function WhoWeSupply() {
                     });
                 }
 
+
+
                 return next;
             });
         }, 3000);
 
+
+
         return () => window.clearInterval(timer);
     }, [paused, prefersReducedMotion, maxIndex]);
+
+
 
     const handleScroll = () => {
         const track = trackRef.current;
         if (!track) return;
 
+
+
         const firstCard = track.children.item(0) as HTMLElement | null;
         if (!firstCard) return;
+
+
 
         const cardWidth = firstCard.getBoundingClientRect().width;
         const gap = Number.parseFloat(
             window.getComputedStyle(track).columnGap || "0",
         );
 
+
+
         if (cardWidth + gap <= 0) return;
+
+
 
         const index = Math.round(
             track.scrollLeft / (cardWidth + gap),
         );
 
+
+
         setActiveIndex(Math.min(maxIndex, Math.max(0, index)));
     };
+
+
 
     // Wait for settings to load so the section doesn't flash
     // before an inactive setting is read from Firestore.
@@ -181,10 +239,14 @@ export default function WhoWeSupply() {
         return null;
     }
 
+
+
     // Default to visible for existing stores without this field.
     if (settings?.whoWeSupplyActive === false) {
         return null;
     }
+
+
 
     return (
         <Box
@@ -193,7 +255,7 @@ export default function WhoWeSupply() {
             sx={{
                 width: "100%",
                 overflow: "hidden",
-                backgroundColor: "#FFFFFF",
+                backgroundColor: "#F5F7FA",
                 py: {
                     xs: 5,
                     sm: 6,
@@ -230,7 +292,7 @@ export default function WhoWeSupply() {
                     <Typography
                         component="p"
                         sx={{
-                            color: "#008C99",
+                            color: "#006D77",
                             fontSize: "0.90rem",
                             fontWeight: 700,
                             letterSpacing: "0.22em",
@@ -240,6 +302,8 @@ export default function WhoWeSupply() {
                     >
                         For Every Space
                     </Typography>
+
+
 
                     <Typography
                         id="who-we-supply-heading"
@@ -261,6 +325,8 @@ export default function WhoWeSupply() {
                         Who We Supply
                     </Typography>
 
+
+
                     <Typography
                         sx={{
                             color: "#626B72",
@@ -279,9 +345,11 @@ export default function WhoWeSupply() {
                     </Typography>
                 </Box>
 
+
+
                 <Box
                     sx={{
-                        display: "flex",
+                        display: maxIndex > 0 ? "flex" : "none",
                         justifyContent: "flex-end",
                         gap: 1,
                         mb: 1.5,
@@ -313,6 +381,8 @@ export default function WhoWeSupply() {
                         <ArrowBackIosNewRoundedIcon sx={{ fontSize: 17 }} />
                     </IconButton>
 
+
+
                     <IconButton
                         aria-label="Next customer category"
                         onClick={() =>
@@ -339,6 +409,8 @@ export default function WhoWeSupply() {
                         <ArrowForwardIosRoundedIcon sx={{ fontSize: 17 }} />
                     </IconButton>
                 </Box>
+
+
 
                 <Box
                     ref={trackRef}
@@ -419,9 +491,11 @@ export default function WhoWeSupply() {
                                             component="img"
                                             src={
                                                 imageUrl.startsWith("https://")
-                                                    ? imageUrl
+                                                    ? optimizeImage(imageUrl, 800)
                                                     : undefined
                                             }
+                                            width={600}
+                                            height={400}
                                             alt={title}
                                             loading="lazy"
                                             sx={{
@@ -436,15 +510,7 @@ export default function WhoWeSupply() {
                                             }}
                                         />
 
-                                        <Box
-                                            sx={{
-                                                position: "absolute",
-                                                inset: 0,
-                                                background:
-                                                    "linear-gradient(180deg, rgba(0,0,0,0.02) 35%, rgba(0,0,0,0.42) 100%)",
-                                                pointerEvents: "none",
-                                            }}
-                                        />
+
 
                                         <Box
                                             sx={{
@@ -458,12 +524,13 @@ export default function WhoWeSupply() {
                                                 borderRadius: "12px",
                                                 color: "#007F89",
                                                 backgroundColor: "#FFFFFF",
-                                                boxShadow: "0 4px 14px rgba(0,0,0,0.12)",
                                             }}
                                         >
                                             <Icon sx={{ fontSize: 24 }} />
                                         </Box>
                                     </Box>
+
+
 
                                     <Box
                                         sx={{
@@ -495,6 +562,8 @@ export default function WhoWeSupply() {
                                             {title}
                                         </Typography>
 
+
+
                                         <Typography
                                             sx={{
                                                 color: "#007F89",
@@ -507,6 +576,8 @@ export default function WhoWeSupply() {
                                             {subtitle}
                                         </Typography>
 
+
+
                                         <Typography
                                             sx={{
                                                 color: "#667078",
@@ -516,6 +587,8 @@ export default function WhoWeSupply() {
                                         >
                                             {description}
                                         </Typography>
+
+
 
                                         <Box sx={{ mt: "auto", pt: 2.5 }}>
                                             <Box
@@ -534,12 +607,14 @@ export default function WhoWeSupply() {
                     )}
                 </Box>
 
+
+
                 <Box
                     sx={{
-                        display: "flex",
+                        display: maxIndex > 0 ? "flex" : "none",
                         justifyContent: "center",
                         alignItems: "center",
-                        gap: 0.8,
+                        gap: 0,
                         mt: 3,
                     }}
                 >
@@ -552,19 +627,32 @@ export default function WhoWeSupply() {
                             aria-current={activeIndex === index ? "true" : undefined}
                             onClick={() => goTo(index)}
                             sx={{
-                                width: activeIndex === index ? 24 : 7,
-                                height: 7,
+                                position: "relative",
+                                width: activeIndex === index ? 34 : 24,
+                                height: 24,
                                 p: 0,
                                 border: 0,
-                                borderRadius: 999,
+                                background: "transparent",
                                 cursor: "pointer",
-                                backgroundColor:
-                                    activeIndex === index ? "#00BFCB" : "#D5E0E3",
-                                transition: "width 200ms ease, background-color 200ms ease",
+                                "&::before": {
+                                    content: '""',
+                                    position: "absolute",
+                                    top: "50%",
+                                    left: "50%",
+                                    width: activeIndex === index ? 24 : 7,
+                                    height: 7,
+                                    transform: "translate(-50%, -50%)",
+                                    borderRadius: 999,
+                                    backgroundColor:
+                                        activeIndex === index ? "#00BFCB" : "#D5E0E3",
+                                    transition: "width 200ms ease, background-color 200ms ease",
+                                },
                             }}
                         />
                     ))}
                 </Box>
+
+
 
                 <Box
                     sx={{
@@ -607,6 +695,8 @@ export default function WhoWeSupply() {
                             Need housekeeping supplies?
                         </Typography>
 
+
+
                         <Typography
                             sx={{
                                 color: "#B8D0D2",
@@ -618,6 +708,8 @@ export default function WhoWeSupply() {
                         </Typography>
                     </Box>
 
+
+
                     <Box
                         component="a"
                         href="https://wa.me/918766911307?text=Hello%20Swachha%2C%20I%20would%20like%20to%20enquire%20about%20housekeeping%20products."
@@ -628,20 +720,30 @@ export default function WhoWeSupply() {
                             display: "inline-flex",
                             alignItems: "center",
                             justifyContent: "center",
+                            gap: 1,
                             minHeight: 44,
                             px: 2.5,
                             borderRadius: 999,
-                            border: "1px solid #00D5E2",
-                            color: "#071B1D",
-                            backgroundColor: "#00D5E2",
+                            border: "1px solid #0B7A6B",
+                            color: "#FFFFFF",
+                            backgroundColor: "#0B7A6B",
                             fontSize: "0.76rem",
                             fontWeight: 700,
                             letterSpacing: "0.08em",
                             textDecoration: "none",
                             textTransform: "uppercase",
-                            transition: "background-color 180ms ease",
+                            transition: "background-color 180ms ease, border-color 180ms ease",
+                            "&:hover": {
+                                backgroundColor: "#09685C",
+                                borderColor: "#1EBE5B",
+                            },
+                            "&:focus-visible": {
+                                outline: "2px solid #0B7A6B",
+                                outlineOffset: 2,
+                            },
                         }}
                     >
+                        <WhatsAppIcon sx={{ fontSize: 20 }} />
                         Enquire on WhatsApp
                     </Box>
                 </Box>

@@ -329,6 +329,15 @@ service cloud.firestore {
     }
 
     // ==========================
+    // Lightning Deals
+    // ==========================
+
+    match /lightningDeals/{dealId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==========================
     // Offer Zone Products
     // ==========================
 

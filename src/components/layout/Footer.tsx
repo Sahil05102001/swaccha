@@ -177,27 +177,6 @@ export default function Footer() {
               >
                 Shop
               </Link>
-
-              <Link
-                href="/products"
-                underline="none"
-                sx={{
-                  width: "fit-content",
-                  color: "#00F0FF",
-                  fontSize: {
-                    xs: "0.86rem",
-                    sm: "0.9rem",
-                  },
-                  fontWeight: 400,
-                  transition: "opacity 0.2s ease",
-                  "&:hover": {
-                    color: "#00F0FF",
-                    opacity: 0.65,
-                  },
-                }}
-              >
-                All Products
-              </Link>
               <Link
                 href="/orders"
                 underline="none"
@@ -358,7 +337,7 @@ export default function Footer() {
             </Typography>
 
             <Button
-              href="https://wa.me/8766911307"
+              href="https://wa.me/918766911307"
               variant="contained"
               sx={{
                 minWidth: {

@@ -1,14 +1,10 @@
-import {
-  Alert,
-  CircularProgress,
-  Snackbar,
-  Stack,
-} from "@mui/material";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+
+import { Alert, Button, Skeleton, Stack } from "@mui/material";
+import RefreshIcon from "@mui/icons-material/Refresh";
 
 import PageContainer from "@/components/common/PageContainer";
 import PageHeader from "@/components/common/PageHeader";
-import SectionCard from "@/components/common/SectionCard";
 
 import AboutForm from "../../components/AboutForm";
 import {
@@ -17,114 +13,52 @@ import {
 } from "../../hooks/useAboutSettings";
 
 export default function AboutAdminPage() {
-  const {
-    data: settings,
-    isLoading,
-    isError,
-  } = useAboutSettings();
+  const { data: settings, isLoading, isError, refetch, isRefetching } =
+    useAboutSettings();
 
-  const saveMutation =
-    useSaveAboutSettings();
+  const saveMutation = useSaveAboutSettings();
 
-  const [successOpen, setSuccessOpen] =
-    useState(false);
+  // Bumping this key rebuilds the form from the saved content.
+  const [formKey, setFormKey] = useState(0);
 
-  const [errorOpen, setErrorOpen] =
-    useState(false);
-
-  useEffect(() => {
-    if (saveMutation.isSuccess) {
-      setSuccessOpen(true);
-    }
-  }, [saveMutation.isSuccess]);
-
-  useEffect(() => {
-    if (saveMutation.isError) {
-      setErrorOpen(true);
-    }
-  }, [saveMutation.isError]);
-
-  if (isLoading) {
-    return (
-      <Stack
-        sx={{
-          minHeight: "60vh",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <CircularProgress />
-      </Stack>
-    );
-  }
-
-  if (isError || !settings) {
-    return (
-      <Stack sx={{ p: 4 }}>
-        <Alert severity="error">
-          Failed to load About page content.
-        </Alert>
-      </Stack>
-    );
-  }
+  const handleRefresh = async () => {
+    await refetch();
+    setFormKey((key) => key + 1);
+  };
 
   return (
-    <>
-      <PageContainer>
-        <PageHeader
-          title="About Us"
-          subtitle="Manage the content displayed on the About Us page."
+    <PageContainer>
+      <PageHeader
+        title="About Us"
+        subtitle="Manage the content shown on the About Us page."
+        action={
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={() => void handleRefresh()}
+            disabled={isRefetching}
+          >
+            {isRefetching ? "Refreshing..." : "Refresh"}
+          </Button>
+        }
+      />
+
+      {isLoading ? (
+        <Stack spacing={3}>
+          <Skeleton variant="rounded" height={320} />
+          <Skeleton variant="rounded" height={220} />
+          <Skeleton variant="rounded" height={220} />
+        </Stack>
+      ) : isError || !settings ? (
+        <Alert severity="error">Failed to load the About page content.</Alert>
+      ) : (
+        <AboutForm
+          key={formKey}
+          initialValues={settings}
+          isSaving={saveMutation.isPending}
+          onSubmit={(values) => saveMutation.mutateAsync(values)}
         />
-
-        <SectionCard
-          title="Company Information"
-          subtitle="Update your company story, mission, vision and gallery."
-        >
-          <AboutForm
-            initialValues={settings}
-            isSaving={saveMutation.isPending}
-            onSubmit={(values) =>
-              saveMutation.mutate(values)
-            }
-          />
-        </SectionCard>
-      </PageContainer>
-
-      <Snackbar
-        open={successOpen}
-        autoHideDuration={3000}
-        onClose={() =>
-          setSuccessOpen(false)
-        }
-      >
-        <Alert
-          severity="success"
-          variant="filled"
-          onClose={() =>
-            setSuccessOpen(false)
-          }
-        >
-          About page updated successfully.
-        </Alert>
-      </Snackbar>
-
-      <Snackbar
-        open={errorOpen}
-        autoHideDuration={4000}
-        onClose={() =>
-          setErrorOpen(false)
-        }
-      >
-        <Alert
-          severity="error"
-          variant="filled"
-          onClose={() =>
-            setErrorOpen(false)
-          }
-        >
-          Failed to update About page.
-        </Alert>
-      </Snackbar>
-    </>
+      )}
+    </PageContainer>
   );
 }

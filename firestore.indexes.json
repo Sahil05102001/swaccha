@@ -34,6 +34,20 @@
       ]
     },
     {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "orderStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "stockMovements",
       "queryScope": "COLLECTION",
       "fields": [
@@ -169,6 +183,32 @@
         },
         {
           "fieldPath": "qtyManualOut",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "stockMovements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "qtyManualIn",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtyManualOut",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtyReceived",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtyRestored",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "qtySold",
           "order": "ASCENDING"
         }
       ]

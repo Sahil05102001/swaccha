@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button, Stack } from "@mui/material";
 
 import AddIcon from "@mui/icons-material/Add";
+import RefreshIcon from "@mui/icons-material/Refresh";
 
 import PageContainer from "@/components/common/PageContainer";
 import PageHeader from "@/components/common/PageHeader";
@@ -10,46 +11,46 @@ import SectionCard from "@/components/common/SectionCard";
 
 import AddCategoryDialog from "../components/AddCategoryDialog";
 import CategoryTable from "../components/CategoryTable";
+import { useCategories } from "../hooks/useCategories";
 
 export default function CategoriesPage() {
-    const [addOpen, setAddOpen] =
-        useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
-    return (
-        <PageContainer>
-            <PageHeader
-                title="Categories"
-                subtitle="Manage product categories"
-            />
+  // Same query as the table, so this does not cause an extra read.
+  const { refetch, isFetching } = useCategories();
 
-            <SectionCard>
-                <Stack
-                    direction="row"
-                    sx={{
-                        justifyContent: "flex-end",
-                        mb: 2,
-                    }}
-                >
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={() =>
-                            setAddOpen(true)
-                        }
-                    >
-                        Add Category
-                    </Button>
-                </Stack>
+  return (
+    <PageContainer>
+      <PageHeader
+        title="Categories"
+        subtitle="Manage product categories"
+        action={
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={() => refetch()}
+              disabled={isFetching}
+            >
+              {isFetching ? "Refreshing..." : "Refresh"}
+            </Button>
 
-                <CategoryTable />
-            </SectionCard>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setAddOpen(true)}
+            >
+              Add category
+            </Button>
+          </Stack>
+        }
+      />
 
-            <AddCategoryDialog
-                open={addOpen}
-                onClose={() =>
-                    setAddOpen(false)
-                }
-            />
-        </PageContainer>
-    );
+      <SectionCard>
+        <CategoryTable />
+      </SectionCard>
+
+      <AddCategoryDialog open={addOpen} onClose={() => setAddOpen(false)} />
+    </PageContainer>
+  );
 }

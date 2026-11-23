@@ -1,8 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 
-import "jspdf";
-
 import App from "./App";
 import Providers from "./app/providers";
 

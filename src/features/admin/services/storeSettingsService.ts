@@ -23,8 +23,6 @@ export async function getStoreSettings(): Promise<StoreSettings> {
   try {
     const snapshot = await getDoc(documentRef);
 
-    console.log("Snapshot exists:", snapshot.exists());
-
     if (!snapshot.exists()) {
       return DEFAULT_STORE_SETTINGS;
     }

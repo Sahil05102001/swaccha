@@ -1,116 +1,25 @@
-import {
-  doc,
-  getDoc,
-  setDoc,
-  serverTimestamp,
-} from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 
-import { auth } from "@/firebase/auth";
 import { db } from "@/firebase/firestore";
+import {
+  commitWithImages,
+  getCloudinaryPublicIdFromUrl,
+  type SaveWithImagesResult,
+} from "@/features/admin/media/cloudinaryImages";
 
-import type {
-  AdBanner,
-  AdBannerFormData,
-} from "../types/adBanner";
+import type { AdBanner } from "../types/adBanner";
 
 const COLLECTION_NAME = "adBanner";
 const DOCUMENT_ID = "main";
 
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL ??
-  "http://localhost:5000"
-).replace(/\/+$/, "");
+const adBannerRef = doc(db, COLLECTION_NAME, DOCUMENT_ID);
 
-const CLOUDINARY_CLOUD_NAME = "xxjcpz3y";
-
-const adBannerRef = doc(
-  db,
-  COLLECTION_NAME,
-  DOCUMENT_ID,
-);
-
-function getCloudinaryPublicIdFromUrl(
-  imageUrl: string,
-): string {
-  if (!imageUrl) {
-    return "";
-  }
-
-  try {
-    const url = new URL(imageUrl);
-
-    const segments = url.pathname
-      .split("/")
-      .filter(Boolean);
-
-    if (
-      url.hostname !== "res.cloudinary.com" ||
-      segments[0] !== CLOUDINARY_CLOUD_NAME ||
-      segments[1] !== "image" ||
-      segments[2] !== "upload"
-    ) {
-      return "";
-    }
-
-    let publicIdSegments = segments.slice(3);
-
-    if (/^v\d+$/.test(publicIdSegments[0] ?? "")) {
-      publicIdSegments = publicIdSegments.slice(1);
-    }
-
-    if (publicIdSegments.length === 0) {
-      return "";
-    }
-
-    const lastIndex = publicIdSegments.length - 1;
-
-    publicIdSegments[lastIndex] =
-      publicIdSegments[lastIndex].replace(/\.[^.]+$/, "");
-
-    return publicIdSegments.join("/");
-  } catch {
-    return "";
-  }
-}
-
-async function deleteCloudinaryAdBannerImage(
-  publicId: string,
-): Promise<void> {
-  if (!publicId) {
-    return;
-  }
-
-  const currentUser = auth.currentUser;
-
-  if (!currentUser) {
-    throw new Error(
-      "Authentication required to delete the AdBanner image.",
-    );
-  }
-
-  const idToken = await currentUser.getIdToken();
-
-  const response = await fetch(
-    `${API_BASE_URL}/hero-images`,
-    {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${idToken}`,
-      },
-      body: JSON.stringify({ publicId }),
-    },
-  );
-
-  if (!response.ok) {
-    const responseText = await response.text();
-
-    throw new Error(
-      `Failed to delete AdBanner image (${response.status}): ${
-        responseText || response.statusText
-      }`,
-    );
-  }
+export interface SaveAdBannerInput {
+  altText: string;
+  href: string;
+  isActive: boolean;
+  /** New images chosen in the form. Nothing is uploaded until save. */
+  files: { desktop?: File | null; mobile?: File | null };
 }
 
 export async function getAdBanner(): Promise<AdBanner | null> {
@@ -123,22 +32,14 @@ export async function getAdBanner(): Promise<AdBanner | null> {
   const data = snapshot.data();
 
   const legacyImageUrl = data.imageUrl ?? "";
-
-  const desktopImageUrl =
-    data.desktopImageUrl ?? legacyImageUrl;
-
+  const desktopImageUrl = data.desktopImageUrl ?? legacyImageUrl;
   const mobileImageUrl =
-    data.mobileImageUrl ??
-    desktopImageUrl ??
-    legacyImageUrl;
+    data.mobileImageUrl ?? desktopImageUrl ?? legacyImageUrl;
 
   return {
     id: snapshot.id,
 
-    imageUrl:
-      legacyImageUrl ||
-      desktopImageUrl ||
-      "",
+    imageUrl: legacyImageUrl || desktopImageUrl || "",
 
     desktopImageUrl,
     mobileImageUrl,
@@ -151,125 +52,77 @@ export async function getAdBanner(): Promise<AdBanner | null> {
       data.mobileImagePublicId ||
       getCloudinaryPublicIdFromUrl(mobileImageUrl),
 
-    altText:
-      data.altText ?? "Advertisement",
+    altText: data.altText ?? "Advertisement",
+    href: data.href ?? "",
+    isActive: Boolean(data.isActive),
 
-    href:
-      data.href ?? "",
-
-    isActive:
-      Boolean(data.isActive),
-
-    createdAt:
-      data.createdAt?.toDate?.() ?? new Date(),
-
-    updatedAt:
-      data.updatedAt?.toDate?.() ?? new Date(),
+    createdAt: data.createdAt?.toDate?.() ?? new Date(),
+    updatedAt: data.updatedAt?.toDate?.() ?? new Date(),
   };
 }
 
 export async function saveAdBanner(
-  data: AdBannerFormData,
-): Promise<void> {
+  input: SaveAdBannerInput,
+): Promise<SaveWithImagesResult> {
   const previousSnapshot = await getDoc(adBannerRef);
+  const previous = previousSnapshot.exists() ? previousSnapshot.data() : null;
 
-  const previousData = previousSnapshot.exists()
-    ? previousSnapshot.data()
-    : null;
+  const previousDesktopUrl: string =
+    previous?.desktopImageUrl ?? previous?.imageUrl ?? "";
 
-  const previousDesktopUrl =
-    previousData?.desktopImageUrl ??
-    previousData?.imageUrl ??
-    "";
+  const previousMobileUrl: string =
+    previous?.mobileImageUrl ?? previousDesktopUrl;
 
-  const previousMobileUrl =
-    previousData?.mobileImageUrl ??
-    previousDesktopUrl;
-
-  const previousDesktopPublicId =
-    previousData?.desktopImagePublicId ||
+  const previousDesktopId: string =
+    previous?.desktopImagePublicId ||
     getCloudinaryPublicIdFromUrl(previousDesktopUrl);
 
-  const previousMobilePublicId =
-    previousData?.mobileImagePublicId ||
+  const previousMobileId: string =
+    previous?.mobileImagePublicId ||
     getCloudinaryPublicIdFromUrl(previousMobileUrl);
 
-  const newDesktopPublicId =
-    data.desktopImagePublicId ||
-    getCloudinaryPublicIdFromUrl(
-      data.desktopImageUrl || data.imageUrl,
-    );
+  // Check this before uploading anything.
+  if (
+    (!input.files.desktop && !previousDesktopUrl) ||
+    (!input.files.mobile && !previousMobileUrl)
+  ) {
+    throw new Error("Please choose both a desktop image and a mobile image.");
+  }
 
-  const newMobilePublicId =
-    data.mobileImagePublicId ||
-    getCloudinaryPublicIdFromUrl(
-      data.mobileImageUrl ||
-      data.desktopImageUrl ||
-      data.imageUrl,
-    );
-
-  // Save the new banner first. A Firestore failure leaves
-  // the previous Cloudinary images untouched.
-  await setDoc(
-    adBannerRef,
+  return commitWithImages(
     {
-      ...data,
-
-      imageUrl:
-        data.desktopImageUrl ||
-        data.imageUrl ||
-        "",
-
-      desktopImagePublicId: newDesktopPublicId,
-      mobileImagePublicId: newMobilePublicId,
-
-      updatedAt: serverTimestamp(),
-
-      ...(previousSnapshot.exists()
-        ? {}
-        : { createdAt: serverTimestamp() }),
+      desktop: {
+        folder: "ad-banners/desktop",
+        current: { url: previousDesktopUrl, publicId: previousDesktopId },
+        file: input.files.desktop,
+      },
+      mobile: {
+        folder: "ad-banners/mobile",
+        current: { url: previousMobileUrl, publicId: previousMobileId },
+        file: input.files.mobile,
+      },
     },
-    { merge: true },
-  );
+    async (images) => {
+      await setDoc(
+        adBannerRef,
+        {
+          altText: input.altText,
+          href: input.href,
+          isActive: input.isActive,
 
-  const retainedPublicIds = new Set(
-    [newDesktopPublicId, newMobilePublicId].filter(Boolean),
-  );
+          // Legacy field stays in step with the desktop image.
+          imageUrl: images.desktop.url,
 
-  const previousPublicIds = new Set(
-    [previousDesktopPublicId, previousMobilePublicId].filter(Boolean),
-  );
+          desktopImageUrl: images.desktop.url,
+          desktopImagePublicId: images.desktop.publicId,
+          mobileImageUrl: images.mobile.url,
+          mobileImagePublicId: images.mobile.publicId,
 
-  const cleanupErrors: string[] = [];
-
-  for (const publicId of previousPublicIds) {
-    if (retainedPublicIds.has(publicId)) {
-      continue;
-    }
-
-    try {
-      await deleteCloudinaryAdBannerImage(publicId);
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unknown Cloudinary deletion error";
-
-      cleanupErrors.push(`${publicId}: ${message}`);
-
-      console.error(
-        "AdBanner saved, but Cloudinary image cleanup failed:",
-        publicId,
-        error,
+          updatedAt: serverTimestamp(),
+          ...(previousSnapshot.exists() ? {} : { createdAt: serverTimestamp() }),
+        },
+        { merge: true },
       );
-    }
-  }
-
-  // The Firestore save succeeded. Report cleanup separately
-  // so the caller can distinguish it from a save failure.
-  if (cleanupErrors.length > 0) {
-    throw new Error(
-      `Banner saved successfully, but old image cleanup failed: ${cleanupErrors.join("; ")}`,
-    );
-  }
+    },
+  );
 }

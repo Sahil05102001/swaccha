@@ -1,200 +1,144 @@
-import {
-    Timestamp,
-    collection,
-    getDocs,
-} from "firebase/firestore";
+import { Timestamp, collection, getDocs } from "firebase/firestore";
 
 import { db } from "@/firebase/firestore";
 
+/** Same limit as the dashboard's Inventory Alerts. */
+export const LOW_STOCK_AT = 5;
+
+export type StockStatus = "In Stock" | "Low Stock" | "Out of Stock";
+
+export const STOCK_STATUSES: StockStatus[] = ["In Stock", "Low Stock", "Out of Stock"];
+
 export interface InventoryReportFilters {
-    search?: string;
-    category?: string;
-    stockStatus?: string;
+  search?: string;
+  category?: string;
+  stockStatus?: string;
 }
 
 export interface InventoryReportRow {
-    id: string;
-    productName: string;
-    sku: string;
-    category: string;
-    purchasePrice: number;
-    sellingPrice: number;
-    stock: number;
-    stockValue: number;
-    stockStatus:
-        | "In Stock"
-        | "Low Stock"
-        | "Out of Stock";
-    lastUpdated: Date | null;
+  id: string;
+  productName: string;
+  sku: string;
+  category: string;
+  purchasePrice: number;
+  sellingPrice: number;
+  stock: number;
+  /** stock x purchase price */
+  costValue: number;
+  /** stock x selling price */
+  retailValue: number;
+  stockStatus: StockStatus;
+  lastUpdated: Date | null;
 }
 
 export interface InventoryReportSummary {
-    totalProducts: number;
-    totalStockQuantity: number;
-    totalInventoryValue: number;
-    lowStockProducts: number;
-    outOfStockProducts: number;
+  totalProducts: number;
+  totalStockQuantity: number;
+  totalCostValue: number;
+  totalRetailValue: number;
+  lowStockProducts: number;
+  outOfStockProducts: number;
+  /** In-stock products with no purchase price saved (cost value is understated). */
+  missingCostProducts: number;
 }
 
 export interface InventoryReport {
-    summary: InventoryReportSummary;
-    rows: InventoryReportRow[];
+  summary: InventoryReportSummary;
+  rows: InventoryReportRow[];
+  categories: string[];
 }
 
-const LOW_STOCK_THRESHOLD = 10;
+const num = (value: unknown) =>
+  typeof value === "number" && Number.isFinite(value) ? value : 0;
 
-export async function getInventoryReport(
-    filters?: InventoryReportFilters
-): Promise<InventoryReport> {
-    const snapshot = await getDocs(
-        collection(db, "products")
-    );
+const round2 = (value: number) => Math.round(value * 100) / 100;
 
-    const rows: InventoryReportRow[] = [];
+/** One download of all products. Filters run on screen. */
+export async function fetchInventoryRows(): Promise<InventoryReportRow[]> {
+  const snapshot = await getDocs(collection(db, "products"));
 
-    let totalProducts = 0;
-    let totalStockQuantity = 0;
-    let totalInventoryValue = 0;
-    let lowStockProducts = 0;
-    let outOfStockProducts = 0;
+  const rows = snapshot.docs.map((d): InventoryReportRow => {
+    const p = d.data();
 
-    const search =
-        filters?.search?.trim().toLowerCase() ?? "";
+    const stock = typeof p.stock === "number" ? p.stock : num(p.quantity);
+    const purchasePrice = num(p.purchasePrice);
+    const sellingPrice = typeof p.price === "number" ? p.price : num(p.sellingPrice);
 
-    snapshot.forEach((doc) => {
-        const product = doc.data();
+    const stockStatus: StockStatus =
+      stock <= 0 ? "Out of Stock" : stock <= LOW_STOCK_AT ? "Low Stock" : "In Stock";
 
-        const productName =
-            product.title ??
-            product.name ??
-            "Unnamed Product";
-
-        const sku = product.sku ?? "";
-
-        const category =
-            product.category ?? "Uncategorized";
-
-        const purchasePrice =
-            typeof product.purchasePrice ===
-            "number"
-                ? product.purchasePrice
-                : 0;
-
-        const sellingPrice =
-            typeof product.price === "number"
-                ? product.price
-                : typeof product.sellingPrice ===
-                    "number"
-                  ? product.sellingPrice
-                  : 0;
-
-        const stock =
-            typeof product.quantity === "number"
-                ? product.quantity
-                : typeof product.stock === "number"
-                  ? product.stock
-                  : 0;
-
-        let stockStatus:
-            | "In Stock"
-            | "Low Stock"
-            | "Out of Stock";
-
-        if (stock <= 0) {
-            stockStatus = "Out of Stock";
-        } else if (
-            stock <= LOW_STOCK_THRESHOLD
-        ) {
-            stockStatus = "Low Stock";
-        } else {
-            stockStatus = "In Stock";
-        }
-
-        if (
-            filters?.category &&
-            category.toLowerCase() !==
-                filters.category.toLowerCase()
-        ) {
-            return;
-        }
-
-        if (
-            filters?.stockStatus &&
-            stockStatus.toLowerCase() !==
-                filters.stockStatus.toLowerCase()
-        ) {
-            return;
-        }
-
-        if (search) {
-            const searchableText = [
-                productName,
-                sku,
-                category,
-            ]
-                .join(" ")
-                .toLowerCase();
-
-            if (
-                !searchableText.includes(search)
-            ) {
-                return;
-            }
-        }
-
-        const stockValue =
-            sellingPrice * stock;
-
-        const updatedAt =
-            product.updatedAt instanceof
-            Timestamp
-                ? product.updatedAt.toDate()
-                : null;
-
-        totalProducts++;
-        totalStockQuantity += stock;
-        totalInventoryValue += stockValue;
-
-        if (stockStatus === "Low Stock") {
-            lowStockProducts++;
-        }
-
-        if (stockStatus === "Out of Stock") {
-            outOfStockProducts++;
-        }
-
-        rows.push({
-            id: doc.id,
-            productName,
-            sku,
-            category,
-            purchasePrice,
-            sellingPrice,
-            stock,
-            stockValue,
-            stockStatus,
-            lastUpdated: updatedAt,
-        });
-    });
-
-    rows.sort((a, b) => {
-        if (a.stock !== b.stock) {
-            return a.stock - b.stock;
-        }
-
-        return a.productName.localeCompare(
-            b.productName
-        );
-    });
+    const units = Math.max(stock, 0);
 
     return {
-        summary: {
-            totalProducts,
-            totalStockQuantity,
-            totalInventoryValue,
-            lowStockProducts,
-            outOfStockProducts,
-        },
-        rows,
+      id: d.id,
+      productName: String(p.name ?? p.title ?? "Unnamed product"),
+      sku: String(p.sku ?? ""),
+      category: String(p.category ?? "") || "Uncategorized",
+      purchasePrice,
+      sellingPrice,
+      stock,
+      costValue: round2(units * purchasePrice),
+      retailValue: round2(units * sellingPrice),
+      stockStatus,
+      lastUpdated: p.updatedAt instanceof Timestamp ? p.updatedAt.toDate() : null,
     };
+  });
+
+  // Lowest stock first, so the products that need attention are on top.
+  rows.sort((a, b) =>
+    a.stock !== b.stock ? a.stock - b.stock : a.productName.localeCompare(b.productName),
+  );
+
+  return rows;
+}
+
+export function buildInventoryReport(
+  all: InventoryReportRow[],
+  filters: InventoryReportFilters,
+): InventoryReport {
+  const search = filters.search?.trim().toLowerCase() ?? "";
+
+  const rows = all.filter((row) => {
+    if (filters.category && row.category !== filters.category) return false;
+    if (filters.stockStatus && row.stockStatus !== filters.stockStatus) return false;
+
+    if (
+      search &&
+      ![row.productName, row.sku, row.category].join(" ").toLowerCase().includes(search)
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const summary: InventoryReportSummary = {
+    totalProducts: rows.length,
+    totalStockQuantity: 0,
+    totalCostValue: 0,
+    totalRetailValue: 0,
+    lowStockProducts: 0,
+    outOfStockProducts: 0,
+    missingCostProducts: 0,
+  };
+
+  for (const row of rows) {
+    summary.totalStockQuantity += Math.max(row.stock, 0);
+    summary.totalCostValue += row.costValue;
+    summary.totalRetailValue += row.retailValue;
+
+    if (row.stockStatus === "Low Stock") summary.lowStockProducts++;
+    if (row.stockStatus === "Out of Stock") summary.outOfStockProducts++;
+    if (row.stock > 0 && row.purchasePrice <= 0) summary.missingCostProducts++;
+  }
+
+  summary.totalCostValue = round2(summary.totalCostValue);
+  summary.totalRetailValue = round2(summary.totalRetailValue);
+
+  // From ALL products, so the dropdown keeps every category after one is chosen.
+  const categories = Array.from(new Set(all.map((row) => row.category).filter(Boolean))).sort(
+    (a, b) => a.localeCompare(b),
+  );
+
+  return { summary, rows, categories };
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+
 import {
   Alert,
   Box,
@@ -12,20 +13,25 @@ import {
   Typography,
 } from "@mui/material";
 
+
 import NavigateNextIcon from "@mui/icons-material/NavigateNext";
-import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
-import SecurityOutlinedIcon from "@mui/icons-material/SecurityOutlined";
-import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
+
 
 import { Link, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
+
 import Grid from "@mui/material/Grid";
+
 
 import { useProduct } from "../hooks/useProducts";
 import ProductImage from "../components/ProductImage";
 import ProductInfo from "../components/ProductInfo";
 import ProductReviews from "@/features/reviews/components/ProductReviews";
+import ProductCoupons from "../components/ProductCoupons";
+import ExclusiveOffers from "../components/ExclusiveOffers";
+import RandomProducts from "../components/RandomProducts";
+
 
 // Same palette as ProductCard so the whole site matches.
 const COLORS = {
@@ -34,11 +40,13 @@ const COLORS = {
   muted: "#68777A",
   pageBg: "#F5F7FA",
   panelBg: "#EAFBFE",
-  imageBg: "#F7F7F2",
+ imageBg: "#FFFFFF",
   badgeText: "#071207",
 };
 
+
 const PAGE_MAX_WIDTH = 1400;
+
 
 const hideScrollbar = {
   scrollbarWidth: "none",
@@ -48,9 +56,11 @@ const hideScrollbar = {
   },
 } as const;
 
+
 export default function ProductDetailsPage() {
   const { id = "" } = useParams();
   const queryClient = useQueryClient();
+
 
   const {
     data: product,
@@ -59,12 +69,15 @@ export default function ProductDetailsPage() {
     error,
   } = useProduct(id);
 
+
   const [selectedImage, setSelectedImage] = useState(0);
+
 
   // Start on the first photo whenever a different product opens.
   useEffect(() => {
     setSelectedImage(0);
   }, [id]);
+
 
   // After a review is edited or deleted, reload product data so the
   // average and count update everywhere.
@@ -77,6 +90,7 @@ export default function ProductDetailsPage() {
         ),
     });
   };
+
 
   if (isLoading) {
     return (
@@ -98,6 +112,7 @@ export default function ProductDetailsPage() {
           sx={{ color: COLORS.blue }}
         />
 
+
         <Typography
           variant="body2"
           sx={{ color: COLORS.muted }}
@@ -107,6 +122,7 @@ export default function ProductDetailsPage() {
       </Box>
     );
   }
+
 
   if (isError) {
     return (
@@ -135,6 +151,7 @@ export default function ProductDetailsPage() {
       </Box>
     );
   }
+
 
   if (!product) {
     return (
@@ -180,6 +197,7 @@ export default function ProductDetailsPage() {
               Product not found
             </Typography>
 
+
             <Typography
               sx={{
                 color: COLORS.muted,
@@ -189,6 +207,7 @@ export default function ProductDetailsPage() {
               The product you're looking for may have
               been removed or is no longer available.
             </Typography>
+
 
             <Button
               component={Link}
@@ -219,6 +238,7 @@ export default function ProductDetailsPage() {
     );
   }
 
+
   const images = product.images ?? [];
   const activeIndex = Math.min(
     selectedImage,
@@ -226,32 +246,13 @@ export default function ProductDetailsPage() {
   );
   const activeImage = images[activeIndex] ?? "";
 
+
   // Review totals are stored on the product document.
   const { ratingSum = 0, ratingCount = 0 } = product as unknown as {
     ratingSum?: number;
     ratingCount?: number;
   };
 
-  const reassuranceItems = [
-    {
-      title: "Quality Products",
-      description:
-        "Carefully selected for everyday use.",
-      icon: VerifiedOutlinedIcon,
-    },
-    {
-      title: "Secure Shopping",
-      description:
-        "Your order information stays protected.",
-      icon: SecurityOutlinedIcon,
-    },
-    {
-      title: "Easy Ordering",
-      description:
-        "Add to cart and place your order with ease.",
-      icon: ShoppingBagOutlinedIcon,
-    },
-  ];
 
   const breadcrumbLinkSx = {
     color: COLORS.muted,
@@ -264,6 +265,7 @@ export default function ProductDetailsPage() {
       color: COLORS.ink,
     },
   };
+
 
   return (
     <Box
@@ -312,6 +314,7 @@ export default function ProductDetailsPage() {
             Home
           </MuiLink>
 
+
           <MuiLink
             component={Link}
             to="/products"
@@ -320,6 +323,7 @@ export default function ProductDetailsPage() {
           >
             Products
           </MuiLink>
+
 
           <Typography
             sx={{
@@ -343,6 +347,7 @@ export default function ProductDetailsPage() {
           </Typography>
         </Breadcrumbs>
 
+
         {/* Product details */}
         <Paper
           elevation={0}
@@ -353,6 +358,7 @@ export default function ProductDetailsPage() {
             },
             border: `1px solid ${COLORS.blue}`,
             backgroundColor: "#FFFFFF",
+
 
             // "clip" keeps the rounded corners without breaking the sticky image column.
             overflow: "clip",
@@ -389,6 +395,7 @@ export default function ProductDetailsPage() {
                   minWidth: 0,
                   alignSelf: "flex-start",
 
+
                   // Image stays in view while the details scroll on desktop.
                   // If your navbar is sticky, raise "top" to its height + 16.
                   position: {
@@ -398,6 +405,7 @@ export default function ProductDetailsPage() {
                   top: {
                     md: 24,
                   },
+
 
                   p: {
                     xs: 1.5,
@@ -410,12 +418,14 @@ export default function ProductDetailsPage() {
                   sx={{
                     display: "flex",
 
+
                     // Phones and tablets: main image on top, thumbnails underneath.
                     // Large screens: thumbnails in a column on the left.
                     flexDirection: {
                       xs: "column-reverse",
                       lg: "row",
                     },
+
 
                     gap: {
                       xs: 1.25,
@@ -436,6 +446,7 @@ export default function ProductDetailsPage() {
                         gap: 1,
                         p: "2px",
 
+
                         overflowX: {
                           xs: "auto",
                           lg: "visible",
@@ -448,11 +459,13 @@ export default function ProductDetailsPage() {
                           lg: 560,
                         },
 
+
                         ...hideScrollbar,
                       }}
                     >
                       {images.map((image, index) => {
                         const isSelected = index === activeIndex;
+
 
                         return (
                           <Box
@@ -466,6 +479,7 @@ export default function ProductDetailsPage() {
                               display: "block",
                               flexShrink: 0,
 
+
                               width: {
                                 xs: 56,
                                 sm: 64,
@@ -475,12 +489,15 @@ export default function ProductDetailsPage() {
                                 sm: 64,
                               },
 
+
                               p: 0,
                               m: 0,
+
 
                               overflow: "hidden",
                               cursor: "pointer",
                               lineHeight: 0,
+
 
                               borderRadius: "10px",
                               border: "2px solid",
@@ -489,7 +506,9 @@ export default function ProductDetailsPage() {
                                 : "rgba(17,17,17,0.12)",
                               backgroundColor: "#FFFFFF",
 
+
                               outline: "none",
+
 
                               "&:focus-visible": {
                                 borderColor: COLORS.ink,
@@ -514,6 +533,7 @@ export default function ProductDetailsPage() {
                     </Box>
                   )}
 
+
                   {/* Main image: a square frame, the standard shape for product photos */}
                   <Box
                     sx={{
@@ -530,12 +550,15 @@ export default function ProductDetailsPage() {
                       minWidth: 0,
                       aspectRatio: "1 / 1",
 
+
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
 
+
                       overflow: "hidden",
                       borderRadius: "12px",
+
 
                       // Keeps the photo inside the frame, uncropped.
                       "& > *": {
@@ -558,6 +581,7 @@ export default function ProductDetailsPage() {
                 </Box>
               </Box>
             </Grid>
+
 
             {/* Product information */}
             <Grid
@@ -589,107 +613,34 @@ export default function ProductDetailsPage() {
           </Grid>
         </Paper>
 
-        {/* Product reassurance */}
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              sm: "repeat(3, 1fr)",
-            },
-            gap: {
-              xs: 1.25,
-              sm: 2,
-            },
-            mt: {
-              xs: 2,
-              sm: 3,
-            },
-          }}
-        >
-          {reassuranceItems.map((item) => {
-            const Icon = item.icon;
 
-            return (
-              <Paper
-                key={item.title}
-                variant="outlined"
-                sx={{
-                  p: {
-                    xs: 1.75,
-                    sm: 2.5,
-                  },
-                  borderRadius: {
-                    xs: "14px",
-                    sm: "16px",
-                  },
-                  border: `1px solid ${COLORS.blue}`,
-                  backgroundColor: COLORS.panelBg,
-                  boxShadow: "none",
-                }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 1.5,
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      flexShrink: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderRadius: "10px",
-                      backgroundColor: COLORS.blue,
-                      color: COLORS.badgeText,
-                    }}
-                  >
-                    <Icon fontSize="small" />
-                  </Box>
+        {/* Available coupons */}
+        <ProductCoupons />
 
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography
-                      sx={{
-                        color: COLORS.ink,
-                        fontSize: "0.95rem",
-                        fontWeight: 700,
-                        lineHeight: 1.25,
-                        mb: 0.4,
-                      }}
-                    >
-                      {item.title}
-                    </Typography>
+        {/* Exclusive offers (admin controlled) */}
+        <ExclusiveOffers />
+      </Container>
 
-                    <Typography
-                      sx={{
-                        color: COLORS.muted,
-                        fontSize: "0.85rem",
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      {item.description}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Paper>
-            );
-          })}
-        </Box>
 
-        {/* Customer reviews */}
-        <Box sx={{ mt: { xs: 2, sm: 3 } }}>
-          <ProductReviews
-            productId={product.id}
-            productName={product.name}
-            ratingSum={ratingSum}
-            ratingCount={ratingCount}
-            onChanged={refreshProductData}
-          />
-        </Box>
+      {/* Random products, different on every visit */}
+      <RandomProducts currentProductId={product.id} />
+
+
+      <Container
+        maxWidth={false}
+        sx={{
+          maxWidth: PAGE_MAX_WIDTH,
+          pt: { xs: 2, sm: 3 },
+          pb: { xs: 2, sm: 3, md: 4 },
+        }}
+      >
+        <ProductReviews
+          productId={product.id}
+          productName={product.name}
+          ratingSum={ratingSum}
+          ratingCount={ratingCount}
+          onChanged={refreshProductData}
+        />
       </Container>
     </Box>
   );

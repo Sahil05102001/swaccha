@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Button,
@@ -10,23 +10,31 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { keyframes } from "@mui/material/styles";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import {
+  browserPopupRedirectResolver,
+  getRedirectResult,
+  GoogleAuthProvider,
+  signInWithPopup,
+} from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-
 import { loginSchema, type LoginFormData } from "../schemas/loginSchema";
 import { loginUser } from "../services/authService";
 import { createUserProfile } from "@/features/profile/services/profileService";
-
 import { auth } from "@/firebase/auth";
 import { db } from "@/firebase/firestore";
-
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import { describeAuthError } from "../utils/authErrors";
+import { mergeGuestCartIntoFirestore } from "@/features/cart/services/cartService";
+import { useQueryClient } from "@tanstack/react-query";
 
 type LoginLocationState = {
   from?: string | { pathname?: string };
@@ -34,6 +42,7 @@ type LoginLocationState = {
 
 const COLORS = {
   blue: "#00D9FF",
+  navCyan: "#00F0FF",
   white: "#FFFFFF",
   black: "#000000",
   text: "#212121",
@@ -41,18 +50,92 @@ const COLORS = {
   border: "#E0E0E0",
 };
 
+const focusRing = {
+  "&:focus-visible": {
+    outline: `2px solid ${COLORS.blue}`,
+    outlineOffset: 2,
+  },
+};
+
 const fieldSx = {
   "& .MuiOutlinedInput-root": {
-    borderRadius: 2,
-    bgcolor: COLORS.white,
+    borderRadius: 2.5,
+    bgcolor: "#FAFAFA",
+    transition: "box-shadow 0.2s, background-color 0.2s",
     "& fieldset": { borderColor: COLORS.border, transition: "none" },
-    "&:hover fieldset": { borderColor: COLORS.muted },
+    "&.Mui-focused": {
+      bgcolor: COLORS.white,
+      boxShadow: "0 0 0 4px rgba(0,217,255,0.15)",
+    },
     "&.Mui-focused fieldset": { borderColor: COLORS.blue, borderWidth: 1 },
   },
   "& .MuiInputLabel-root": { color: COLORS.muted, transition: "none" },
   "& .MuiInputLabel-root.Mui-focused": { color: COLORS.text },
   "& .MuiInputBase-input": { color: COLORS.text },
 };
+
+const rise = keyframes`
+  0%   { transform: translate(0, 0); opacity: 0; }
+  10%  { opacity: 0.9; }
+  50%  { transform: translate(14px, -260px); }
+  100% { transform: translate(-10px, -620px); opacity: 0; }
+`;
+
+const fadeUp = keyframes`
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+`;
+
+const bubbles = [
+  { size: 14, left: "8%", duration: 9, delay: 0 },
+  { size: 26, left: "22%", duration: 12, delay: 2 },
+  { size: 10, left: "38%", duration: 8, delay: 4 },
+  { size: 34, left: "55%", duration: 14, delay: 1 },
+  { size: 16, left: "70%", duration: 10, delay: 3 },
+  { size: 22, left: "84%", duration: 11, delay: 5 },
+  { size: 12, left: "46%", duration: 9, delay: 6 },
+  { size: 28, left: "92%", duration: 13, delay: 7 },
+];
+
+
+// Soft bubbles floating up. Purely decorative.
+function Bubbles({ count = bubbles.length }: { count?: number }) {
+  return (
+    <Box
+      aria-hidden
+      sx={{
+        position: "absolute",
+        inset: 0,
+        overflow: "hidden",
+        pointerEvents: "none",
+      }}
+    >
+      {bubbles.slice(0, count).map((bubble, index) => (
+        <Box
+          key={index}
+          sx={{
+            position: "absolute",
+            bottom: -80,
+            left: bubble.left,
+            width: bubble.size,
+            height: bubble.size,
+            borderRadius: "50%",
+            border: "1px solid rgba(0,240,255,0.5)",
+            background:
+              "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), rgba(0,240,255,0.08) 60%, transparent)",
+            animation: `${rise} ${bubble.duration}s ease-in infinite`,
+            animationDelay: `${bubble.delay}s`,
+            "@media (prefers-reduced-motion: reduce)": {
+              animation: "none",
+              bottom: `${20 + index * 8}%`,
+              opacity: 0.6,
+            },
+          }}
+        />
+      ))}
+    </Box>
+  );
+}
 
 function GoogleIcon({ size = 18 }: { size?: number }) {
   return (
@@ -88,6 +171,14 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  // Loads Google's sign-in helper while the person types, so the popup
+  // opens instantly and is not blocked by the browser.
+  useEffect(() => {
+    void getRedirectResult(auth, browserPopupRedirectResolver).catch(
+      () => undefined,
+    );
+  }, []);
+
   const { showSnackbar } = useSnackbar();
 
   const {
@@ -100,6 +191,7 @@ export default function LoginPage() {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
 
   const locationState = location.state as LoginLocationState | null;
 
@@ -126,6 +218,12 @@ export default function LoginPage() {
         return;
       }
 
+      await mergeGuestCartIntoFirestore();
+
+      await queryClient.invalidateQueries({
+        queryKey: ["cart", user.uid],
+      });
+
       navigate(redirectPath, { replace: true });
     } catch (error: unknown) {
       const { message, severity } = describeAuthError(
@@ -136,7 +234,6 @@ export default function LoginPage() {
     }
   };
 
-
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
 
@@ -146,7 +243,11 @@ export default function LoginPage() {
         prompt: "select_account",
       });
 
-      const result = await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(
+        auth,
+        provider,
+        browserPopupRedirectResolver,
+      );
       const googleUser = result.user;
 
       const userRef = doc(db, "users", googleUser.uid);
@@ -156,7 +257,7 @@ export default function LoginPage() {
         await createUserProfile(
           googleUser.uid,
           googleUser.displayName?.trim() || "Customer",
-          googleUser.email || ""
+          googleUser.email || "",
         );
       }
 
@@ -166,7 +267,7 @@ export default function LoginPage() {
 
       if (!profile) {
         throw new Error(
-          "Your account profile could not be loaded. Please try again."
+          "Your account profile could not be loaded. Please try again.",
         );
       }
 
@@ -174,7 +275,7 @@ export default function LoginPage() {
         await auth.signOut();
         showSnackbar(
           "Your account is inactive. Please contact support.",
-          "warning"
+          "warning",
         );
         return;
       }
@@ -183,6 +284,12 @@ export default function LoginPage() {
         navigate("/admin", { replace: true });
         return;
       }
+
+      await mergeGuestCartIntoFirestore();
+
+      await queryClient.invalidateQueries({
+        queryKey: ["cart", googleUser.uid],
+      });
 
       navigate(redirectPath, { replace: true });
     } catch (error: unknown) {
@@ -196,7 +303,6 @@ export default function LoginPage() {
     }
   };
 
-
   return (
     <Box
       sx={{
@@ -206,87 +312,161 @@ export default function LoginPage() {
         justifyContent: "center",
         px: { xs: 2, sm: 3 },
         py: { xs: 3, sm: 6 },
-        bgcolor: COLORS.white,
+        bgcolor: "#F6FAFB",
+        backgroundImage:
+          "radial-gradient(circle at 12% 8%, rgba(0,240,255,0.16) 0%, rgba(0,240,255,0) 38%), radial-gradient(circle at 92% 92%, rgba(0,0,0,0.07) 0%, rgba(0,0,0,0) 40%)",
       }}
     >
       <Paper
-        variant="outlined"
         elevation={0}
         sx={{
           width: "100%",
-          maxWidth: { xs: 440, md: 960 },
+          maxWidth: { xs: 440, md: 980 },
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-          borderRadius: 3,
-          borderColor: COLORS.border,
+          gridTemplateColumns: { xs: "1fr", md: "1.05fr 1fr" },
+          borderRadius: 4,
           bgcolor: COLORS.white,
           backgroundImage: "none",
-          boxShadow: "none",
+          border: "1px solid rgba(0,0,0,0.06)",
+          boxShadow: "0 30px 70px rgba(0,0,0,0.12)",
           overflow: "hidden",
+          animation: `${fadeUp} 0.5s ease-out both`,
+          "@media (prefers-reduced-motion: reduce)": { animation: "none" },
         }}
       >
-        {/* Brand panel (desktop / tablet landscape only) */}
+        {/* Mobile banner (phones and small tablets) */}
         <Box
           sx={{
+            position: "relative",
+            display: { xs: "block", md: "none" },
+            px: 3,
+            pt: 3.5,
+            pb: 3,
+            bgcolor: COLORS.black,
+            color: COLORS.white,
+            overflow: "hidden",
+            backgroundImage:
+              "radial-gradient(circle at 100% 0%, rgba(0,240,255,0.28) 0%, rgba(0,240,255,0) 60%)",
+          }}
+        >
+          <Bubbles count={5} />
+
+          <Box sx={{ position: "relative" }}>
+            <Typography
+              sx={{
+                color: COLORS.navCyan,
+                fontWeight: 700,
+                fontSize: "1.5rem",
+                letterSpacing: "-0.06em",
+                lineHeight: 1,
+              }}
+            >
+              SWACHHA
+            </Typography>
+
+            <Typography
+              component="h2"
+              sx={{
+                mt: 2,
+                fontWeight: 800,
+                fontSize: "1.6rem",
+                lineHeight: 1.15,
+                letterSpacing: "-0.02em",
+              }}
+            >
+              Welcome back
+              <Box component="span" sx={{ color: COLORS.navCyan }}>
+                .
+              </Box>
+            </Typography>
+
+            <Typography
+              sx={{
+                mt: 0.75,
+                fontSize: "0.85rem",
+                color: "rgba(255,255,255,0.7)",
+              }}
+            >
+              Clean homes, one order away.
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Brand panel (desktop / tablet landscape) */}
+        <Box
+          sx={{
+            position: "relative",
             display: { xs: "none", md: "flex" },
             flexDirection: "column",
             justifyContent: "space-between",
             p: 5,
             bgcolor: COLORS.black,
             color: COLORS.white,
+            overflow: "hidden",
+            backgroundImage:
+              "radial-gradient(circle at 100% 0%, rgba(0,240,255,0.26) 0%, rgba(0,240,255,0) 55%), radial-gradient(circle at 0% 100%, rgba(0,240,255,0.12) 0%, rgba(0,240,255,0) 50%)",
           }}
         >
-          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-            <Box
-              sx={{
-                width: 10,
-                height: 10,
-                borderRadius: "50%",
-                bgcolor: COLORS.blue,
-              }}
-            />
-            <Typography
-              sx={{
-                fontWeight: 700,
-                fontSize: "1.25rem",
-                letterSpacing: "-0.01em",
-              }}
-            >
-              Swachha
-            </Typography>
-          </Stack>
+          <Bubbles />
 
-          <Box>
+          <Typography
+            sx={{
+              position: "relative",
+              color: COLORS.navCyan,
+              fontWeight: 700,
+              fontSize: "2.2rem",
+              letterSpacing: "-0.06em",
+              lineHeight: 1,
+            }}
+          >
+            SWACHHA
+          </Typography>
+
+          <Box sx={{ position: "relative" }}>
             <Typography
               component="h2"
               sx={{
-                fontWeight: 700,
-                fontSize: "2rem",
-                lineHeight: 1.2,
-                letterSpacing: "-0.02em",
+                fontWeight: 800,
+                fontSize: "2.5rem",
+                lineHeight: 1.1,
+                letterSpacing: "-0.03em",
               }}
             >
-              Welcome back
-              <Box component="span" sx={{ color: COLORS.blue }}>
-                .
+              Clean homes
+              <br />
+              start{" "}
+              <Box
+                component="span"
+                sx={{
+                  background: "linear-gradient(90deg, #00F0FF, #7CF7FF)",
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                here.
               </Box>
             </Typography>
+
             <Typography
               sx={{
                 mt: 1.5,
-                maxWidth: 320,
+                maxWidth: 340,
                 fontSize: "0.95rem",
                 lineHeight: 1.6,
-                color: "rgba(255,255,255,0.7)",
+                color: "rgba(255,255,255,0.72)",
               }}
             >
-              Sign in to track your orders, manage your wishlist and check out
-              faster.
+              Quality housekeeping products for homes and businesses in Nagpur.
             </Typography>
           </Box>
 
           <Typography
-            sx={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}
+            sx={{
+              position: "relative",
+              fontSize: "0.75rem",
+              color: "rgba(255,255,255,0.5)",
+            }}
           >
             © {new Date().getFullYear()} Swachha Store
           </Typography>
@@ -299,46 +479,24 @@ export default function LoginPage() {
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
+            minWidth: 0,
           }}
         >
-          {/* Mobile brand mark */}
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{
-              display: { xs: "flex", md: "none" },
-              mb: 3,
-              alignItems: "center",
-            }}
-          >
-            <Box
-              sx={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                bgcolor: COLORS.blue,
-              }}
-            />
-            <Typography
-              sx={{ fontWeight: 700, fontSize: "1.1rem", color: COLORS.text }}
-            >
-              Swachha
-            </Typography>
-          </Stack>
-
           <Typography
             component="h1"
             sx={{
-              fontWeight: 700,
-              fontSize: { xs: "1.5rem", sm: "1.75rem" },
-              letterSpacing: "-0.01em",
+              fontWeight: 800,
+              fontSize: { xs: "1.6rem", sm: "1.9rem" },
+              letterSpacing: "-0.02em",
               color: COLORS.text,
             }}
           >
             Log in
           </Typography>
 
-          <Typography sx={{ mt: 0.5, fontSize: "0.9rem", color: COLORS.muted }}>
+          <Typography
+            sx={{ mt: 0.75, fontSize: "0.9rem", color: COLORS.muted }}
+          >
             Enter your details to access your account.
           </Typography>
 
@@ -347,7 +505,7 @@ export default function LoginPage() {
             noValidate
             onSubmit={handleSubmit(onSubmit)}
             sx={{
-              mt: 3,
+              mt: 3.5,
               display: "flex",
               flexDirection: "column",
               gap: 2.5,
@@ -358,11 +516,12 @@ export default function LoginPage() {
               type="button"
               fullWidth
               variant="outlined"
+              disableRipple
               disabled={googleLoading || isSubmitting}
               onClick={handleGoogleLogin}
               startIcon={<GoogleIcon />}
               sx={{
-                py: 1.3,
+                py: 1.35,
                 borderRadius: 999,
                 borderColor: COLORS.border,
                 color: COLORS.text,
@@ -370,17 +529,17 @@ export default function LoginPage() {
                 fontSize: "0.9rem",
                 textTransform: "none",
                 boxShadow: "none",
-                "&:hover": {
-                  borderColor: COLORS.muted,
-                  bgcolor: "#F8F8F8",
-                },
+                transition: "transform 0.15s, border-color 0.15s",
                 "&.Mui-disabled": {
                   borderColor: COLORS.border,
                   color: COLORS.muted,
                 },
+                ...focusRing,
               }}
             >
-              {googleLoading ? "Connecting to Google..." : "Continue with Google"}
+              {googleLoading
+                ? "Connecting to Google..."
+                : "Continue with Google"}
             </Button>
 
             {/* Divider */}
@@ -389,12 +548,14 @@ export default function LoginPage() {
 
               <Typography
                 sx={{
-                  fontSize: "0.75rem",
+                  fontSize: "0.72rem",
+                  fontWeight: 600,
+                  letterSpacing: "0.05em",
                   color: COLORS.muted,
                   whiteSpace: "nowrap",
                 }}
               >
-                OR CONTINUE WITH EMAIL
+                OR WITH EMAIL
               </Typography>
 
               <Box sx={{ flex: 1, height: "1px", bgcolor: COLORS.border }} />
@@ -409,6 +570,18 @@ export default function LoginPage() {
               {...register("email")}
               error={!!errors.email}
               helperText={errors.email?.message}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <EmailOutlinedIcon
+                        fontSize="small"
+                        sx={{ color: COLORS.muted }}
+                      />
+                    </InputAdornment>
+                  ),
+                },
+              }}
             />
 
             <Box>
@@ -423,6 +596,14 @@ export default function LoginPage() {
                 helperText={errors.password?.message}
                 slotProps={{
                   input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LockOutlinedIcon
+                          fontSize="small"
+                          sx={{ color: COLORS.muted }}
+                        />
+                      </InputAdornment>
+                    ),
                     endAdornment: (
                       <InputAdornment position="end">
                         <IconButton
@@ -433,7 +614,7 @@ export default function LoginPage() {
                           }
                           onClick={() => setShowPassword((prev) => !prev)}
                           onMouseDown={(e) => e.preventDefault()}
-                          sx={{ color: COLORS.muted }}
+                          sx={{ color: COLORS.muted, ...focusRing }}
                         >
                           {showPassword ? (
                             <VisibilityOffOutlinedIcon fontSize="small" />
@@ -454,8 +635,9 @@ export default function LoginPage() {
                   underline="hover"
                   sx={{
                     fontSize: "0.825rem",
-                    fontWeight: 500,
+                    fontWeight: 600,
                     color: COLORS.text,
+                    ...focusRing,
                   }}
                 >
                   Forgot password?
@@ -470,25 +652,48 @@ export default function LoginPage() {
               disableElevation
               variant="contained"
               disabled={isSubmitting || googleLoading}
+              endIcon={
+                isSubmitting ? undefined : (
+                  <ArrowForwardRoundedIcon
+                    sx={{ transition: "transform 0.2s" }}
+                  />
+                )
+              }
               sx={{
-                py: 1.4,
+                py: 1.55,
                 borderRadius: 999,
-                fontWeight: 600,
-                fontSize: "0.95rem",
+                fontWeight: 700,
+                fontSize: "0.98rem",
                 textTransform: "none",
                 boxShadow: "none",
-                transition: "none",
                 bgcolor: COLORS.black,
                 color: COLORS.white,
-                "&:hover": { bgcolor: COLORS.text, boxShadow: "none" },
+                transition: "transform 0.15s, box-shadow 0.2s, background-color 0.2s",
+                "& .MuiButton-endIcon": { color: COLORS.navCyan },
                 "&.Mui-disabled": {
                   bgcolor: COLORS.border,
                   color: COLORS.muted,
                 },
+                ...focusRing,
               }}
             >
               {isSubmitting ? "Logging in..." : "Log in"}
             </Button>
+
+            <Stack
+              direction="row"
+              spacing={0.75}
+              sx={{
+                alignItems: "center",
+                justifyContent: "center",
+                color: COLORS.muted,
+              }}
+            >
+              <LockOutlinedIcon sx={{ fontSize: 14 }} />
+              <Typography sx={{ fontSize: "0.75rem" }}>
+                Your details are encrypted and secure
+              </Typography>
+            </Stack>
           </Box>
 
           {/* Register */}
@@ -507,7 +712,11 @@ export default function LoginPage() {
                 to="/register"
                 state={location.state}
                 underline="hover"
-                sx={{ fontWeight: 600, color: COLORS.text }}
+                sx={{
+                  fontWeight: 700,
+                  color: COLORS.text,
+                  ...focusRing,
+                }}
               >
                 Create an account
               </MuiLink>

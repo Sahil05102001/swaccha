@@ -1,27 +1,13 @@
-// D:\Projects\swaccha\src\features\cms\contact\components\ContactForm.tsx
+import { useState } from "react";
 
-import { useEffect, useState } from "react";
+import { Grid, Stack, TextField } from "@mui/material";
 
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  Divider,
-  Grid,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
+import SectionCard from "@/components/common/SectionCard";
+import { useSnackbar } from "@/contexts/SnackbarContext";
+import SaveBar from "@/features/admin/components/SaveBar";
+import { scrollToTop } from "@/features/admin/utils/scrollToTop";
 
-import { useContactSettings } from "../hooks/useContactSettings";
 import type { ContactSettings } from "../types/contact";
-
-const accent = "#00BFD6";
-const ink = "#17252B";
-const muted = "#64747A";
-const border = "#E5ECEE";
 
 const SOCIAL_PLATFORMS = [
   { key: "instagram", label: "Instagram", placeholder: "https://instagram.com/yourpage" },
@@ -45,125 +31,115 @@ type TextFields = {
 
 type FormState = TextFields & { social: Record<string, string> };
 
-const emptyForm: FormState = {
-  businessName: "",
-  addressLine1: "",
-  addressLine2: "",
-  city: "",
-  state: "",
-  postalCode: "",
-  country: "",
-  whatsapp: "",
-  email: "",
-  social: {},
-};
-
 const matchesPlatform = (platformName: string | undefined, key: string) =>
   (platformName ?? "").toLowerCase().includes(key);
 
 const isKnownPlatform = (platformName: string | undefined) =>
   SOCIAL_PLATFORMS.some((p) => matchesPlatform(platformName, p.key));
 
-function SectionCard({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Paper
-      variant="outlined"
-      sx={{ borderColor: border, borderRadius: 2, backgroundColor: "#FFFFFF" }}
-    >
-      <Box sx={{ px: 3, py: 2.5 }}>
-        <Typography sx={{ color: ink, fontWeight: 700, fontSize: "1.05rem" }}>
-          {title}
-        </Typography>
+function toForm(settings: ContactSettings): FormState {
+  const social: Record<string, string> = {};
 
-        {description && (
-          <Typography variant="body2" sx={{ color: muted, mt: 0.5 }}>
-            {description}
-          </Typography>
-        )}
-      </Box>
+  SOCIAL_PLATFORMS.forEach((platform) => {
+    const existing = (settings.socialLinks ?? []).find((link) =>
+      matchesPlatform(link.platform, platform.key),
+    );
 
-      <Divider sx={{ borderColor: border }} />
+    social[platform.key] = existing?.url ?? "";
+  });
 
-      <Box sx={{ p: 3 }}>{children}</Box>
-    </Paper>
-  );
+  return {
+    businessName: settings.businessName ?? "",
+    addressLine1: settings.addressLine1 ?? "",
+    addressLine2: settings.addressLine2 ?? "",
+    city: settings.city ?? "",
+    state: settings.state ?? "",
+    postalCode: settings.postalCode ?? "",
+    country: settings.country ?? "",
+    whatsapp: settings.whatsapp ?? "",
+    email: settings.email ?? "",
+    social,
+  };
 }
 
-export default function ContactForm() {
-  const {
-    contactSettings,
-    isLoading,
-    isSaving,
-    error,
-    saveContactSettings,
-  } = useContactSettings();
+function clean(form: FormState): FormState {
+  const social: Record<string, string> = {};
 
-  const [form, setForm] = useState<FormState>(emptyForm);
-  const [status, setStatus] = useState<"idle" | "saved" | "failed">("idle");
+  SOCIAL_PLATFORMS.forEach((platform) => {
+    social[platform.key] = (form.social[platform.key] ?? "").trim();
+  });
 
-  useEffect(() => {
-    if (!contactSettings) return;
+  return {
+    businessName: form.businessName.trim(),
+    addressLine1: form.addressLine1.trim(),
+    addressLine2: form.addressLine2.trim(),
+    city: form.city.trim(),
+    state: form.state.trim(),
+    postalCode: form.postalCode.trim(),
+    country: form.country.trim(),
+    whatsapp: form.whatsapp.trim(),
+    email: form.email.trim(),
+    social,
+  };
+}
 
-    const social: Record<string, string> = {};
+interface ContactFormProps {
+  initial: ContactSettings;
+  isSaving: boolean;
+  onSave: (settings: ContactSettings) => Promise<unknown>;
+}
 
-    SOCIAL_PLATFORMS.forEach((platform) => {
-      const existing = (contactSettings.socialLinks ?? []).find((link) =>
-        matchesPlatform(link.platform, platform.key),
-      );
+export default function ContactForm({ initial, isSaving, onSave }: ContactFormProps) {
+  const { showSnackbar } = useSnackbar();
 
-      social[platform.key] = existing?.url ?? "";
-    });
+  const [base, setBase] = useState(initial);
+  const [saved, setSaved] = useState<FormState>(() => toForm(initial));
+  const [form, setForm] = useState<FormState>(() => toForm(initial));
+  const [submitted, setSubmitted] = useState(false);
 
-    setForm({
-      businessName: contactSettings.businessName ?? "",
-      addressLine1: contactSettings.addressLine1 ?? "",
-      addressLine2: contactSettings.addressLine2 ?? "",
-      city: contactSettings.city ?? "",
-      state: contactSettings.state ?? "",
-      postalCode: contactSettings.postalCode ?? "",
-      country: contactSettings.country ?? "",
-      whatsapp: contactSettings.whatsapp ?? "",
-      email: contactSettings.email ?? "",
-      social,
-    });
-  }, [contactSettings]);
+  const dirty = JSON.stringify(clean(form)) !== JSON.stringify(clean(saved));
 
   const setField =
-    (field: keyof TextFields) =>
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setStatus("idle");
-      setForm((prev) => ({ ...prev, [field]: event.target.value }));
-    };
+    (field: keyof TextFields) => (event: React.ChangeEvent<HTMLInputElement>) =>
+      setForm((previous) => ({ ...previous, [field]: event.target.value }));
 
-  const setSocial =
-    (key: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
-      setStatus("idle");
-      setForm((prev) => ({
-        ...prev,
-        social: { ...prev.social, [key]: event.target.value },
-      }));
-    };
+  const setSocial = (key: string) => (event: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((previous) => ({
+      ...previous,
+      social: { ...previous.social, [key]: event.target.value },
+    }));
 
-  const brandMissing = form.businessName.trim() === "";
-  const emailInvalid =
-    form.email.trim() !== "" && !/^\S+@\S+\.\S+$/.test(form.email.trim());
+  const values = clean(form);
 
-  const canSave = !brandMissing && !emailInvalid && !isSaving;
+  const errors = {
+    businessName: values.businessName === "" ? "Brand name is required." : "",
+    email:
+      values.email !== "" && !/^\S+@\S+\.\S+$/.test(values.email)
+        ? "Enter a valid email address."
+        : "",
+    whatsapp:
+      values.whatsapp !== "" &&
+      !/^\d{10,15}$/.test(values.whatsapp.replace(/\D/g, ""))
+        ? "Enter 10 digits, or include the country code."
+        : "",
+  };
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const socialError = (key: string) => {
+    const url = values.social[key];
+    return url !== "" && !/^https?:\/\//i.test(url) ? "Start with https://" : "";
+  };
 
-    if (!contactSettings || !canSave) return;
+  const hasErrors =
+    Boolean(errors.businessName || errors.email || errors.whatsapp) ||
+    SOCIAL_PLATFORMS.some((platform) => socialError(platform.key));
 
-    const existingLinks = contactSettings.socialLinks ?? [];
+  const shown = (message: string) => (submitted ? message : "");
+
+  const submit = async () => {
+    setSubmitted(true);
+    if (hasErrors) return;
+
+    const existingLinks = base.socialLinks ?? [];
 
     const knownLinks = SOCIAL_PLATFORMS.map((platform) => {
       const existing = existingLinks.find((link) =>
@@ -173,200 +149,167 @@ export default function ContactForm() {
       return {
         id: existing?.id ?? platform.key,
         platform: existing?.platform ?? platform.label,
-        url: form.social[platform.key]?.trim() ?? "",
+        url: values.social[platform.key],
       };
     }).filter((link) => link.url);
 
-    // Keep any other links already stored in the CMS
-    const otherLinks = existingLinks.filter(
-      (link) => !isKnownPlatform(link.platform),
-    );
+    // Keep any other links already stored in the CMS.
+    const otherLinks = existingLinks.filter((link) => !isKnownPlatform(link.platform));
 
+    // Keeps the fields this form does not edit (hours, map, phone...).
     const payload = {
-      ...contactSettings, // keeps fields this form no longer edits (hours, map, phone...)
-      businessName: form.businessName.trim(),
-      addressLine1: form.addressLine1.trim(),
-      addressLine2: form.addressLine2.trim(),
-      city: form.city.trim(),
-      state: form.state.trim(),
-      postalCode: form.postalCode.trim(),
-      country: form.country.trim(),
-      whatsapp: form.whatsapp.trim(),
-      email: form.email.trim(),
+      ...base,
+      businessName: values.businessName,
+      addressLine1: values.addressLine1,
+      addressLine2: values.addressLine2,
+      city: values.city,
+      state: values.state,
+      postalCode: values.postalCode,
+      country: values.country,
+      whatsapp: values.whatsapp,
+      email: values.email,
       socialLinks: [...knownLinks, ...otherLinks],
     } as ContactSettings;
 
     try {
-      await saveContactSettings(payload);
-      setStatus("saved");
+      await onSave(payload);
+
+      setBase(payload);
+      setSaved(values);
+      setForm(values);
+      setSubmitted(false);
+
+      showSnackbar("Contact page saved.", "success");
+      scrollToTop();
     } catch {
-      setStatus("failed");
+      showSnackbar("Could not save the contact page. Please try again.", "error");
     }
-  }
-
-  if (isLoading) {
-    return (
-      <Stack sx={{ minHeight: "40vh", justifyContent: "center", alignItems: "center" }}>
-        <CircularProgress sx={{ color: accent }} />
-      </Stack>
-    );
-  }
-
-  if (error || !contactSettings) {
-    return <Alert severity="error">Failed to load contact settings.</Alert>;
-  }
+  };
 
   return (
-    <Box component="form" onSubmit={handleSubmit} noValidate>
-      <Stack spacing={3}>
-        <SectionCard
-          title="Brand"
-          description="Shown as the main heading on the Contact Us page."
-        >
-          <TextField
-            label="Brand name"
-            value={form.businessName}
-            onChange={setField("businessName")}
-            error={brandMissing}
-            helperText={brandMissing ? "Brand name is required" : " "}
-            fullWidth
-            required
-          />
-        </SectionCard>
+    <Stack spacing={3}>
+      <SectionCard
+        title="Brand"
+        subtitle="Shown as the main heading on the Contact Us page."
+      >
+        <TextField
+          label="Brand name"
+          value={form.businessName}
+          onChange={setField("businessName")}
+          error={Boolean(shown(errors.businessName))}
+          helperText={shown(errors.businessName)}
+          fullWidth
+          required
+        />
+      </SectionCard>
 
-        <SectionCard title="Address">
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12 }}>
-              <TextField
-                label="Address line 1"
-                value={form.addressLine1}
-                onChange={setField("addressLine1")}
-                fullWidth
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12 }}>
-              <TextField
-                label="Address line 2"
-                value={form.addressLine2}
-                onChange={setField("addressLine2")}
-                fullWidth
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                label="City"
-                value={form.city}
-                onChange={setField("city")}
-                fullWidth
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                label="State"
-                value={form.state}
-                onChange={setField("state")}
-                fullWidth
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                label="Postal code"
-                value={form.postalCode}
-                onChange={setField("postalCode")}
-                fullWidth
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                label="Country"
-                value={form.country}
-                onChange={setField("country")}
-                fullWidth
-              />
-            </Grid>
+      <SectionCard title="Address">
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              label="Address line 1"
+              value={form.addressLine1}
+              onChange={setField("addressLine1")}
+              fullWidth
+            />
           </Grid>
-        </SectionCard>
 
-        <SectionCard title="Contact">
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6 }}>
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              label="Address line 2"
+              value={form.addressLine2}
+              onChange={setField("addressLine2")}
+              fullWidth
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField label="City" value={form.city} onChange={setField("city")} fullWidth />
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField label="State" value={form.state} onChange={setField("state")} fullWidth />
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              label="Postal code"
+              value={form.postalCode}
+              onChange={setField("postalCode")}
+              fullWidth
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              label="Country"
+              value={form.country}
+              onChange={setField("country")}
+              fullWidth
+            />
+          </Grid>
+        </Grid>
+      </SectionCard>
+
+      <SectionCard title="Contact">
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              label="WhatsApp number"
+              value={form.whatsapp}
+              onChange={setField("whatsapp")}
+              error={Boolean(shown(errors.whatsapp))}
+              helperText={
+                shown(errors.whatsapp) || "10-digit number, or include the country code"
+              }
+              fullWidth
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              label="Email"
+              type="email"
+              value={form.email}
+              onChange={setField("email")}
+              error={Boolean(shown(errors.email))}
+              helperText={shown(errors.email)}
+              fullWidth
+            />
+          </Grid>
+        </Grid>
+      </SectionCard>
+
+      <SectionCard
+        title="Social links"
+        subtitle="Leave a field empty to hide that platform on the page."
+      >
+        <Grid container spacing={2}>
+          {SOCIAL_PLATFORMS.map((platform) => (
+            <Grid key={platform.key} size={{ xs: 12, sm: 6 }}>
               <TextField
-                label="WhatsApp number"
-                value={form.whatsapp}
-                onChange={setField("whatsapp")}
-                helperText="10-digit number, or include the country code"
+                label={platform.label}
+                placeholder={platform.placeholder}
+                value={form.social[platform.key] ?? ""}
+                onChange={setSocial(platform.key)}
+                error={Boolean(shown(socialError(platform.key)))}
+                helperText={shown(socialError(platform.key))}
                 fullWidth
               />
             </Grid>
+          ))}
+        </Grid>
+      </SectionCard>
 
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                label="Email"
-                type="email"
-                value={form.email}
-                onChange={setField("email")}
-                error={emailInvalid}
-                helperText={emailInvalid ? "Enter a valid email address" : " "}
-                fullWidth
-              />
-            </Grid>
-          </Grid>
-        </SectionCard>
-
-        <SectionCard
-          title="Social links"
-          description="Leave a field empty to hide that platform on the page."
-        >
-          <Grid container spacing={2}>
-            {SOCIAL_PLATFORMS.map((platform) => (
-              <Grid key={platform.key} size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label={platform.label}
-                  placeholder={platform.placeholder}
-                  value={form.social[platform.key] ?? ""}
-                  onChange={setSocial(platform.key)}
-                  fullWidth
-                />
-              </Grid>
-            ))}
-          </Grid>
-        </SectionCard>
-
-        {status === "saved" && (
-          <Alert severity="success">Contact page updated.</Alert>
-        )}
-
-        {status === "failed" && (
-          <Alert severity="error">Could not save changes. Please try again.</Alert>
-        )}
-
-        <Stack direction="row" sx={{ justifyContent: "flex-end" }}>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={!canSave}
-            disableElevation
-            sx={{
-              px: 4,
-              py: 1.1,
-              borderRadius: 1.5,
-              textTransform: "none",
-              fontWeight: 700,
-              backgroundColor: accent,
-              color: ink,
-              "&:hover": { backgroundColor: "#00A9BE" },
-              "&.Mui-disabled": { backgroundColor: border, color: muted },
-            }}
-          >
-            {isSaving ? "Saving..." : "Save changes"}
-          </Button>
-        </Stack>
-      </Stack>
-    </Box>
+      <SaveBar
+        dirty={dirty}
+        saving={isSaving}
+        onSave={() => void submit()}
+        onDiscard={() => {
+          setForm(saved);
+          setSubmitted(false);
+        }}
+      />
+    </Stack>
   );
 }

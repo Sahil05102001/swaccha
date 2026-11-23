@@ -15,6 +15,7 @@ import {
 
 import { auth } from "@/firebase/auth";
 import { db } from "@/firebase/firestore";
+import { uploadImageWithDetails } from "@/features/admin/products/services/storageService";
 
 import type {
   HeroBanner,
@@ -36,6 +37,22 @@ interface DeleteCloudinaryImageResponse {
   success: boolean;
   alreadyDeleted?: boolean;
   message?: string;
+}
+
+/** New images chosen in the form. Nothing is uploaded until Save. */
+export interface HeroImageFiles {
+  desktop?: File | null;
+  mobile?: File | null;
+}
+
+export interface SaveHeroBannerResult {
+  /** True when an old image could not be removed from Cloudinary. */
+  cleanupFailed: boolean;
+}
+
+interface UploadedImage {
+  url: string;
+  publicId: string;
 }
 
 /**
@@ -213,6 +230,86 @@ async function deleteCloudinaryHeroImage(
   }
 }
 
+/**
+ * Best-effort removal used for cleanup. It never throws, so a cleanup
+ * problem can't undo or block a save. Returns false if anything failed.
+ */
+async function removeImagesQuietly(
+  publicIds: Array<string | null | undefined>,
+): Promise<boolean> {
+  const unique = Array.from(
+    new Set(
+      publicIds
+        .map((id) => id?.trim() ?? "")
+        .filter(Boolean),
+    ),
+  );
+
+  let allRemoved = true;
+
+  for (const publicId of unique) {
+    try {
+      await deleteCloudinaryHeroImage(publicId);
+    } catch (error) {
+      allRemoved = false;
+      console.warn(
+        "Could not remove a hero image from Cloudinary:",
+        publicId,
+        error,
+      );
+    }
+  }
+
+  return allRemoved;
+}
+
+/** Uploads only the images that were chosen. Undoes itself if one fails. */
+async function uploadHeroImages(
+  files: HeroImageFiles,
+): Promise<{ desktop?: UploadedImage; mobile?: UploadedImage }> {
+  const uploaded: {
+    desktop?: UploadedImage;
+    mobile?: UploadedImage;
+  } = {};
+
+  try {
+    if (files.desktop) {
+      const result = await uploadImageWithDetails(
+        files.desktop,
+        "hero-banners/desktop",
+        () => undefined,
+      );
+
+      uploaded.desktop = {
+        url: result.secureUrl,
+        publicId: result.publicId,
+      };
+    }
+
+    if (files.mobile) {
+      const result = await uploadImageWithDetails(
+        files.mobile,
+        "hero-banners/mobile",
+        () => undefined,
+      );
+
+      uploaded.mobile = {
+        url: result.secureUrl,
+        publicId: result.publicId,
+      };
+    }
+  } catch (error) {
+    await removeImagesQuietly([
+      uploaded.desktop?.publicId,
+      uploaded.mobile?.publicId,
+    ]);
+
+    throw error;
+  }
+
+  return uploaded;
+}
+
 export async function getHeroBanners(): Promise<HeroBanner[]> {
   const q = query(
     heroBannersRef,
@@ -253,7 +350,14 @@ export async function getHeroBanners(): Promise<HeroBanner[]> {
 
 export async function addHeroBanner(
   data: HeroBannerFormData,
-): Promise<void> {
+  files: HeroImageFiles,
+): Promise<SaveHeroBannerResult> {
+  if (!files.desktop || !files.mobile) {
+    throw new Error(
+      "Please choose both a desktop image and a mobile image.",
+    );
+  }
+
   const countSnapshot = await getCountFromServer(heroBannersRef);
 
   if (countSnapshot.data().count >= MAX_HERO_BANNERS) {
@@ -262,28 +366,96 @@ export async function addHeroBanner(
     );
   }
 
+  // Check everything that can fail before uploading anything.
   await ensureDisplayOrderAvailable(data.displayOrder);
 
-  await addDoc(heroBannersRef, {
-    ...data,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
+  const uploaded = await uploadHeroImages(files);
+
+  try {
+    await addDoc(heroBannersRef, {
+      ...data,
+      desktopImageUrl: uploaded.desktop?.url ?? "",
+      desktopImagePublicId: uploaded.desktop?.publicId ?? "",
+      mobileImageUrl: uploaded.mobile?.url ?? "",
+      mobileImagePublicId: uploaded.mobile?.publicId ?? "",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    await removeImagesQuietly([
+      uploaded.desktop?.publicId,
+      uploaded.mobile?.publicId,
+    ]);
+
+    throw error;
+  }
+
+  return { cleanupFailed: false };
 }
 
 export async function updateHeroBanner(
   id: string,
   data: HeroBannerFormData,
-): Promise<void> {
+  files: HeroImageFiles,
+  previous: HeroBanner,
+): Promise<SaveHeroBannerResult> {
   await ensureDisplayOrderAvailable(data.displayOrder, id);
 
-  await updateDoc(
-    doc(db, COLLECTION_NAME, id),
-    {
-      ...data,
-      updatedAt: serverTimestamp(),
-    },
+  const uploaded = await uploadHeroImages(files);
+
+  const payload = {
+    ...data,
+    desktopImageUrl:
+      uploaded.desktop?.url ?? data.desktopImageUrl,
+    desktopImagePublicId:
+      uploaded.desktop?.publicId ?? data.desktopImagePublicId,
+    mobileImageUrl:
+      uploaded.mobile?.url ?? data.mobileImageUrl,
+    mobileImagePublicId:
+      uploaded.mobile?.publicId ?? data.mobileImagePublicId,
+    updatedAt: serverTimestamp(),
+  };
+
+  try {
+    await updateDoc(doc(db, COLLECTION_NAME, id), payload);
+  } catch (error) {
+    // The banner still points at its old images, so drop the new ones.
+    await removeImagesQuietly([
+      uploaded.desktop?.publicId,
+      uploaded.mobile?.publicId,
+    ]);
+
+    throw error;
+  }
+
+  // The save worked. Now remove the images that were replaced.
+  const stale: string[] = [];
+
+  if (uploaded.desktop) {
+    const old =
+      previous.desktopImagePublicId ||
+      getCloudinaryPublicIdFromUrl(previous.desktopImageUrl);
+    if (old) stale.push(old);
+  }
+
+  if (uploaded.mobile) {
+    const old =
+      previous.mobileImagePublicId ||
+      getCloudinaryPublicIdFromUrl(previous.mobileImageUrl);
+    if (old) stale.push(old);
+  }
+
+  // Never delete an image the banner still uses.
+  const stillUsed = new Set([
+    payload.desktopImagePublicId,
+    payload.mobileImagePublicId,
+  ]);
+
+  const cleaned = await removeImagesQuietly(
+    stale.filter((publicId) => !stillUsed.has(publicId)),
   );
+
+  return { cleanupFailed: !cleaned };
 }
 
 export async function deleteHeroBanner(

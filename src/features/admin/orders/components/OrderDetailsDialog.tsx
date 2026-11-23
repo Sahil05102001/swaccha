@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import {
   Button,
   Dialog,
@@ -5,22 +6,28 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  IconButton,
   Stack,
+  Typography,
+  useMediaQuery,
 } from "@mui/material";
-
+import { useTheme } from "@mui/material/styles";
+import CloseIcon from "@mui/icons-material/Close";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 
+import OrderStatusChip from "@/features/orders/components/OrderStatusChip";
+import { generateInvoice } from "@/features/orders/utils/generateInvoice";
+import { buildInvoiceData } from "@/features/orders/utils/buildInvoiceData";
 import type { Order } from "@/features/orders/types/order";
 
 import CustomerInformation from "./CustomerInformation";
 import OrderActions from "./OrderActions";
+import OrderCreditNotes from "./OrderCreditNotes";
 import OrderedItemsTable from "./OrderedItemsTable";
 import OrderInformation from "./OrderInformation";
+import OrderRefundPanel from "./OrderRefundPanel";
 import OrderSummaryCard from "./OrderSummaryCard";
 import ShippingInformation from "./ShippingInformation";
-
-import { generateInvoice } from "@/features/orders/utils/generateInvoice";
-import OrderRefundPanel from "./OrderRefundPanel";
 
 interface OrderDetailsDialogProps {
   open: boolean;
@@ -33,92 +40,94 @@ export default function OrderDetailsDialog({
   order,
   onClose,
 }: OrderDetailsDialogProps) {
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+
+  const contentRef = useRef<HTMLDivElement>(null);
+  const scrollToTop = () => contentRef.current?.scrollTo({ top: 0 });
+
   if (!order) {
     return null;
   }
 
   const handleDownloadInvoice = () => {
-    generateInvoice({
-      orderId: order.orderNumber,
-      customerName: order.customerName,
-      customerEmail: order.customerEmail,
-      customerPhone:
-        order.shippingAddress.phoneNumber,
-      paymentMethod:
-        order.paymentMethod.toUpperCase(),
-      paymentStatus: order.paymentStatus,
-      orderDate: order.createdAt
-        .toDate()
-        .toLocaleString(),
-      items: order.items.map((item) => ({
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-      })),
-      subtotal: order.subtotal,
-      shippingCharge: order.shippingCharge,
-      discount: order.discount ?? 0,
-      total: order.totalAmount,
-    });
+    generateInvoice(buildInvoiceData(order));
   };
 
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="lg"
+      maxWidth="md"
       fullWidth
+      fullScreen={fullScreen}
+      transitionDuration={0}
+      slotProps={{
+        paper: {
+          sx: {
+            boxShadow: "none",
+            backgroundImage: "none",
+            border: "1px solid",
+            borderColor: "divider",
+          },
+        },
+      }}
     >
-      <DialogTitle>
-        Order Details
+      <DialogTitle
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 1,
+        }}
+      >
+        <Stack
+          direction="row"
+          spacing={1.5}
+          sx={{ alignItems: "center", minWidth: 0 }}
+        >
+          <Typography
+            component="span"
+            sx={{ fontWeight: 700, fontSize: "1.1rem", overflowWrap: "anywhere" }}
+          >
+            Order {order.orderNumber}
+          </Typography>
+          <OrderStatusChip status={order.orderStatus} />
+        </Stack>
+
+        <IconButton aria-label="Close order details" onClick={onClose}>
+          <CloseIcon />
+        </IconButton>
       </DialogTitle>
 
       <Divider />
 
-      <DialogContent>
-        <Stack spacing={4}>
+      <DialogContent ref={contentRef}>
+        <Stack spacing={3} divider={<Divider flexItem />}>
           <OrderInformation order={order} />
-
-          <Divider />
-
           <CustomerInformation order={order} />
-
-          <Divider />
-
           <ShippingInformation order={order} />
-
-          <Divider />
-
           <OrderedItemsTable order={order} />
-
-          <Divider />
-
           <OrderSummaryCard order={order} />
-
-          <OrderRefundPanel order={order} />
-
-          <Divider />
-
-          <OrderActions order={order} />
+          <OrderRefundPanel order={order} onSaved={scrollToTop} />
+          <OrderCreditNotes order={order} />
+          <OrderActions order={order} onSaved={scrollToTop} />
         </Stack>
       </DialogContent>
 
       <Divider />
 
-      <DialogActions>
+      <DialogActions sx={{ px: 3, py: 1.5 }}>
         {order.orderStatus === "delivered" && (
           <Button
             variant="outlined"
-            startIcon={
-              <DownloadOutlinedIcon />
-            }
+            startIcon={<DownloadOutlinedIcon />}
             onClick={handleDownloadInvoice}
           >
-            Download Invoice
+            Download invoice
           </Button>
         )}
-
-        <Button onClick={onClose}>
+        <Button variant="outlined" onClick={onClose}>
           Close
         </Button>
       </DialogActions>

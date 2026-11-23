@@ -1,12 +1,16 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
+  Alert,
   Button,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
 } from "@mui/material";
+
+import { useSnackbar } from "@/contexts/SnackbarContext";
+import { scrollToTop } from "@/features/admin/utils/scrollToTop";
 
 import CategoryForm from "./CategoryForm";
 
@@ -17,6 +21,7 @@ import type { CategoryFormData } from "../types/category";
 interface AddCategoryDialogProps {
   open: boolean;
   onClose: () => void;
+  onCategoryCreated?: (categoryName: string) => void;
 }
 
 const initialFormData: CategoryFormData = {
@@ -28,50 +33,86 @@ const initialFormData: CategoryFormData = {
 export default function AddCategoryDialog({
   open,
   onClose,
+  onCategoryCreated,
 }: AddCategoryDialogProps) {
-  const [formData, setFormData] =
-    useState<CategoryFormData>(initialFormData);
+  const { showSnackbar } = useSnackbar();
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const [formData, setFormData] = useState<CategoryFormData>(initialFormData);
+  const [error, setError] = useState("");
 
   const addCategory = useAddCategory();
 
   const handleChange = (
     field: keyof CategoryFormData,
-    value: string | boolean
+    value: string | boolean,
   ) => {
-    setFormData((previous) => ({
-      ...previous,
-      [field]: value,
-    }));
+    setFormData((previous) => ({ ...previous, [field]: value }));
+    setError("");
   };
 
-  const handleSave = async () => {
-    await addCategory.mutateAsync(formData);
+  const handleClose = () => {
+    if (addCategory.isPending) return;
 
     setFormData(initialFormData);
-
+    setError("");
     onClose();
   };
 
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="sm"
-    >
-      <DialogTitle>
-        Add Category
-      </DialogTitle>
+  const fail = (message: string) => {
+    setError(message);
+    scrollToTop(contentRef.current);
+  };
 
-      <DialogContent>
-        <CategoryForm
-          formData={formData}
-          onChange={handleChange}
-        />
+  const handleSave = async () => {
+    const categoryName = formData.name.trim();
+
+    if (!categoryName) {
+      fail("Please enter a category name.");
+      return;
+    }
+
+    try {
+      await addCategory.mutateAsync({
+        ...formData,
+        name: categoryName,
+        imageUrl: "",
+      });
+
+      onCategoryCreated?.(categoryName);
+      showSnackbar("Category added.", "success");
+
+      setFormData(initialFormData);
+      setError("");
+      onClose();
+      scrollToTop();
+    } catch (err) {
+      console.error("Category creation failed:", err);
+
+      fail(
+        err instanceof Error
+          ? err.message
+          : "Unable to create category. Please try again.",
+      );
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
+      <DialogTitle>Add category</DialogTitle>
+
+      <DialogContent ref={contentRef}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <CategoryForm formData={formData} onChange={handleChange} />
       </DialogContent>
 
-      <DialogActions>
-        <Button onClick={onClose}>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={handleClose} disabled={addCategory.isPending}>
           Cancel
         </Button>
 
@@ -80,7 +121,7 @@ export default function AddCategoryDialog({
           onClick={handleSave}
           disabled={addCategory.isPending}
         >
-          Add Category
+          {addCategory.isPending ? "Saving..." : "Add category"}
         </Button>
       </DialogActions>
     </Dialog>

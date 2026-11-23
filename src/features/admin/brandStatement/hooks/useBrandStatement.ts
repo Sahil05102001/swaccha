@@ -1,38 +1,27 @@
-import {
-    useMutation,
-    useQuery,
-    useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
-    getBrandStatement,
-    saveBrandStatement,
+  getBrandStatement,
+  saveBrandStatement,
+  type SaveBrandStatementInput,
 } from "../services/brandStatementService";
 
-import type { BrandStatementFormData } from "../types/brandStatement";
-
-export const BRAND_STATEMENT_QUERY_KEY = [
-    "brand-statement",
-];
+export const BRAND_STATEMENT_QUERY_KEY = ["brand-statement"];
 
 export function useBrandStatement() {
-    return useQuery({
-        queryKey: BRAND_STATEMENT_QUERY_KEY,
-        queryFn: getBrandStatement,
-    });
+  return useQuery({
+    queryKey: BRAND_STATEMENT_QUERY_KEY,
+    queryFn: getBrandStatement,
+  });
 }
 
 export function useSaveBrandStatement() {
-    const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-    return useMutation({
-        mutationFn: (data: BrandStatementFormData) =>
-            saveBrandStatement(data),
+  return useMutation({
+    mutationFn: (input: SaveBrandStatementInput) => saveBrandStatement(input),
 
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: BRAND_STATEMENT_QUERY_KEY,
-            });
-        },
-    });
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: BRAND_STATEMENT_QUERY_KEY }),
+  });
 }
