@@ -14,7 +14,7 @@ import {
 import { useTheme } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
-
+import LocationOnIcon from "@mui/icons-material/LocationOn";
 import {
   DELIVERY_RADIUS_KM,
   distanceKm,
@@ -297,19 +297,17 @@ export default function LocationPicker({
           sx={{ position: "absolute", inset: 0, zIndex: 0 }}
         />
 
-        <Box
+        {/* Fixed pin: its tip sits exactly on the centre of the map. */}
+        <LocationOnIcon
           aria-hidden="true"
           sx={{
             position: "absolute",
             top: "50%",
             left: "50%",
-            width: 24,
-            height: 24,
-            transform: "translate(-50%, -50%)",
-            borderRadius: "50%",
-            bgcolor: COLORS.black,
-            border: `3px solid ${COLORS.blue}`,
-            boxSizing: "border-box",
+            fontSize: 46,
+            color: COLORS.black,
+            // The tip of this icon is about 2/24 of its height above the bottom edge.
+            transform: "translate(-50%, calc(-100% + 4px))",
             pointerEvents: "none",
             zIndex: 1,
           }}
