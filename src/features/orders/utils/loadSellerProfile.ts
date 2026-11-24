@@ -2,11 +2,17 @@ import { doc, getDoc } from "firebase/firestore";
 
 import { db } from "@/firebase/firestore";
 
+import type { SignatureImage } from "./pdfLayout";
+
 export interface SellerProfile {
   name: string;
   addressLines: string[];
   contact: string;
   footer: string;
+  signatureUrl: string;
+  signerName: string;
+  // Filled in just before drawing, only for GST documents.
+  signature?: SignatureImage | null;
 }
 
 const text = (value: unknown) =>
@@ -40,6 +46,8 @@ export async function loadSellerProfile(): Promise<SellerProfile | null> {
         .filter(Boolean)
         .join("   |   "),
       footer: text(d.invoiceFooter),
+      signatureUrl: text(d.signatureUrl),
+      signerName: text(d.signerName),
     };
   } catch {
     return null;

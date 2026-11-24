@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Box,
   Button,
   Grid,
@@ -11,12 +12,15 @@ import {
   type TextFieldProps,
 } from "@mui/material";
 import { Link } from "react-router-dom";
-
 import SectionCard from "@/components/common/SectionCard";
-
 import AdminSelect from "./AdminSelect";
-
+import ImageUploadField from "@/features/admin/products/components/ImageUploadField";
+import { uploadImageWithDetails } from "@/features/admin/products/services/storageService";
 import type { CurrencyCode, StoreSettings } from "../types/storeSettings";
+import {
+  deleteStoreSignatureImage,
+  publicIdFromCloudinaryUrl,
+} from "../services/storeSignatureService";
 
 interface StoreSettingsFormProps {
   initialValues: StoreSettings;
@@ -46,6 +50,84 @@ export default function StoreSettingsForm({
     setValues((previous) => ({ ...previous, [key]: value }));
   };
 
+  const [signatureUploading, setSignatureUploading] = useState(false);
+  const [signatureProgress, setSignatureProgress] = useState(0);
+  const [signatureError, setSignatureError] = useState("");
+
+  const [signatureRemoving, setSignatureRemoving] = useState(false);
+
+  // The ID of the signature currently shown (saved ID, or worked out from the address).
+  const currentSignatureId = () =>
+    values.signaturePublicId ||
+    publicIdFromCloudinaryUrl(values.signatureUrl ?? "") ||
+    "";
+
+  const handleSignatureFile = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    setSignatureError("");
+
+    if (file.size > 3 * 1024 * 1024) {
+      setSignatureError("Please choose an image under 3 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    const previousId = currentSignatureId();
+
+    try {
+      setSignatureUploading(true);
+      setSignatureProgress(0);
+
+      const uploaded = await uploadImageWithDetails(
+        file,
+        "store/signature",
+        setSignatureProgress,
+      );
+
+      handleChange("signatureUrl", uploaded.secureUrl);
+      handleChange("signaturePublicId", uploaded.publicId);
+
+      // Replacing a signature: remove the old file so nothing is left behind.
+      if (previousId && previousId !== uploaded.publicId) {
+        void deleteStoreSignatureImage(previousId).catch((error) =>
+          console.error("Old signature could not be deleted:", error),
+        );
+      }
+    } catch (error) {
+      console.error("Signature upload failed:", error);
+      setSignatureError("The signature could not be uploaded. Please try again.");
+    } finally {
+      setSignatureUploading(false);
+      event.target.value = "";
+    }
+  };
+
+  const handleRemoveSignature = async () => {
+    const id = currentSignatureId();
+
+    setSignatureError("");
+
+    try {
+      setSignatureRemoving(true);
+
+      if (id) await deleteStoreSignatureImage(id);
+
+      handleChange("signatureUrl", "");
+      handleChange("signaturePublicId", "");
+    } catch (error) {
+      console.error("Signature could not be deleted:", error);
+      setSignatureError(
+        "The signature could not be deleted from Cloudinary. Please try again.",
+      );
+    } finally {
+      setSignatureRemoving(false);
+    }
+  };
   // One text field, wired to a settings key.
   const text = (
     key: keyof StoreSettings,
@@ -123,6 +205,70 @@ export default function StoreSettingsForm({
             })}
           </Grid>
         </Grid>
+      </SectionCard>
+
+      <SectionCard
+        title="Signature on GST invoices"
+        subtitle="Printed above 'Authorised signatory' on GST tax invoices and credit notes."
+      >
+        <Stack spacing={2}>
+          <Typography variant="body2" color="text.secondary">
+            Upload a clear photo of the owner's signature with a transparent
+            background (PNG). Sign with a dark pen on white paper and remove the
+            background before uploading.
+          </Typography>
+
+          <ImageUploadField
+            uploading={signatureUploading}
+            progress={signatureProgress}
+            onSelectFile={handleSignatureFile}
+          />
+
+          {signatureError && <Alert severity="error">{signatureError}</Alert>}
+
+          {values.signatureUrl && (
+            <Stack spacing={1} sx={{ alignItems: "flex-start" }}>
+              <Box
+                sx={{
+                  p: 2,
+                  bgcolor: "#FFFFFF",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 2,
+                }}
+              >
+                <Box
+                  component="img"
+                  src={values.signatureUrl}
+                  alt="Signature preview"
+                  sx={{
+                    display: "block",
+                    maxWidth: 260,
+                    maxHeight: 90,
+                    objectFit: "contain",
+                  }}
+                />
+              </Box>
+
+              <Button
+                color="error"
+                size="small"
+                disabled={signatureRemoving || signatureUploading}
+                onClick={handleRemoveSignature}
+              >
+                {signatureRemoving ? "Removing..." : "Remove signature"}
+              </Button>
+            </Stack>
+          )}
+
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              {text("signerName", "Name of authorised signatory", {
+                helperText: "Printed under the signature, e.g. the owner's name.",
+              })}
+            </Grid>
+          </Grid>
+        </Stack>
       </SectionCard>
 
       <SectionCard

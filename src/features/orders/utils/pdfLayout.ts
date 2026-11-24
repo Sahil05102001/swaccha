@@ -5,6 +5,17 @@ export type PdfDoc = jsPDFType;
 export type AutoTable = (doc: PdfDoc, options: UserOptions) => void;
 export type RGB = [number, number, number];
 
+export interface SignatureImage {
+  dataUrl: string;
+  width: number;
+  height: number;
+}
+
+export interface SignerInfo {
+  signature?: SignatureImage | null;
+  signerName?: string;
+}
+
 export const INK: RGB = [24, 24, 27];
 export const TEXT: RGB = [55, 65, 81];
 export const MUTED: RGB = [107, 114, 128];
@@ -216,18 +227,46 @@ export function drawWords(doc: PdfDoc, y: number, words: string): number {
 }
 
 /** Supplier's signature block. Returns the y below it. */
-export function drawSignature(doc: PdfDoc, y: number, name: string): number {
-    const top = ensureSpace(doc, y, 30);
+export function drawSignature(
+    doc: PdfDoc,
+    y: number,
+    name: string,
+    signer?: SignerInfo | null,
+): number {
+    const signerName = signer?.signerName?.trim() ?? "";
+    const top = ensureSpace(doc, y, signerName ? 34 : 30);
 
     setText(doc, 9, "bold", INK);
     doc.text(`For ${name}`, RIGHT, top, { align: "right" });
 
+    const lineY = top + 16;
+    const image = signer?.signature;
+
+    // The signature sits just above the line, right-aligned.
+    if (image) {
+        const scale = Math.min(44 / image.width, 12 / image.height);
+        const width = image.width * scale;
+        const height = image.height * scale;
+
+        try {
+            doc.addImage(image.dataUrl, "PNG", RIGHT - width, lineY - 1 - height, width, height);
+        } catch {
+            // An unreadable image must never stop the invoice.
+        }
+    }
+
     doc.setDrawColor(...LINE);
     doc.setLineWidth(0.3);
-    doc.line(RIGHT - 58, top + 16, RIGHT, top + 16);
+    doc.line(RIGHT - 58, lineY, RIGHT, lineY);
 
     setText(doc, 8, "normal", MUTED);
     doc.text("Authorised signatory", RIGHT, top + 20.5, { align: "right" });
+
+    if (signerName) {
+        setText(doc, 8, "bold", INK);
+        doc.text(signerName, RIGHT, top + 25, { align: "right" });
+        return top + 28;
+    }
 
     return top + 24;
 }

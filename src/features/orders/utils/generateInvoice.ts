@@ -3,6 +3,7 @@ import { stateWithCode } from "@/features/tax/utils/stateCodes";
 
 import { amountInWords } from "./amountInWords";
 import { loadSellerProfile, type SellerProfile } from "./loadSellerProfile";
+import { loadSignatureImage } from "./loadSignatureImage";
 import {
   drawBlock,
   drawDocumentTitle,
@@ -186,7 +187,7 @@ function drawTaxInvoice(
       : "Prices are inclusive of GST.",
   );
 
-  drawSignature(doc, y + 2, tax.legalName);
+  drawSignature(doc, y + 2, tax.legalName, seller);
   drawFooters(doc, "This is a computer-generated tax invoice.");
 }
 
@@ -296,6 +297,11 @@ export async function generateInvoice(invoice: InvoiceData): Promise<void> {
       import("jspdf-autotable"),
       loadSellerProfile(),
     ]);
+
+  // Only tax invoices carry a signature.
+  if (seller?.signatureUrl && invoice.tax?.applied === true && invoice.invoiceNumber) {
+    seller.signature = await loadSignatureImage(seller.signatureUrl);
+  }
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
 

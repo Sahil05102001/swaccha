@@ -37,6 +37,13 @@ export interface StoreSettings {
 
   invoiceFooter: string;
 
+  // Shown on GST invoices and credit notes (optional).
+  signatureUrl?: string;
+
+  signerName?: string;
+
+  signaturePublicId?: string;
+
   supportEmail: string;
 
   supportPhone: string;
@@ -51,7 +58,7 @@ export interface StoreSettings {
 
 export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   whoWeSupplyActive: true,
-  
+
   id: "store",
 
   storeName: "Swachha",
@@ -96,5 +103,4 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
 
   announcementBottomText:
     "✨ NEW ARRIVALS • BULK ORDERS AVAILABLE • QUALITY CLEANING PRODUCTS • SHOP NOW",
-
 };

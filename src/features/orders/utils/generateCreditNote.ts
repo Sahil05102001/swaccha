@@ -3,6 +3,7 @@ import { stateWithCode } from "@/features/tax/utils/stateCodes";
 import type { Order, OrderRefund } from "../types/order";
 import { amountInWords } from "./amountInWords";
 import { loadSellerProfile, type SellerProfile } from "./loadSellerProfile";
+import { loadSignatureImage } from "./loadSignatureImage";
 import {
   drawBlock,
   drawDocumentTitle,
@@ -145,7 +146,7 @@ export function drawCreditNote(
     "This credit note reduces the value and tax of the tax invoice named above.",
   );
 
-  drawSignature(doc, y + 2, tax.legalName);
+  drawSignature(doc, y + 2, tax.legalName, seller);
   drawFooters(doc, "This is a computer-generated credit note.");
 }
 
@@ -162,6 +163,10 @@ export async function generateCreditNote(
       import("jspdf-autotable"),
       loadSellerProfile(),
     ]);
+
+  if (seller?.signatureUrl) {
+    seller.signature = await loadSignatureImage(seller.signatureUrl);
+  }
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
 
