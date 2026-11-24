@@ -173,7 +173,7 @@ export default function CheckoutPage() {
   }, [addresses]);
 
   useEffect(() => {
-    if (!coupon) return;
+    if (!coupon || subtotal <= 0) return;
 
     let cancelled = false;
 
@@ -190,8 +190,7 @@ export default function CheckoutPage() {
         if (cancelled) return;
         setCoupon(null);
         showSnackbar(
-          `Coupon ${coupon.code} was removed: ${
-            error instanceof Error ? error.message : "no longer valid."
+          `Coupon ${coupon.code} was removed: ${error instanceof Error ? error.message : "no longer valid."
           }`,
           "warning",
         );
@@ -382,7 +381,7 @@ export default function CheckoutPage() {
           if (result.refundRequired) {
             showSnackbar(
               result.message ||
-                "Payment was received, but this order needs refund resolution. Please contact support before placing another order.",
+              "Payment was received, but this order needs refund resolution. Please contact support before placing another order.",
               "warning",
             );
 
