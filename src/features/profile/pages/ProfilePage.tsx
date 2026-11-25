@@ -27,6 +27,7 @@ import ProfileInfoCard from "../components/ProfileInfoCard";
 import AddressSection from "../components/AddressSection";
 import AddressDialog from "../components/AddressDialog";
 import DeleteAddressDialog from "../components/DeleteAddressDialog";
+import DeleteAccountSection from "../components/DeleteAccountSection";
 
 import type { Address } from "../types/address";
 
@@ -260,6 +261,8 @@ export default function ProfilePage() {
             }}
             onSetDefaultAddress={handleSetDefaultAddress}
           />
+
+          <DeleteAccountSection />
         </Stack>
 
         <AddressDialog

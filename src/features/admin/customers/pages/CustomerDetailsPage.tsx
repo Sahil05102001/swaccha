@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-
 import {
   Alert,
   Box,
@@ -17,14 +16,14 @@ import {
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate, useParams } from "react-router-dom";
-
 import PageContainer from "@/components/common/PageContainer";
 import PageHeader from "@/components/common/PageHeader";
 import SectionCard from "@/components/common/SectionCard";
 import OrderStatusChip from "@/features/orders/components/OrderStatusChip";
-
 import { useCustomer } from "../hooks/useCustomers";
 import { useCustomerAnalytics } from "../hooks/useCustomerAnalytics";
+import CustomerAccountActions from "../components/CustomerAccountActions";
+
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -36,6 +35,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
     </Box>
   );
 }
+
 
 function Tile({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -58,11 +58,14 @@ function Tile({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
+
 export default function CustomerDetailsPage() {
   const navigate = useNavigate();
   const { uid } = useParams();
 
+
   const { data: customer, isLoading, isError, error } = useCustomer(uid);
+
 
   // Admin accounts have no shopping data, so skip the orders lookup for them.
   const isAdmin = customer?.role === "admin";
@@ -72,10 +75,12 @@ export default function CustomerDetailsPage() {
     isError: analyticsError,
   } = useCustomerAnalytics(customer && !isAdmin ? uid : undefined);
 
+
   // Sign-up doesn't collect a phone, so use the one from the latest order.
   const latestOrderPhone =
     analytics?.recentOrders[0]?.shippingAddress?.phoneNumber;
   const phone = customer?.phone || latestOrderPhone || "";
+
 
   const backButton = (
     <Button
@@ -86,6 +91,7 @@ export default function CustomerDetailsPage() {
       Back to customers
     </Button>
   );
+
 
   if (isLoading || analyticsLoading) {
     return (
@@ -106,6 +112,7 @@ export default function CustomerDetailsPage() {
     );
   }
 
+
   if (isError) {
     return (
       <PageContainer>
@@ -115,6 +122,7 @@ export default function CustomerDetailsPage() {
     );
   }
 
+
   if (!customer) {
     return (
       <PageContainer>
@@ -123,6 +131,7 @@ export default function CustomerDetailsPage() {
       </PageContainer>
     );
   }
+
 
   return (
     <PageContainer>
@@ -153,15 +162,18 @@ export default function CustomerDetailsPage() {
                 <Typography>{customer.name || "-"}</Typography>
               </Field>
 
+
               <Field label="Email">
                 <Typography>{customer.email}</Typography>
               </Field>
+
 
               {!isAdmin && (
                 <Field label={customer.phone ? "Phone" : "Phone (from latest order)"}>
                   <Typography>{phone || "-"}</Typography>
                 </Field>
               )}
+
 
               <Field label="Role">
                 <Chip
@@ -172,14 +184,27 @@ export default function CustomerDetailsPage() {
                 />
               </Field>
 
+
               <Field label="Status">
                 <Chip
-                  size="small"
-                  variant="outlined"
-                  label={customer.isActive ? "Active" : "Inactive"}
-                  color={customer.isActive ? "success" : "error"}
+                  sx={{ mt: 1, mb: 2 }}
+                  label={
+                    customer.deleted
+                      ? "Deleted"
+                      : customer.isActive
+                        ? "Active"
+                        : "Disabled"
+                  }
+                  color={
+                    customer.deleted
+                      ? "default"
+                      : customer.isActive
+                        ? "success"
+                        : "error"
+                  }
                 />
               </Field>
+
 
               <Field label="Joined">
                 <Typography>
@@ -190,7 +215,13 @@ export default function CustomerDetailsPage() {
               </Field>
             </Box>
           </SectionCard>
+
+
+          <Box sx={{ mt: 3 }}>
+            <CustomerAccountActions customer={customer} />
+          </Box>
         </Grid>
+
 
         {!isAdmin && (
           <>
@@ -201,12 +232,14 @@ export default function CustomerDetailsPage() {
                     <Tile label="Total orders" value={analytics?.totalOrders ?? 0} />
                   </Grid>
 
+
                   <Grid size={{ xs: 6 }}>
                     <Tile
                       label="Total spending"
                       value={`₹${(analytics?.totalSpent ?? 0).toLocaleString("en-IN")}`}
                     />
                   </Grid>
+
 
                   <Grid size={{ xs: 6 }}>
                     <Tile
@@ -217,6 +250,7 @@ export default function CustomerDetailsPage() {
                       )}`}
                     />
                   </Grid>
+
 
                   <Grid size={{ xs: 6 }}>
                     <Tile
@@ -231,6 +265,7 @@ export default function CustomerDetailsPage() {
                 </Grid>
               </SectionCard>
             </Grid>
+
 
             <Grid size={{ xs: 12 }}>
               <SectionCard title="Recent Orders">
@@ -249,6 +284,7 @@ export default function CustomerDetailsPage() {
                       </TableRow>
                     </TableHead>
 
+
                     <TableBody>
                       {analytics?.recentOrders.length ? (
                         analytics.recentOrders.map((order) => (
@@ -257,13 +293,16 @@ export default function CustomerDetailsPage() {
                               {order.orderNumber}
                             </TableCell>
 
+
                             <TableCell sx={{ whiteSpace: "nowrap" }}>
                               {order.createdAt.toDate().toLocaleDateString("en-IN")}
                             </TableCell>
 
+
                             <TableCell>
                               <OrderStatusChip status={order.orderStatus} />
                             </TableCell>
+
 
                             <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>
                               <Chip
@@ -280,9 +319,11 @@ export default function CustomerDetailsPage() {
                               />
                             </TableCell>
 
+
                             <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
                               ₹{order.totalAmount.toLocaleString("en-IN")}
                             </TableCell>
+
 
                             <TableCell align="right">
                               <Button

@@ -22,6 +22,7 @@ export interface Customer {
   phone: string;
   role: "admin" | "customer";
   isActive: boolean;
+  deleted?: boolean;
   createdAt?: {
     toDate(): Date;
   };
