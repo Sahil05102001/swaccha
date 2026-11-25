@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+import {
+  getPasswordChecks,
+} from "../utils/passwordRules";
+
 export const registerSchema = z
   .object({
     fullName: z
@@ -11,10 +15,35 @@ export const registerSchema = z
 
     password: z
       .string()
-      .min(6, "Password must be at least 6 characters"),
+      .min(1, "Enter a password")
+      .superRefine((value, ctx) => {
+        const missing = getPasswordChecks(value).filter(
+          (check) => !check.met && check.id !== "personal",
+        );
+
+        if (missing.length > 0) {
+          ctx.addIssue({
+            code: "custom",
+            message: `Password needs: ${missing
+              .map((check) => check.short)
+              .join(", ")}`,
+          });
+        }
+      }),
 
     confirmPassword: z.string(),
   })
+  .refine(
+    (data) =>
+      getPasswordChecks(data.password, {
+        email: data.email,
+        fullName: data.fullName,
+      }).find((check) => check.id === "personal")?.met !== false,
+    {
+      message: "Password must not contain your name or email",
+      path: ["password"],
+    },
+  )
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
     path: ["confirmPassword"],

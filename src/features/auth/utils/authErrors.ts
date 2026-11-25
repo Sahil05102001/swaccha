@@ -19,6 +19,10 @@ const MESSAGES: Record<string, { message: string; severity?: AuthNoticeSeverity 
     message: "An account with this email already exists.",
   },
   "auth/weak-password": { message: "Please choose a stronger password." },
+  "auth/password-does-not-meet-requirements": {
+    message:
+      "Your password doesn't meet the requirements. Use 10+ characters with upper and lower case letters, a number and a symbol.",
+  },
   "auth/invalid-email": { message: "Please enter a valid email address." },
   "auth/too-many-requests": {
     message: "Too many attempts. Please try again later.",

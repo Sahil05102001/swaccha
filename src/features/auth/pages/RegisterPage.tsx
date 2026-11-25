@@ -27,21 +27,21 @@ import {
   signInWithPopup,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-
 import {
   registerSchema,
   type RegisterFormData,
 } from "../schemas/registerSchema";
 import { registerUser } from "../services/authService";
 import { mergeGuestCartIntoFirestore } from "@/features/cart/services/cartService";
-
 import { createUserProfile } from "@/features/profile/services/profileService";
 import { auth } from "@/firebase/auth";
 import { db } from "@/firebase/firestore";
-
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import { describeAuthError } from "../utils/authErrors";
 import { useQueryClient } from "@tanstack/react-query";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
+import { getPasswordStrength } from "../utils/passwordRules";
 
 type RegisterLocationState = {
   from?: string | { pathname?: string };
@@ -58,6 +58,7 @@ const COLORS = {
   weak: "#DC2626",
   fair: "#F59E0B",
   good: "#10B981",
+  goodText: "#047857",
 };
 
 const focusRing = {
@@ -106,24 +107,6 @@ const bubbles = [
   { size: 12, left: "46%", duration: 9, delay: 6 },
   { size: 28, left: "92%", duration: 13, delay: 7 },
 ];
-
-// Simple strength estimate for the hint under the password field.
-// It is advice only: the real rules are enforced by registerSchema.
-function getPasswordStrength(password: string) {
-  if (!password) return { score: 0, label: "", color: COLORS.border };
-
-  let score = 0;
-  if (password.length >= 8) score += 1;
-  if (password.length >= 12) score += 1;
-  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score += 1;
-  if (/\d/.test(password)) score += 1;
-  if (/[^A-Za-z0-9]/.test(password)) score += 1;
-
-  if (score <= 2) return { score: 1, label: "Weak", color: COLORS.weak };
-  if (score === 3) return { score: 2, label: "Fair", color: COLORS.fair };
-  if (score === 4) return { score: 3, label: "Good", color: COLORS.good };
-  return { score: 4, label: "Strong", color: COLORS.good };
-}
 
 // Soft bubbles floating up. Purely decorative.
 function Bubbles({ count = bubbles.length }: { count?: number }) {
@@ -253,7 +236,23 @@ export default function RegisterPage() {
   });
 
   const passwordValue = watch("password") ?? "";
-  const strength = getPasswordStrength(passwordValue);
+  const emailValue = watch("email") ?? "";
+  const nameValue = watch("fullName") ?? "";
+
+  const strength = getPasswordStrength(passwordValue, {
+    email: emailValue,
+    fullName: nameValue,
+  });
+
+  const strengthColors = {
+    none: COLORS.border,
+    weak: COLORS.weak,
+    fair: COLORS.fair,
+    good: COLORS.good,
+    strong: COLORS.good,
+  } as const;
+
+  const strengthColor = strengthColors[strength.level];
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -682,46 +681,91 @@ export default function RegisterPage() {
                 }}
               />
 
-              {/* Password strength hint */}
-              {passwordValue && (
-                <Box sx={{ mt: 1.25 }} aria-live="polite">
-                  <Stack direction="row" spacing={0.75}>
-                    {[1, 2, 3, 4].map((segment) => (
-                      <Box
-                        key={segment}
-                        sx={{
-                          flex: 1,
-                          height: 4,
-                          borderRadius: 999,
-                          bgcolor:
-                            segment <= strength.score
-                              ? strength.color
-                              : COLORS.border,
-                          transition: "background-color 0.2s",
-                        }}
-                      />
-                    ))}
-                  </Stack>
+              {/* Password strength and requirements */}
+              <Box sx={{ mt: 1.25 }} aria-live="polite">
+                {passwordValue ? (
+                  <>
+                    <Stack direction="row" spacing={0.75}>
+                      {[1, 2, 3, 4].map((segment) => (
+                        <Box
+                          key={segment}
+                          sx={{
+                            flex: 1,
+                            height: 4,
+                            borderRadius: 999,
+                            bgcolor:
+                              segment <= strength.score
+                                ? strengthColor
+                                : COLORS.border,
+                            transition: "background-color 0.2s",
+                          }}
+                        />
+                      ))}
+                    </Stack>
 
-                  <Typography
-                    sx={{
-                      mt: 0.5,
-                      fontSize: "0.75rem",
-                      color: COLORS.muted,
-                    }}
-                  >
-                    Password strength:{" "}
-                    <Box
-                      component="span"
-                      sx={{ fontWeight: 700, color: strength.color }}
+                    <Typography
+                      sx={{ mt: 0.5, fontSize: "0.75rem", color: COLORS.muted }}
                     >
-                      {strength.label}
+                      Password strength:{" "}
+                      <Box
+                        component="span"
+                        sx={{
+                          fontWeight: 700,
+                          color:
+                            strength.level === "good" ||
+                            strength.level === "strong"
+                              ? COLORS.goodText
+                              : strengthColor,
+                        }}
+                      >
+                        {strength.label}
+                      </Box>
+                      {!strength.ok && " · meet every requirement to continue"}
+                    </Typography>
+
+                    <Box
+                      component="ul"
+                      sx={{
+                        listStyle: "none",
+                        p: 0,
+                        m: 0,
+                        mt: 1,
+                        display: "grid",
+                        gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                        gap: 0.5,
+                      }}
+                    >
+                      {strength.checks.map((check) => (
+                        <Box
+                          component="li"
+                          key={check.id}
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.75,
+                            fontSize: "0.75rem",
+                            color: check.met ? COLORS.goodText : COLORS.muted,
+                          }}
+                        >
+                          {check.met ? (
+                            <CheckCircleRoundedIcon
+                              sx={{ fontSize: 16, color: COLORS.good }}
+                            />
+                          ) : (
+                            <RadioButtonUncheckedIcon sx={{ fontSize: 16 }} />
+                          )}
+                          {check.label}
+                        </Box>
+                      ))}
                     </Box>
-                    {strength.score < 3 &&
-                      " · try a longer password with numbers and symbols"}
+                  </>
+                ) : (
+                  <Typography sx={{ fontSize: "0.75rem", color: COLORS.muted }}>
+                    Use 10+ characters with upper and lower case letters, a
+                    number and a symbol.
                   </Typography>
-                </Box>
-              )}
+                )}
+              </Box>
             </Box>
 
             <TextField
@@ -756,7 +800,7 @@ export default function RegisterPage() {
               disableRipple
               disableElevation
               variant="contained"
-              disabled={isSubmitting || googleLoading}
+              disabled={isSubmitting || googleLoading || !strength.ok}
               endIcon={
                 isSubmitting ? undefined : (
                   <ArrowForwardRoundedIcon
